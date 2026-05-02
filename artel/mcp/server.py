@@ -3,7 +3,7 @@ from mcp.server.fastmcp import FastMCP
 
 from .config import settings
 
-mcp = FastMCP("omarion", host=settings.mcp_host, port=settings.mcp_port)
+mcp = FastMCP("artel", host=settings.mcp_host, port=settings.mcp_port)
 
 _HEADERS = {
     "x-agent-id": settings.mcp_agent_id,
@@ -12,7 +12,7 @@ _HEADERS = {
 
 
 def _http() -> httpx.AsyncClient:
-    return httpx.AsyncClient(base_url=settings.omarion_url, headers=_HEADERS, timeout=30.0)
+    return httpx.AsyncClient(base_url=settings.artel_url, headers=_HEADERS, timeout=30.0)
 
 
 @mcp.tool()

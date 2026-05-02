@@ -1,10 +1,10 @@
 """
-Minimal Omarion client example — raw httpx, no framework.
+Minimal Artel client example — raw httpx, no framework.
 
 Usage:
-    OMARION_URL=http://ARTEL_HOST:8000 \
-    OMARION_AGENT_ID=my-agent \
-    OMARION_API_KEY=my-key \
+    ARTEL_URL=http://ARTEL_HOST:8000 \
+    ARTEL_AGENT_ID=my-agent \
+    ARTEL_API_KEY=my-key \
     python examples/python_client.py
 """
 
@@ -12,12 +12,12 @@ import os
 
 import httpx
 
-OMARION_URL = os.environ.get("OMARION_URL", "http://localhost:8000")
-AGENT_ID = os.environ.get("OMARION_AGENT_ID", "nimbus")
-API_KEY = os.environ.get("OMARION_API_KEY", "")
+ARTEL_URL = os.environ.get("ARTEL_URL", "http://localhost:8000")
+AGENT_ID = os.environ.get("ARTEL_AGENT_ID", "nimbus")
+API_KEY = os.environ.get("ARTEL_API_KEY", "")
 
 client = httpx.Client(
-    base_url=OMARION_URL,
+    base_url=ARTEL_URL,
     headers={"x-agent-id": AGENT_ID, "x-api-key": API_KEY},
 )
 

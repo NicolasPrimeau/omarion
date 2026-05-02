@@ -1,6 +1,6 @@
 import anthropic
 
-from .client import OmarionClient
+from .client import ArtelClient
 from .config import settings
 
 _MAX_DISTANCE = 1.0 - settings.conflict_threshold
@@ -15,7 +15,7 @@ def _client() -> anthropic.AsyncAnthropic:
     return _anthropic
 
 
-async def check_and_merge(entry_id: str, client: OmarionClient) -> None:
+async def check_and_merge(entry_id: str, client: ArtelClient) -> None:
     entry = await client.get_memory(entry_id)
     similar = await client.search_memory(entry["content"], limit=6, max_distance=_MAX_DISTANCE)
 

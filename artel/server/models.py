@@ -104,6 +104,16 @@ class Participant(BaseModel):
     last_seen: str | None
 
 
+class AgentRegister(BaseModel):
+    agent_id: str
+
+
+class AgentCreated(BaseModel):
+    agent_id: str
+    api_key: str
+    created_at: str
+
+
 class HandoffPost(BaseModel):
     host: str = ""
     summary: str

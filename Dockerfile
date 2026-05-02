@@ -7,10 +7,10 @@ WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-dev
 
-COPY omarion/ omarion/
+COPY artel/ artel/
 
 ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
 
-CMD ["python", "-m", "omarion.server"]
+CMD ["python", "-m", "artel.server"]

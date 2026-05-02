@@ -1,10 +1,10 @@
-# Omarion
+# Artel
 
 Harness-agnostic coordination layer for AI agents — shared memory, session continuity, agent-to-agent communication, and async archival synthesis across machines and LLM providers.
 
 ## What It Is
 
-Omarion is a self-hosted server that acts as the shared brain for a fleet of AI agents. Any agent that can make HTTP calls can participate — Claude Code, AutoGen, raw API scripts, anything. Agents read and write memory, pass messages, claim tasks, and emit events. An async archivist agent watches all activity and synthesizes connections no individual agent can see.
+Artel is a self-hosted server that acts as the shared brain for a fleet of AI agents. Any agent that can make HTTP calls can participate — Claude Code, AutoGen, raw API scripts, anything. Agents read and write memory, pass messages, claim tasks, and emit events. An async archivist agent watches all activity and synthesizes connections no individual agent can see.
 
 ## Stack
 
@@ -15,7 +15,7 @@ Omarion is a self-hosted server that acts as the shared brain for a fleet of AI 
 ## Layout
 
 ```
-omarion/
+artel/
   server/       — FastAPI app, routes, auth
   store/        — SQLite models, migrations
   archivist/    — async synthesis agent
@@ -52,5 +52,5 @@ API key + `agent_id` string. No framework coupling. Any HTTP client participates
 ## Running
 
 ```bash
-uv run python -m omarion.server
+uv run python -m artel.server
 ```

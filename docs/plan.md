@@ -1,4 +1,4 @@
-# Omarion — Execution Plan
+# Artel — Execution Plan
 
 ## Phase 1: Core Server (MVP)
 
@@ -34,7 +34,7 @@
 ## Phase 4: Client Integrations
 
 - [x] MCP config documented for Claude Code (README — Option A SSE, Option B stdio)
-- [x] Nimbus .mcp.json wired to omarion MCP (SSE transport)
+- [x] Nimbus .mcp.json wired to artel MCP (SSE transport)
 - [x] Steward agent pre-registered, ready to connect via .mcp.json
 - [x] Session handoff replacing server-sync skill
 

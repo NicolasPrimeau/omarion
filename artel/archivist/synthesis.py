@@ -2,7 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 import anthropic
 
-from .client import OmarionClient
+from .client import ArtelClient
 from .config import settings
 
 _anthropic: anthropic.AsyncAnthropic | None = None
@@ -21,7 +21,7 @@ def _utc_ago(hours: int) -> str:
     )
 
 
-async def run_synthesis(client: OmarionClient) -> None:
+async def run_synthesis(client: ArtelClient) -> None:
     entries = await client.get_delta(_utc_ago(24))
     entries = [e for e in entries if e["agent_id"] != settings.archivist_id]
 
@@ -37,7 +37,7 @@ async def run_synthesis(client: OmarionClient) -> None:
         model="claude-sonnet-4-6",
         max_tokens=2048,
         system=(
-            "You are the Omarion archivist. Synthesize agent memory entries "
+            "You are the Artel archivist. Synthesize agent memory entries "
             "and surface connections, patterns, and contradictions no individual agent can see."
         ),
         messages=[{
@@ -59,7 +59,7 @@ async def run_synthesis(client: OmarionClient) -> None:
     )
 
 
-async def decay_confidence(client: OmarionClient) -> None:
+async def decay_confidence(client: ArtelClient) -> None:
     cutoff = (datetime.now(UTC) - timedelta(days=settings.decay_window_days)).strftime(
         "%Y-%m-%dT%H:%M:%S.000Z"
     )
@@ -74,7 +74,7 @@ async def decay_confidence(client: OmarionClient) -> None:
         await client.patch_memory(entry["id"], confidence=new_conf)
 
 
-async def run_promotion(client: OmarionClient) -> None:
+async def run_promotion(client: ArtelClient) -> None:
     scratch_cutoff = (
         datetime.now(UTC) - timedelta(hours=settings.promotion_scratch_age_hours)
     ).strftime("%Y-%m-%dT%H:%M:%S.000Z")

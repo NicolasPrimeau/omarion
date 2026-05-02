@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ..store.db import get_db
 from .config import settings
+from .routes.agents import router as agents_router
 from .routes.events import router as events_router
 from .routes.memory import router as memory_router
 from .routes.messages import router as messages_router
@@ -22,7 +23,7 @@ _LOGIN = """\
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>omarion</title>
+<title>artel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -39,7 +40,7 @@ button:hover{background:#0a1a2a}
 </head>
 <body>
 <form method="POST" action="/ui/login">
-  <h1>omarion</h1>
+  <h1>artel</h1>
   {error}
   <input type="password" name="password" placeholder="password" autofocus>
   <button type="submit">login</button>
@@ -48,8 +49,9 @@ button:hover{background:#0a1a2a}
 </html>
 """
 
-app = FastAPI(title="Omarion", version="0.1.0")
+app = FastAPI(title="Artel", version="0.1.0")
 
+app.include_router(agents_router)
 app.include_router(memory_router)
 app.include_router(tasks_router)
 app.include_router(messages_router)

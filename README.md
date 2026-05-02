@@ -1,14 +1,14 @@
-# Omarion
+# Artel
 
 **Shared memory, messaging, and session continuity for AI agent fleets.**
 
-Most agent frameworks own your execution model — you write agents in their DSL, against their abstractions, locked into their LLM assumptions. Omarion doesn't orchestrate anything. It's the infrastructure layer your agents talk to: a self-hosted server any agent can read from and write to over HTTP, regardless of what framework or model powers it.
+Most agent frameworks own your execution model — you write agents in their DSL, against their abstractions, locked into their LLM assumptions. Artel doesn't orchestrate anything. It's the infrastructure layer your agents talk to: a self-hosted server any agent can read from and write to over HTTP, regardless of what framework or model powers it.
 
 A Claude Code session, an AutoGen script, and a raw Python cron job can share memory, claim tasks, message each other, and pick up where the last session left off — without knowing anything about each other's internals.
 
 ```
 nimbus (Claude Code)  ──┐
-archivist (Claude API) ──┤──  REST API / MCP  ──  Omarion Server  ──  SQLite
+archivist (Claude API) ──┤──  REST API / MCP  ──  Artel Server  ──  SQLite
 steward (AutoGen)      ──┘                           ├── shared memory + semantic search
                                                       ├── tasks, messages, events
                                                       └── archivist (synthesis + decay)
@@ -33,8 +33,8 @@ steward (AutoGen)      ──┘                           ├── shared memo
 ## Quickstart
 
 ```bash
-git clone https://github.com/NicolasPrimeau/omarion
-cd omarion
+git clone https://github.com/NicolasPrimeau/artel
+cd artel
 python scripts/seed_keys.py   # generates .env with agent keys
 echo "ANTHROPIC_API_KEY=sk-ant-..." >> .env
 docker compose up -d
@@ -80,7 +80,7 @@ Add to `.mcp.json` in your project:
 ```json
 {
   "mcpServers": {
-    "omarion": {
+    "artel": {
       "type": "sse",
       "url": "http://<host>:8001/sse"
     }
@@ -144,7 +144,7 @@ Other
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `AGENT_KEYS` | — | `agent:key,agent:key:proj1;proj2,...` — optional third segment scopes agent to specific projects (`*` or omit for all) |
-| `DB_PATH` | `omarion.db` | SQLite path |
+| `DB_PATH` | `artel.db` | SQLite path |
 | `UI_PASSWORD` | — | Web UI password |
 | `ANTHROPIC_API_KEY` | — | Required for archivist |
 | `ARCHIVIST_KEY` | — | Must match a key in `AGENT_KEYS` |

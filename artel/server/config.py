@@ -4,10 +4,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True)
 
-    db_path: str = "omarion.db"
+    db_path: str = "artel.db"
     host: str = "0.0.0.0"
     port: int = 8000
     agent_keys: str = ""
+    registration_key: str = ""
     ui_password: str = ""
     ui_agent_id: str = "nimbus"
 

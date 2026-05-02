@@ -5,10 +5,10 @@ import httpx
 from .config import settings
 
 
-class OmarionClient:
+class ArtelClient:
     def __init__(self):
         self._http = httpx.AsyncClient(
-            base_url=settings.omarion_url,
+            base_url=settings.artel_url,
             headers={
                 "x-agent-id": settings.archivist_id,
                 "x-api-key": settings.archivist_key,
