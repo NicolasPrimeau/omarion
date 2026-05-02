@@ -1,6 +1,6 @@
 from fastapi import Depends, Header, HTTPException
 
-from ...store.db import get_db
+from ..store.db import get_db
 from .config import settings
 
 
