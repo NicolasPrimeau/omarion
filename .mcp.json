@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "omarion": {
+      "type": "sse",
+      "url": "http://ARTEL_HOST:8001/sse"
+    }
+  }
+}

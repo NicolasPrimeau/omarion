@@ -21,8 +21,8 @@
 - [x] Conflict detection via embedding similarity on write
 - [x] LLM merge call — semantic diff + produce canonical entry, record parents
 - [x] Hourly synthesis pass — link discovery across agents
-- [ ] Confidence decay — entries not reinforced lose confidence over time
-- [ ] Promotion logic — scratch → memory → doc
+- [x] Confidence decay — entries not reinforced lose confidence over time
+- [x] Promotion logic — scratch → memory → doc
 - [x] Archivist writes synthesis docs back as agent_id=archivist
 
 ## Phase 3: MCP Adapter
@@ -34,13 +34,14 @@
 ## Phase 4: Client Integrations
 
 - [x] MCP config documented for Claude Code (README — Option A SSE, Option B stdio)
-- [ ] Nimbus .claude/settings.json wired to omarion MCP
-- [ ] Steward agent integration
-- [ ] Session handoff replacing poseidon-sync skill
+- [x] Nimbus .mcp.json wired to omarion MCP (SSE transport)
+- [x] Steward agent pre-registered, ready to connect via .mcp.json
+- [x] Session handoff replacing poseidon-sync skill
 
 ## Phase 5: Open Source Prep
 
 - [x] README — problem statement, architecture diagram, quickstart, API reference
 - [x] Docker Compose for self-hosting
-- [ ] Example integrations (raw Python client, AutoGen)
+- [x] Example integrations (raw Python client, AutoGen)
+- [x] Participants endpoint (GET /participants — list agents + last_seen)
 - [ ] GitHub release

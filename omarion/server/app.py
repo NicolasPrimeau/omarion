@@ -9,6 +9,7 @@ from .config import settings
 from .routes.events import router as events_router
 from .routes.memory import router as memory_router
 from .routes.messages import router as messages_router
+from .routes.participants import router as participants_router
 from .routes.sessions import router as sessions_router
 from .routes.tasks import router as tasks_router
 
@@ -54,6 +55,7 @@ app.include_router(tasks_router)
 app.include_router(messages_router)
 app.include_router(events_router)
 app.include_router(sessions_router)
+app.include_router(participants_router)
 
 
 @app.on_event("startup")

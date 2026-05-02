@@ -53,14 +53,35 @@ class OmarionClient:
         r.raise_for_status()
         return r.json()
 
-    async def patch_memory(self, entry_id: str, **kwargs) -> dict:
-        r = await self._http.patch(f"/memory/{entry_id}", json=kwargs)
+    async def patch_memory(self, entry_id: str, **fields) -> dict:
+        r = await self._http.patch(f"/memory/{entry_id}", json=fields)
         r.raise_for_status()
         return r.json()
 
     async def delete_memory(self, entry_id: str) -> None:
         r = await self._http.delete(f"/memory/{entry_id}")
         r.raise_for_status()
+
+    async def list_entries(
+        self,
+        type: str | None = None,
+        updated_before: str | None = None,
+        created_before: str | None = None,
+        min_version: int | None = None,
+        limit: int = 100,
+    ) -> list[dict]:
+        params: dict = {"limit": limit}
+        if type:
+            params["type"] = type
+        if updated_before:
+            params["updated_before"] = updated_before
+        if created_before:
+            params["created_before"] = created_before
+        if min_version is not None:
+            params["min_version"] = min_version
+        r = await self._http.get("/memory", params=params)
+        r.raise_for_status()
+        return r.json()
 
     async def get_delta(self, since: str) -> list[dict]:
         r = await self._http.get("/memory/delta", params={"since": since})

@@ -90,6 +90,38 @@ async def search_memory(
     return [_row_to_entry(r) for r in results]
 
 
+@router.get("", response_model=list[MemoryEntry])
+async def list_memory(
+    type: str | None = Query(default=None),
+    updated_before: str | None = Query(default=None),
+    created_before: str | None = Query(default=None),
+    min_version: int | None = Query(default=None),
+    limit: int = Query(default=100, le=500),
+    agent_id: str = Depends(require_agent),
+):
+    db = get_db()
+    clauses = ["deleted_at IS NULL", "(scope != 'private' OR agent_id = ?)"]
+    params: list = [agent_id]
+    if type:
+        clauses.append("type = ?")
+        params.append(type)
+    if updated_before:
+        clauses.append("updated_at < ?")
+        params.append(updated_before)
+    if created_before:
+        clauses.append("created_at < ?")
+        params.append(created_before)
+    if min_version is not None:
+        clauses.append("version >= ?")
+        params.append(min_version)
+    params.append(limit)
+    rows = db.execute(
+        f"SELECT * FROM memory WHERE {' AND '.join(clauses)} ORDER BY updated_at LIMIT ?",
+        params,
+    ).fetchall()
+    return [_row_to_entry(r) for r in rows]
+
+
 @router.get("/delta", response_model=list[MemoryEntry])
 async def memory_delta(
     since: str = Query(...),
@@ -134,11 +166,11 @@ async def patch_memory(
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
-    if row["agent_id"] != agent_id:
-        raise HTTPException(status_code=403, detail="forbidden")
 
     updates: dict = {}
     if body.content is not None:
+        if row["agent_id"] != agent_id:
+            raise HTTPException(status_code=403, detail="forbidden")
         updates["content"] = body.content
         vec = embed(body.content)
         db.execute("DELETE FROM memory_vec WHERE id=?", (entry_id,))
@@ -146,12 +178,18 @@ async def patch_memory(
             "INSERT INTO memory_vec (id, embedding) VALUES (?,?)",
             (entry_id, json.dumps(vec)),
         )
-    if body.confidence is not None:
-        updates["confidence"] = body.confidence
     if body.tags is not None:
+        if row["agent_id"] != agent_id:
+            raise HTTPException(status_code=403, detail="forbidden")
         updates["tags"] = json.dumps(body.tags)
     if body.scope is not None:
+        if row["agent_id"] != agent_id:
+            raise HTTPException(status_code=403, detail="forbidden")
         updates["scope"] = body.scope
+    if body.confidence is not None:
+        updates["confidence"] = body.confidence
+    if body.type is not None:
+        updates["type"] = body.type
 
     if updates:
         set_parts = [f"{k}=?" for k in updates]
