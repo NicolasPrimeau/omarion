@@ -2,36 +2,39 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>omarion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font:13px/1.5 monospace;background:#0d0d0d;color:#bbb}
-header{display:flex;gap:6px;padding:8px 12px;background:#111;border-bottom:1px solid #1e1e1e;align-items:center}
-header b{color:#4af;margin-right:4px}
-input,select,textarea,button{background:#161616;color:#bbb;border:1px solid #2a2a2a;padding:3px 7px;font:13px monospace;border-radius:2px}
+body{font:15px/1.6 'Inter',system-ui,sans-serif;background:#0d0d0d;color:#c8c8c8}
+header{display:flex;gap:8px;padding:10px 16px;background:#111;border-bottom:1px solid #1e1e1e;align-items:center}
+header b{color:#4af;margin-right:6px;font-size:16px;letter-spacing:.5px}
+input,select,textarea,button{background:#161616;color:#c8c8c8;border:1px solid #2a2a2a;padding:5px 10px;font:14px 'Inter',sans-serif;border-radius:3px}
 input:focus,textarea:focus{outline:none;border-color:#4af}
-button{cursor:pointer}
+button{cursor:pointer;font-size:13px}
 button:hover{background:#1e1e1e}
 button.p{color:#4af;border-color:#4af}
 nav{display:flex;background:#111;border-bottom:1px solid #1e1e1e}
-nav button{border:none;border-bottom:2px solid transparent;padding:7px 14px;border-radius:0;background:none}
+nav button{border:none;border-bottom:2px solid transparent;padding:9px 16px;border-radius:0;background:none;font-size:13px;font-weight:500;letter-spacing:.3px;color:#666}
 nav button.on{border-bottom-color:#4af;color:#4af}
-.panel{display:none;padding:10px}
+.panel{display:none;padding:14px 16px;max-width:960px}
 .panel.on{display:block}
-.row{display:flex;gap:6px;margin-bottom:8px;align-items:flex-start}
+.row{display:flex;gap:8px;margin-bottom:10px;align-items:flex-start}
 .row textarea{flex:1}
-.card{padding:8px;border:1px solid #1e1e1e;margin-bottom:5px;background:#111}
-.meta{color:#444;font-size:11px;margin-bottom:3px}
-.tag{background:#1a2a1a;color:#4a8;padding:0 4px;border-radius:2px;font-size:11px}
-pre{white-space:pre-wrap;word-break:break-word}
-.s{padding:0 5px;border-radius:2px;font-size:11px}
+.card{padding:10px 12px;border:1px solid #1e1e1e;margin-bottom:6px;background:#111;border-radius:3px}
+.meta{color:#3a3a3a;font-size:12px;margin-bottom:5px;font-family:'JetBrains Mono',monospace}
+.tag{background:#1a2a1a;color:#4a8;padding:1px 5px;border-radius:2px;font-size:11px;font-family:'JetBrains Mono',monospace}
+pre{white-space:pre-wrap;word-break:break-word;font:14px/1.6 'JetBrains Mono',monospace;color:#c8c8c8}
+.s{padding:1px 6px;border-radius:2px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:500}
 .s.open{color:#fa4;background:#1a1200}
 .s.claimed{color:#4af;background:#001422}
 .s.completed{color:#4a8;background:#001408}
 .s.failed{color:#f55;background:#180000}
-#st{font-size:11px;color:#444;margin-left:4px}
-#ev{height:380px;overflow-y:auto;font-size:12px}
-.el{padding:2px 0;border-bottom:1px solid #181818}
+#st{font-size:12px;color:#444;margin-left:6px}
+#ev{height:380px;overflow-y:auto;font-size:13px;font-family:'JetBrains Mono',monospace}
+.el{padding:3px 0;border-bottom:1px solid #181818}
 .et{color:#4af}
 </style>
 </head>
