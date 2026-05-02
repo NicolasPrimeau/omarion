@@ -6,14 +6,18 @@ services:
       - "8000:8000"
     volumes:
       - omarion-data:/data
+      - ./omarion:/app/omarion
     env_file: .env
     environment:
       - DB_PATH=/data/omarion.db
+    command: ["uvicorn", "omarion.server.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
   archivist:
     build: .
     restart: unless-stopped
-    command: ["python", "-m", "omarion.archivist"]
+    volumes:
+      - ./omarion:/app/omarion
+    command: ["watchfiles", "python -m omarion.archivist", "/app/omarion"]
     env_file: .env
     environment:
       - OMARION_URL=http://omarion:8000
@@ -23,7 +27,9 @@ services:
   mcp:
     build: .
     restart: unless-stopped
-    command: ["python", "-m", "omarion.mcp"]
+    volumes:
+      - ./omarion:/app/omarion
+    command: ["watchfiles", "python -m omarion.mcp", "/app/omarion"]
     ports:
       - "8001:8001"
     env_file: .env
