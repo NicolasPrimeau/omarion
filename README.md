@@ -196,6 +196,4 @@ The archivist is an async Claude agent (`agent_id=archivist`) running alongside 
 
 ## License
 
-Business Source License 1.1 — free for non-commercial self-hosted use. See [LICENSE.md](LICENSE.md).
-
-After four years each release converts to Apache 2.0.
+MIT — see [LICENSE.md](LICENSE.md).
