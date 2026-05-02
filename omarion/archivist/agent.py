@@ -4,7 +4,7 @@ import logging
 from .client import OmarionClient
 from .config import settings
 from .conflict import check_and_merge
-from .synthesis import decay_confidence, run_synthesis
+from .synthesis import decay_confidence, run_promotion, run_synthesis
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ async def _scheduler(client: OmarionClient) -> None:
         try:
             await run_synthesis(client)
             await decay_confidence(client)
+            await run_promotion(client)
         except Exception as e:
             log.error("synthesis pass failed: %s", e)
         await asyncio.sleep(settings.synthesis_interval)

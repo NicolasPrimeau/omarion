@@ -60,4 +60,36 @@ async def run_synthesis(client: OmarionClient) -> None:
 
 
 async def decay_confidence(client: OmarionClient) -> None:
-    pass
+    cutoff = (datetime.now(UTC) - timedelta(days=settings.decay_window_days)).strftime(
+        "%Y-%m-%dT%H:%M:%S.000Z"
+    )
+    entries = await client.list_entries(updated_before=cutoff)
+    entries = [e for e in entries if e["agent_id"] != settings.archivist_id]
+
+    for entry in entries:
+        current = entry["confidence"]
+        if current <= settings.decay_floor:
+            continue
+        new_conf = max(settings.decay_floor, current * settings.decay_rate)
+        await client.patch_memory(entry["id"], confidence=new_conf)
+
+
+async def run_promotion(client: OmarionClient) -> None:
+    scratch_cutoff = (
+        datetime.now(UTC) - timedelta(hours=settings.promotion_scratch_age_hours)
+    ).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+    scratch_entries = await client.list_entries(type="scratch", created_before=scratch_cutoff)
+    for entry in scratch_entries:
+        if entry["agent_id"] == settings.archivist_id:
+            continue
+        if entry["confidence"] >= 0.5:
+            await client.patch_memory(entry["id"], type="memory")
+
+    memory_entries = await client.list_entries(
+        type="memory", min_version=settings.promotion_memory_min_version
+    )
+    for entry in memory_entries:
+        if entry["agent_id"] == settings.archivist_id:
+            continue
+        await client.patch_memory(entry["id"], type="doc")

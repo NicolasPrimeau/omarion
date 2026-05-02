@@ -29,6 +29,7 @@ class MemoryPatch(BaseModel):
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     tags: list[str] | None = None
     scope: Scope | None = None
+    type: EntryType | None = None
 
 
 class MemoryEntry(BaseModel):
@@ -96,6 +97,11 @@ class EventEntry(BaseModel):
     agent_id: str
     payload: dict
     created_at: str
+
+
+class Participant(BaseModel):
+    agent_id: str
+    last_seen: str | None
 
 
 class HandoffPost(BaseModel):
