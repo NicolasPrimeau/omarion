@@ -13,4 +13,22 @@ async def require_agent(
     return x_agent_id
 
 
+def check_project(agent_id: str, project: str | None) -> None:
+    allowed = settings.agent_projects().get(agent_id)
+    if allowed is None:
+        return
+    if project is None:
+        return
+    if project not in allowed:
+        raise HTTPException(status_code=403, detail="project access denied")
+
+
+def project_filter(agent_id: str) -> tuple[str, list]:
+    allowed = settings.agent_projects().get(agent_id)
+    if allowed is None:
+        return "", []
+    placeholders = ",".join("?" * len(allowed))
+    return f"(project IS NULL OR project IN ({placeholders}))", list(allowed)
+
+
 AgentDep = Depends(require_agent)

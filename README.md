@@ -143,7 +143,7 @@ Other
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AGENT_KEYS` | — | `agent:key,agent:key,...` |
+| `AGENT_KEYS` | — | `agent:key,agent:key:proj1;proj2,...` — optional third segment scopes agent to specific projects (`*` or omit for all) |
 | `DB_PATH` | `omarion.db` | SQLite path |
 | `UI_PASSWORD` | — | Web UI password |
 | `ANTHROPIC_API_KEY` | — | Required for archivist |

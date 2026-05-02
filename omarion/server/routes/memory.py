@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...store.db import get_db
 from ...store.embeddings import embed
-from ..auth import require_agent
+from ..auth import check_project, project_filter, require_agent
+from ..config import settings
 from ..models import MemoryEntry, MemoryPatch, MemoryWrite, new_id
 
 router = APIRouter(prefix="/memory", tags=["memory"])
@@ -33,6 +34,7 @@ async def write_memory(
     body: MemoryWrite,
     agent_id: str = Depends(require_agent),
 ):
+    check_project(agent_id, body.project)
     db = get_db()
     entry_id = new_id()
     vec = embed(body.content)
@@ -82,8 +84,11 @@ async def search_memory(
         (json.dumps(vec), limit, agent_id),
     ).fetchall()
 
+    allowed = settings.agent_projects().get(agent_id)
     if project:
         results = [r for r in results if r["project"] == project]
+    elif allowed is not None:
+        results = [r for r in results if r["project"] is None or r["project"] in allowed]
     if max_distance is not None:
         results = [r for r in results if r["distance"] <= max_distance]
 
@@ -102,6 +107,10 @@ async def list_memory(
     db = get_db()
     clauses = ["deleted_at IS NULL", "(scope != 'private' OR agent_id = ?)"]
     params: list = [agent_id]
+    pf_clause, pf_params = project_filter(agent_id)
+    if pf_clause:
+        clauses.append(pf_clause)
+        params.extend(pf_params)
     if type:
         clauses.append("type = ?")
         params.append(type)
@@ -128,13 +137,16 @@ async def memory_delta(
     agent_id: str = Depends(require_agent),
 ):
     db = get_db()
-    rows = db.execute(
-        """SELECT * FROM memory
-           WHERE updated_at > ? AND deleted_at IS NULL
-             AND (scope != 'private' OR agent_id = ?)
-           ORDER BY updated_at""",
-        (since, agent_id),
-    ).fetchall()
+    pf_clause, pf_params = project_filter(agent_id)
+    sql = """SELECT * FROM memory
+             WHERE updated_at > ? AND deleted_at IS NULL
+               AND (scope != 'private' OR agent_id = ?)"""
+    params: list = [since, agent_id]
+    if pf_clause:
+        sql += f" AND {pf_clause}"
+        params.extend(pf_params)
+    sql += " ORDER BY updated_at"
+    rows = db.execute(sql, params).fetchall()
     return [_row_to_entry(r) for r in rows]
 
 
@@ -151,6 +163,7 @@ async def get_memory(
         raise HTTPException(status_code=404, detail="not found")
     if row["scope"] == "private" and row["agent_id"] != agent_id:
         raise HTTPException(status_code=403, detail="forbidden")
+    check_project(agent_id, row["project"])
     return _row_to_entry(row)
 
 
@@ -166,6 +179,7 @@ async def patch_memory(
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
+    check_project(agent_id, row["project"])
 
     updates: dict = {}
     if body.content is not None:
@@ -220,6 +234,7 @@ async def delete_memory(
         raise HTTPException(status_code=404, detail="not found")
     if row["agent_id"] != agent_id:
         raise HTTPException(status_code=403, detail="forbidden")
+    check_project(agent_id, row["project"])
     db.execute(
         "UPDATE memory SET deleted_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?",
         (entry_id,),
