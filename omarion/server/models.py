@@ -1,0 +1,111 @@
+import uuid
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+
+def new_id() -> str:
+    return str(uuid.uuid4())
+
+
+EntryType = Literal["memory", "doc", "task", "reference", "scratch"]
+Scope = Literal["private", "shared", "global"]
+TaskStatus = Literal["open", "claimed", "completed", "failed"]
+Priority = Literal["low", "normal", "high"]
+
+
+class MemoryWrite(BaseModel):
+    type: EntryType = "memory"
+    project: str | None = None
+    scope: Scope = "shared"
+    content: str
+    confidence: float = Field(default=1.0, ge=0.0, le=1.0)
+    parents: list[str] = []
+    tags: list[str] = []
+
+
+class MemoryPatch(BaseModel):
+    content: str | None = None
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    tags: list[str] | None = None
+    scope: Scope | None = None
+
+
+class MemoryEntry(BaseModel):
+    id: str
+    type: EntryType
+    agent_id: str
+    project: str | None
+    scope: Scope
+    content: str
+    confidence: float
+    parents: list[str]
+    tags: list[str]
+    created_at: str
+    updated_at: str
+    version: int
+
+
+class TaskCreate(BaseModel):
+    title: str
+    description: str = ""
+    project: str | None = None
+    priority: Priority = "normal"
+    assigned_to: str | None = None
+    due_at: str | None = None
+
+
+class TaskEntry(BaseModel):
+    id: str
+    title: str
+    description: str
+    status: TaskStatus
+    created_by: str
+    assigned_to: str | None
+    project: str | None
+    priority: Priority
+    due_at: str | None
+    created_at: str
+    updated_at: str
+
+
+class MessageSend(BaseModel):
+    to: str
+    subject: str = ""
+    body: str
+
+
+class MessageEntry(BaseModel):
+    id: str
+    from_agent: str
+    to_agent: str
+    subject: str
+    body: str
+    read: bool
+    created_at: str
+
+
+class EventEmit(BaseModel):
+    type: str
+    payload: dict = {}
+
+
+class EventEntry(BaseModel):
+    id: str
+    type: str
+    agent_id: str
+    payload: dict
+    created_at: str
+
+
+class HandoffPost(BaseModel):
+    host: str = ""
+    summary: str
+    in_progress: list[str] = []
+    next_steps: list[str] = []
+    memory_refs: list[str] = []
+
+
+class HandoffResponse(BaseModel):
+    last_handoff: dict | None
+    memory_delta: list[MemoryEntry]
