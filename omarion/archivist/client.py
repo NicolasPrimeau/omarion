@@ -24,8 +24,11 @@ class OmarionClient:
         r.raise_for_status()
         return r.json()
 
-    async def search_memory(self, q: str, limit: int = 10) -> list[dict]:
-        r = await self._http.get("/memory/search", params={"q": q, "limit": limit})
+    async def search_memory(self, q: str, limit: int = 10, max_distance: float | None = None) -> list[dict]:
+        params: dict = {"q": q, "limit": limit}
+        if max_distance is not None:
+            params["max_distance"] = max_distance
+        r = await self._http.get("/memory/search", params=params)
         r.raise_for_status()
         return r.json()
 
@@ -36,6 +39,7 @@ class OmarionClient:
         tags: list[str] | None = None,
         parents: list[str] | None = None,
         confidence: float = 1.0,
+        project: str | None = None,
     ) -> dict:
         r = await self._http.post("/memory", json={
             "content": content,
@@ -44,6 +48,7 @@ class OmarionClient:
             "tags": tags or [],
             "parents": parents or [],
             "confidence": confidence,
+            "project": project,
         })
         r.raise_for_status()
         return r.json()

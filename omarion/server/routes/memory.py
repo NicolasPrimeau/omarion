@@ -65,6 +65,7 @@ async def search_memory(
     q: str = Query(...),
     limit: int = Query(default=10, le=50),
     project: str | None = Query(default=None),
+    max_distance: float | None = Query(default=None),
     agent_id: str = Depends(require_agent),
 ):
     db = get_db()
@@ -83,6 +84,8 @@ async def search_memory(
 
     if project:
         results = [r for r in results if r["project"] == project]
+    if max_distance is not None:
+        results = [r for r in results if r["distance"] <= max_distance]
 
     return [_row_to_entry(r) for r in results]
 

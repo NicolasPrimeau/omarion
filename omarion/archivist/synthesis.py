@@ -23,7 +23,7 @@ def _utc_ago(hours: int) -> str:
 
 async def run_synthesis(client: OmarionClient) -> None:
     entries = await client.get_delta(_utc_ago(24))
-    entries = [e for e in entries if e["agent_id"] != "archivist"]
+    entries = [e for e in entries if e["agent_id"] != settings.archivist_id]
 
     if len(entries) < 2:
         return
