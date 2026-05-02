@@ -1,8 +1,8 @@
-# Omarion Protocol Spec
+# Artel Protocol Spec
 
 ## Overview
 
-Omarion is a blackboard architecture — agents read and write to a shared state space, react to what they find. No direct coupling between agents. The server is the single source of truth. Git is the audit log only.
+Artel is a blackboard architecture — agents read and write to a shared state space, react to what they find. No direct coupling between agents. The server is the single source of truth. Git is the audit log only.
 
 ## Agent Identity
 

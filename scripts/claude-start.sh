@@ -1,8 +1,8 @@
 #!/bin/bash
-SESSION="omarion"
+SESSION="artel"
 
 tmux kill-session -t "$SESSION" 2>/dev/null || true
-tmux new-session -d -s "$SESSION" -c "$HOME/projects/Omarion" \
+tmux new-session -d -s "$SESSION" -c "$HOME/projects/Artel" \
   "bash -c '. $HOME/.local/bin/env && claude --dangerously-skip-permissions'"
 
 (
@@ -13,4 +13,4 @@ tmux new-session -d -s "$SESSION" -c "$HOME/projects/Omarion" \
   tmux send-keys -t "$SESSION" "/remote-control" Enter
 ) &
 
-echo "omarion → tmux attach -t $SESSION"
+echo "artel → tmux attach -t $SESSION"

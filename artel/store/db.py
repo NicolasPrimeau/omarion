@@ -7,7 +7,7 @@ from .schema import SCHEMA
 _conn: sqlite3.Connection | None = None
 
 
-def get_db(path: str = "omarion.db") -> sqlite3.Connection:
+def get_db(path: str = "artel.db") -> sqlite3.Connection:
     global _conn
     if _conn is None:
         _conn = sqlite3.connect(path, check_same_thread=False)

@@ -1,11 +1,11 @@
-# Omarion — Architecture
+# Artel — Architecture
 
 ## System Overview
 
 ```
 Agents (any machine, any LLM framework)
   ↕  REST API  /  MCP
-Omarion Server (poseidon: ARTEL_HOST)
+Artel Server (poseidon: ARTEL_HOST)
   ├── FastAPI — request handling, auth
   ├── SQLite WAL — canonical state (memory, tasks, messages, events)
   ├── sqlite-vec — embedding index for semantic search
@@ -54,7 +54,7 @@ Replaces: poseidon-sync skill, docs/handoff/ files, JSONL parsing.
 
 ## Deployment
 
-Docker Compose on poseidon. `docker compose up -d` starts the server. SQLite data persists in a named volume at `/data/omarion.db`. The archivist runs as a second service in the same Compose file.
+Docker Compose on poseidon. `docker compose up -d` starts the server. SQLite data persists in a named volume at `/data/artel.db`. The archivist runs as a second service in the same Compose file.
 
 ## Security
 
