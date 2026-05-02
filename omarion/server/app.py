@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 
 from ..store.db import get_db
 from .config import settings
@@ -7,6 +10,8 @@ from .routes.memory import router as memory_router
 from .routes.messages import router as messages_router
 from .routes.sessions import router as sessions_router
 from .routes.tasks import router as tasks_router
+
+_UI = Path(__file__).parent / "static" / "index.html"
 
 app = FastAPI(title="Omarion", version="0.1.0")
 
@@ -25,3 +30,8 @@ async def startup():
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/ui", response_class=HTMLResponse, include_in_schema=False)
+async def ui():
+    return _UI.read_text()
