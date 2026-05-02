@@ -3,6 +3,8 @@ import anthropic
 from .client import OmarionClient
 from .config import settings
 
+_MAX_DISTANCE = 1.0 - settings.conflict_threshold
+
 _anthropic: anthropic.AsyncAnthropic | None = None
 
 
@@ -15,12 +17,13 @@ def _client() -> anthropic.AsyncAnthropic:
 
 async def check_and_merge(entry_id: str, client: OmarionClient) -> None:
     entry = await client.get_memory(entry_id)
-    similar = await client.search_memory(entry["content"], limit=6)
+    similar = await client.search_memory(entry["content"], limit=6, max_distance=_MAX_DISTANCE)
 
     conflicts = [
         s for s in similar
         if s["id"] != entry_id
         and s["agent_id"] != entry["agent_id"]
+        and s["agent_id"] != settings.archivist_id
         and not s["parents"]
     ]
 
@@ -30,12 +33,14 @@ async def check_and_merge(entry_id: str, client: OmarionClient) -> None:
     other = conflicts[0]
     merged_content = await _merge(entry, other)
     merged_tags = list(set(entry["tags"] + other["tags"]))
+    merged_project = entry["project"] if entry["project"] == other["project"] else None
 
     await client.write_memory(
         content=merged_content,
         type=entry["type"],
         tags=merged_tags,
         parents=[entry["id"], other["id"]],
+        project=merged_project,
     )
     await client.delete_memory(entry["id"])
     await client.delete_memory(other["id"])
