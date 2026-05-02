@@ -3,10 +3,7 @@ from .server import mcp
 
 
 def main():
-    if settings.mcp_transport == "sse":
-        mcp.run(transport="sse", host=settings.mcp_host, port=settings.mcp_port)
-    else:
-        mcp.run()
+    mcp.run(transport=settings.mcp_transport)
 
 
 if __name__ == "__main__":
