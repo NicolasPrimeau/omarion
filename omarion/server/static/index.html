@@ -48,6 +48,7 @@ a.out:hover{color:#c8c8c8}
 <nav>
   <button class="on" onclick="tab('memory',this)">memory</button>
   <button onclick="tab('tasks',this)">tasks</button>
+  <button onclick="tab('messages',this)">messages</button>
   <button onclick="tab('events',this)">events</button>
 </nav>
 
@@ -86,6 +87,19 @@ a.out:hover{color:#c8c8c8}
   <div id="tlist"></div>
 </div>
 
+<div id="panel-messages" class="panel">
+  <div class="row">
+    <input id="mto" placeholder="to (agent_id or broadcast)" style="flex:1">
+    <input id="msub" placeholder="subject" style="flex:1">
+  </div>
+  <div class="row">
+    <textarea id="mbody" placeholder="message…" rows="3"></textarea>
+    <button class="p" style="align-self:flex-end" onclick="sendMsg()">send</button>
+  </div>
+  <div style="margin:10px 0 6px;color:#555;font-size:13px">inbox</div>
+  <div id="msglist"></div>
+</div>
+
 <div id="panel-events" class="panel">
   <div class="row">
     <button onclick="startPoll()">start polling</button>
@@ -112,6 +126,7 @@ function tab(name,btn){
   $('panel-'+name).classList.add('on'); btn.classList.add('on');
   if(name==='memory')loadMem();
   if(name==='tasks')loadTasks();
+  if(name==='messages')loadInbox();
 }
 
 async function loadMem(){
@@ -166,6 +181,30 @@ async function createTask(){
 
 async function taskAction(id,action){
   await req('POST',`/tasks/${id}/${action}`); loadTasks();
+}
+
+async function loadInbox(){
+  try{
+    const ms=await req('GET','/messages/inbox');
+    $('msglist').innerHTML=ms.length?ms.map(m=>`
+      <div class="card">
+        <div class="meta">from <b style="color:#c8c8c8">${esc(m.from_agent)}</b>${m.subject?' · '+esc(m.subject):''} · ${m.created_at.slice(0,16)}</div>
+        <pre>${esc(m.body)}</pre>
+        <div class="row" style="margin-top:6px"><button onclick="markRead('${m.id}')">mark read</button></div>
+      </div>`).join(''):'<div style="color:#444;padding:8px 0">no unread messages</div>';
+  }catch(e){$('msglist').textContent=e.message;}
+}
+
+async function sendMsg(){
+  const to=$('mto').value.trim(); if(!to)return;
+  const body=$('mbody').value.trim(); if(!body)return;
+  await req('POST','/messages',{to,subject:$('msub').value||'',body});
+  $('mto').value=''; $('msub').value=''; $('mbody').value='';
+  loadInbox();
+}
+
+async function markRead(id){
+  await req('POST',`/messages/${id}/read`); loadInbox();
 }
 
 function startPoll(){

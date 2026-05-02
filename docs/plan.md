@@ -44,4 +44,4 @@
 - [x] Docker Compose for self-hosting
 - [x] Example integrations (raw Python client, AutoGen)
 - [x] Participants endpoint (GET /participants — list agents + last_seen)
-- [ ] GitHub release
+- [x] GitHub release (v0.1.0)

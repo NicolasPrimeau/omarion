@@ -121,6 +121,45 @@ async def task_complete(task_id: str) -> str:
 
 
 @mcp.tool()
+async def send_message(to: str, body: str, subject: str = "") -> str:
+    async with _http() as c:
+        r = await c.post("/messages", json={"to": to, "subject": subject, "body": body})
+        r.raise_for_status()
+        return r.json()["id"]
+
+
+@mcp.tool()
+async def read_inbox() -> str:
+    async with _http() as c:
+        r = await c.get("/messages/inbox")
+        r.raise_for_status()
+        messages = r.json()
+    if not messages:
+        return "No unread messages."
+    lines = []
+    for m in messages:
+        header = f"[{m['id']}] from {m['from_agent']} · {m['created_at'][:16]}"
+        if m["subject"]:
+            header += f" · {m['subject']}"
+        lines.append(f"{header}\n{m['body']}")
+    return "\n\n".join(lines)
+
+
+@mcp.tool()
+async def list_participants() -> str:
+    async with _http() as c:
+        r = await c.get("/participants")
+        r.raise_for_status()
+        participants = r.json()
+    if not participants:
+        return "No participants."
+    return "\n".join(
+        f"{p['agent_id']} — last seen: {p['last_seen'] or 'never'}"
+        for p in participants
+    )
+
+
+@mcp.tool()
 async def session_context(agent_id: str) -> str:
     async with _http() as c:
         r = await c.get(f"/sessions/handoff/{agent_id}")
