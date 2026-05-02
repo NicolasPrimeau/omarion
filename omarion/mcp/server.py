@@ -3,7 +3,7 @@ from mcp.server.fastmcp import FastMCP
 
 from .config import settings
 
-mcp = FastMCP("omarion")
+mcp = FastMCP("omarion", host=settings.mcp_host, port=settings.mcp_port)
 
 _HEADERS = {
     "x-agent-id": settings.mcp_agent_id,
