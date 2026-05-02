@@ -4,7 +4,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...store.db import get_db
-from ..auth import require_agent
+from ..auth import check_project, project_filter, require_agent
 from ..models import TaskCreate, TaskEntry, new_id
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -28,6 +28,7 @@ def _row_to_task(row: sqlite3.Row) -> TaskEntry:
 
 @router.post("", response_model=TaskEntry, status_code=201)
 async def create_task(body: TaskCreate, agent_id: str = Depends(require_agent)):
+    check_project(agent_id, body.project)
     db = get_db()
     task_id = new_id()
     db.execute(
@@ -54,6 +55,10 @@ async def list_tasks(
     db = get_db()
     sql = "SELECT * FROM tasks WHERE 1=1"
     params: list = []
+    pf_clause, pf_params = project_filter(agent_id)
+    if pf_clause:
+        sql += f" AND {pf_clause}"
+        params.extend(pf_params)
     if status:
         sql += " AND status=?"
         params.append(status)
@@ -71,6 +76,7 @@ async def claim_task(task_id: str, agent_id: str = Depends(require_agent)):
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
+    check_project(agent_id, row["project"])
     if row["status"] != "open":
         raise HTTPException(status_code=409, detail="task not open")
     db.execute(
@@ -93,6 +99,7 @@ async def complete_task(task_id: str, agent_id: str = Depends(require_agent)):
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
+    check_project(agent_id, row["project"])
     db.execute(
         """UPDATE tasks SET status='completed',
            updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",
@@ -113,6 +120,7 @@ async def fail_task(task_id: str, agent_id: str = Depends(require_agent)):
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
+    check_project(agent_id, row["project"])
     db.execute(
         """UPDATE tasks SET status='failed',
            updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",
