@@ -1,7 +1,8 @@
+import secrets
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ..store.db import get_db
 from .config import settings
@@ -12,6 +13,39 @@ from .routes.sessions import router as sessions_router
 from .routes.tasks import router as tasks_router
 
 _UI = Path(__file__).parent / "static" / "index.html"
+_sessions: set[str] = set()
+
+_LOGIN = """\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>omarion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:15px/1.6 Inter,system-ui,sans-serif;background:#0d0d0d;color:#c8c8c8;display:flex;justify-content:center;align-items:center;min-height:100vh}
+form{display:flex;flex-direction:column;gap:12px;width:280px}
+h1{font-size:20px;color:#4af;font-weight:500;letter-spacing:.5px;margin-bottom:4px}
+input{background:#161616;color:#c8c8c8;border:1px solid #2a2a2a;padding:9px 12px;font:15px Inter,sans-serif;border-radius:3px}
+input:focus{outline:none;border-color:#4af}
+button{background:#161616;color:#4af;border:1px solid #4af;padding:9px;font:15px Inter,sans-serif;border-radius:3px;cursor:pointer}
+button:hover{background:#0a1a2a}
+.err{color:#f55;font-size:13px}
+</style>
+</head>
+<body>
+<form method="POST" action="/ui/login">
+  <h1>omarion</h1>
+  {error}
+  <input type="password" name="password" placeholder="password" autofocus>
+  <button type="submit">login</button>
+</form>
+</body>
+</html>
+"""
 
 app = FastAPI(title="Omarion", version="0.1.0")
 
@@ -32,6 +66,44 @@ async def health():
     return {"status": "ok"}
 
 
+def _authed(request: Request) -> bool:
+    if not settings.ui_password:
+        return True
+    return request.cookies.get("session", "") in _sessions
+
+
+@app.get("/ui/login", response_class=HTMLResponse, include_in_schema=False)
+async def login_page(error: str = ""):
+    err = '<p class="err">incorrect password</p>' if error else ""
+    return _LOGIN.replace("{error}", err)
+
+
+@app.post("/ui/login", include_in_schema=False)
+async def login(password: str = Form(...)):
+    if password == settings.ui_password:
+        token = secrets.token_urlsafe(32)
+        _sessions.add(token)
+        r = RedirectResponse("/ui", status_code=303)
+        r.set_cookie("session", token, httponly=True, samesite="lax")
+        return r
+    return RedirectResponse("/ui/login?error=1", status_code=303)
+
+
+@app.get("/ui/logout", include_in_schema=False)
+async def logout(request: Request):
+    _sessions.discard(request.cookies.get("session", ""))
+    r = RedirectResponse("/ui/login", status_code=303)
+    r.delete_cookie("session")
+    return r
+
+
 @app.get("/ui", response_class=HTMLResponse, include_in_schema=False)
-async def ui():
-    return _UI.read_text()
+async def ui(request: Request):
+    if not _authed(request):
+        return RedirectResponse("/ui/login")
+    aid = settings.ui_agent_id
+    akey = settings.ui_agent_key()
+    html = _UI.read_text().replace(
+        "/*CREDS*/", f"window._aid={aid!r};window._akey={akey!r};"
+    )
+    return HTMLResponse(html)
