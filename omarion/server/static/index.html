@@ -8,43 +8,42 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font:15px/1.6 'Inter',system-ui,sans-serif;background:#0d0d0d;color:#c8c8c8}
+body{font:17px/1.6 'Inter',system-ui,sans-serif;background:#0d0d0d;color:#c8c8c8}
 header{display:flex;gap:8px;padding:10px 16px;background:#111;border-bottom:1px solid #1e1e1e;align-items:center}
-header b{color:#4af;margin-right:6px;font-size:16px;letter-spacing:.5px}
-input,select,textarea,button{background:#161616;color:#c8c8c8;border:1px solid #2a2a2a;padding:5px 10px;font:14px 'Inter',sans-serif;border-radius:3px}
+header b{color:#4af;font-size:17px;letter-spacing:.5px;flex:1}
+input,select,textarea,button{background:#161616;color:#c8c8c8;border:1px solid #2a2a2a;padding:6px 11px;font:15px 'Inter',sans-serif;border-radius:3px}
 input:focus,textarea:focus{outline:none;border-color:#4af}
-button{cursor:pointer;font-size:13px}
+button{cursor:pointer}
 button:hover{background:#1e1e1e}
 button.p{color:#4af;border-color:#4af}
 nav{display:flex;background:#111;border-bottom:1px solid #1e1e1e}
-nav button{border:none;border-bottom:2px solid transparent;padding:9px 16px;border-radius:0;background:none;font-size:13px;font-weight:500;letter-spacing:.3px;color:#666}
+nav button{border:none;border-bottom:2px solid transparent;padding:10px 18px;border-radius:0;background:none;font:500 14px 'Inter',sans-serif;letter-spacing:.3px;color:#555}
 nav button.on{border-bottom-color:#4af;color:#4af}
-.panel{display:none;padding:14px 16px;max-width:960px}
+.panel{display:none;padding:16px 18px;max-width:960px}
 .panel.on{display:block}
-.row{display:flex;gap:8px;margin-bottom:10px;align-items:flex-start}
+.row{display:flex;gap:8px;margin-bottom:12px;align-items:flex-start}
 .row textarea{flex:1}
-.card{padding:10px 12px;border:1px solid #1e1e1e;margin-bottom:6px;background:#111;border-radius:3px}
-.meta{color:#3a3a3a;font-size:12px;margin-bottom:5px;font-family:'JetBrains Mono',monospace}
+.card{padding:12px 14px;border:1px solid #1e1e1e;margin-bottom:7px;background:#111;border-radius:3px}
+.meta{color:#3a3a3a;font-size:12px;margin-bottom:6px;font-family:'JetBrains Mono',monospace}
 .tag{background:#1a2a1a;color:#4a8;padding:1px 5px;border-radius:2px;font-size:11px;font-family:'JetBrains Mono',monospace}
-pre{white-space:pre-wrap;word-break:break-word;font:14px/1.6 'JetBrains Mono',monospace;color:#c8c8c8}
-.s{padding:1px 6px;border-radius:2px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:500}
+pre{white-space:pre-wrap;word-break:break-word;font:15px/1.6 'JetBrains Mono',monospace;color:#c8c8c8}
+.s{padding:1px 6px;border-radius:2px;font-size:12px;font-family:'JetBrains Mono',monospace;font-weight:500}
 .s.open{color:#fa4;background:#1a1200}
 .s.claimed{color:#4af;background:#001422}
 .s.completed{color:#4a8;background:#001408}
 .s.failed{color:#f55;background:#180000}
-#st{font-size:12px;color:#444;margin-left:6px}
-#ev{height:380px;overflow-y:auto;font-size:13px;font-family:'JetBrains Mono',monospace}
+#ev{height:400px;overflow-y:auto;font:14px/1.6 'JetBrains Mono',monospace}
 .el{padding:3px 0;border-bottom:1px solid #181818}
 .et{color:#4af}
+a.out{color:#555;font-size:13px;text-decoration:none}
+a.out:hover{color:#c8c8c8}
 </style>
 </head>
 <body>
+<script>/*CREDS*/</script>
 <header>
   <b>omarion</b>
-  <input id="aid" placeholder="agent-id" style="width:110px">
-  <input id="akey" placeholder="api-key" type="password" style="width:180px">
-  <button onclick="connect()">connect</button>
-  <span id="st"></span>
+  <a class="out" href="/ui/logout">logout</a>
 </header>
 <nav>
   <button class="on" onclick="tab('memory',this)">memory</button>
@@ -62,7 +61,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:14px/1.6 'JetBrains Mono',mo
     <textarea id="mc" placeholder="write memory…" rows="3"></textarea>
   </div>
   <div class="row">
-    <input id="mproject" placeholder="project" style="width:100px">
+    <input id="mproject" placeholder="project" style="width:110px">
     <input id="mtags" placeholder="tags" style="flex:1">
     <select id="mtype"><option>memory</option><option>scratch</option><option>doc</option><option>reference</option></select>
     <button class="p" onclick="writeMem()">write</button>
@@ -80,7 +79,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:14px/1.6 'JetBrains Mono',mo
   <div class="row">
     <input id="ttitle" placeholder="title" style="flex:2">
     <input id="tdesc" placeholder="description" style="flex:3">
-    <input id="tproject" placeholder="project" style="width:90px">
+    <input id="tproject" placeholder="project" style="width:100px">
     <select id="tpri"><option>normal</option><option>low</option><option>high</option></select>
     <button class="p" onclick="createTask()">create</button>
   </div>
@@ -97,25 +96,14 @@ pre{white-space:pre-wrap;word-break:break-word;font:14px/1.6 'JetBrains Mono',mo
 
 <script>
 let _poll=null;
-
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-const headers=()=>({'content-type':'application/json','x-agent-id':$('aid').value,'x-api-key':$('akey').value});
+const hdrs=()=>({'content-type':'application/json','x-agent-id':window._aid,'x-api-key':window._akey});
 
 async function req(method,path,body){
-  const r=await fetch(path,{method,headers:headers(),body:body?JSON.stringify(body):undefined});
+  const r=await fetch(path,{method,headers:hdrs(),body:body?JSON.stringify(body):undefined});
   if(!r.ok)throw new Error(r.status+' '+await r.text());
   return method==='DELETE'?null:r.json();
-}
-
-async function connect(){
-  localStorage.setItem('aid',$('aid').value);
-  localStorage.setItem('akey',$('akey').value);
-  try{
-    await req('GET','/health');
-    $('st').textContent='● connected'; $('st').style.color='#4a8';
-    loadMem();
-  }catch(e){$('st').textContent='✗ '+e.message;$('st').style.color='#f55';}
 }
 
 function tab(name,btn){
@@ -128,17 +116,15 @@ function tab(name,btn){
 
 async function loadMem(){
   try{
-    const es=await req('GET','/memory/delta?since=2000-01-01T00:00:00.000Z');
-    renderMem(es.reverse());
+    renderMem((await req('GET','/memory/delta?since=2000-01-01T00:00:00.000Z')).reverse());
   }catch(e){$('mlist').textContent=e.message;}
 }
 
 async function search(){
   const q=$('q').value.trim();
   if(!q)return loadMem();
-  try{
-    renderMem(await req('GET','/memory/search?q='+encodeURIComponent(q)+'&limit=20'));
-  }catch(e){$('mlist').textContent=e.message;}
+  try{ renderMem(await req('GET','/memory/search?q='+encodeURIComponent(q)+'&limit=20')); }
+  catch(e){$('mlist').textContent=e.message;}
 }
 
 function renderMem(es){
@@ -163,8 +149,8 @@ async function loadTasks(){
     $('tlist').innerHTML=ts.map(t=>`
       <div class="card">
         <div class="meta">[${t.id.slice(0,8)}] <span class="s ${t.status}">${t.status}</span>${t.priority!=='normal'?' <b style="color:#fa4">'+t.priority+'</b>':''}${t.project?' · '+esc(t.project):''} · ${t.created_at.slice(0,16)}${t.assigned_to?' → '+esc(t.assigned_to):''}</div>
-        <div><b>${esc(t.title)}</b>${t.description?' <span style="color:#555">'+esc(t.description)+'</span>':''}</div>
-        <div class="row" style="margin-top:5px">
+        <div><b>${esc(t.title)}</b>${t.description?' <span style="color:#888">'+esc(t.description)+'</span>':''}</div>
+        <div class="row" style="margin-top:6px">
           ${t.status==='open'?`<button onclick="taskAction('${t.id}','claim')">claim</button>`:''}
           ${t.status==='claimed'?`<button onclick="taskAction('${t.id}','complete')">complete</button><button onclick="taskAction('${t.id}','fail')">fail</button>`:''}
         </div>
@@ -203,9 +189,7 @@ function startPoll(){
   poll(); _poll=setInterval(poll,3000);
 }
 
-$('aid').value=localStorage.getItem('aid')||'';
-$('akey').value=localStorage.getItem('akey')||'';
-if($('aid').value)connect();
+loadMem();
 </script>
 </body>
 </html>
