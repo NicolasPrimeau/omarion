@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>omarion</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:13px/1.5 monospace;background:#0d0d0d;color:#bbb}
+header{display:flex;gap:6px;padding:8px 12px;background:#111;border-bottom:1px solid #1e1e1e;align-items:center}
+header b{color:#4af;margin-right:4px}
+input,select,textarea,button{background:#161616;color:#bbb;border:1px solid #2a2a2a;padding:3px 7px;font:13px monospace;border-radius:2px}
+input:focus,textarea:focus{outline:none;border-color:#4af}
+button{cursor:pointer}
+button:hover{background:#1e1e1e}
+button.p{color:#4af;border-color:#4af}
+nav{display:flex;background:#111;border-bottom:1px solid #1e1e1e}
+nav button{border:none;border-bottom:2px solid transparent;padding:7px 14px;border-radius:0;background:none}
+nav button.on{border-bottom-color:#4af;color:#4af}
+.panel{display:none;padding:10px}
+.panel.on{display:block}
+.row{display:flex;gap:6px;margin-bottom:8px;align-items:flex-start}
+.row textarea{flex:1}
+.card{padding:8px;border:1px solid #1e1e1e;margin-bottom:5px;background:#111}
+.meta{color:#444;font-size:11px;margin-bottom:3px}
+.tag{background:#1a2a1a;color:#4a8;padding:0 4px;border-radius:2px;font-size:11px}
+pre{white-space:pre-wrap;word-break:break-word}
+.s{padding:0 5px;border-radius:2px;font-size:11px}
+.s.open{color:#fa4;background:#1a1200}
+.s.claimed{color:#4af;background:#001422}
+.s.completed{color:#4a8;background:#001408}
+.s.failed{color:#f55;background:#180000}
+#st{font-size:11px;color:#444;margin-left:4px}
+#ev{height:380px;overflow-y:auto;font-size:12px}
+.el{padding:2px 0;border-bottom:1px solid #181818}
+.et{color:#4af}
+</style>
+</head>
+<body>
+<header>
+  <b>omarion</b>
+  <input id="aid" placeholder="agent-id" style="width:110px">
+  <input id="akey" placeholder="api-key" type="password" style="width:180px">
+  <button onclick="connect()">connect</button>
+  <span id="st"></span>
+</header>
+<nav>
+  <button class="on" onclick="tab('memory',this)">memory</button>
+  <button onclick="tab('tasks',this)">tasks</button>
+  <button onclick="tab('events',this)">events</button>
+</nav>
+
+<div id="panel-memory" class="panel on">
+  <div class="row">
+    <input id="q" placeholder="search…" style="flex:1" onkeydown="if(event.key==='Enter')search()">
+    <button onclick="search()">search</button>
+    <button onclick="loadMem()">all</button>
+  </div>
+  <div class="row">
+    <textarea id="mc" placeholder="write memory…" rows="3"></textarea>
+  </div>
+  <div class="row">
+    <input id="mproject" placeholder="project" style="width:100px">
+    <input id="mtags" placeholder="tags" style="flex:1">
+    <select id="mtype"><option>memory</option><option>scratch</option><option>doc</option><option>reference</option></select>
+    <button class="p" onclick="writeMem()">write</button>
+  </div>
+  <div id="mlist"></div>
+</div>
+
+<div id="panel-tasks" class="panel">
+  <div class="row">
+    <select id="tf" onchange="loadTasks()">
+      <option value="">all</option><option>open</option><option>claimed</option><option>completed</option><option>failed</option>
+    </select>
+    <button onclick="loadTasks()">refresh</button>
+  </div>
+  <div class="row">
+    <input id="ttitle" placeholder="title" style="flex:2">
+    <input id="tdesc" placeholder="description" style="flex:3">
+    <input id="tproject" placeholder="project" style="width:90px">
+    <select id="tpri"><option>normal</option><option>low</option><option>high</option></select>
+    <button class="p" onclick="createTask()">create</button>
+  </div>
+  <div id="tlist"></div>
+</div>
+
+<div id="panel-events" class="panel">
+  <div class="row">
+    <button onclick="startPoll()">start polling</button>
+    <button onclick="document.getElementById('ev').innerHTML=''">clear</button>
+  </div>
+  <div id="ev"></div>
+</div>
+
+<script>
+let _poll=null;
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const headers=()=>({'content-type':'application/json','x-agent-id':$('aid').value,'x-api-key':$('akey').value});
+
+async function req(method,path,body){
+  const r=await fetch(path,{method,headers:headers(),body:body?JSON.stringify(body):undefined});
+  if(!r.ok)throw new Error(r.status+' '+await r.text());
+  return method==='DELETE'?null:r.json();
+}
+
+async function connect(){
+  localStorage.setItem('aid',$('aid').value);
+  localStorage.setItem('akey',$('akey').value);
+  try{
+    await req('GET','/health');
+    $('st').textContent='● connected'; $('st').style.color='#4a8';
+    loadMem();
+  }catch(e){$('st').textContent='✗ '+e.message;$('st').style.color='#f55';}
+}
+
+function tab(name,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('on'));
+  $('panel-'+name).classList.add('on'); btn.classList.add('on');
+  if(name==='memory')loadMem();
+  if(name==='tasks')loadTasks();
+}
+
+async function loadMem(){
+  try{
+    const es=await req('GET','/memory/delta?since=2000-01-01T00:00:00.000Z');
+    renderMem(es.reverse());
+  }catch(e){$('mlist').textContent=e.message;}
+}
+
+async function search(){
+  const q=$('q').value.trim();
+  if(!q)return loadMem();
+  try{
+    renderMem(await req('GET','/memory/search?q='+encodeURIComponent(q)+'&limit=20'));
+  }catch(e){$('mlist').textContent=e.message;}
+}
+
+function renderMem(es){
+  $('mlist').innerHTML=es.map(e=>`
+    <div class="card">
+      <div class="meta">[${e.id.slice(0,8)}] ${esc(e.agent_id)} · ${e.type} · ${e.scope}${e.project?' · '+esc(e.project):''} · ${e.updated_at.slice(0,16)} ${e.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join(' ')}</div>
+      <pre>${esc(e.content)}</pre>
+    </div>`).join('');
+}
+
+async function writeMem(){
+  const c=$('mc').value.trim(); if(!c)return;
+  const tags=$('mtags').value.split(',').map(t=>t.trim()).filter(Boolean);
+  await req('POST','/memory',{content:c,type:$('mtype').value,project:$('mproject').value||null,scope:'shared',tags,confidence:1.0});
+  $('mc').value=''; loadMem();
+}
+
+async function loadTasks(){
+  const s=$('tf').value;
+  try{
+    const ts=await req('GET','/tasks'+(s?'?status='+s:''));
+    $('tlist').innerHTML=ts.map(t=>`
+      <div class="card">
+        <div class="meta">[${t.id.slice(0,8)}] <span class="s ${t.status}">${t.status}</span>${t.priority!=='normal'?' <b style="color:#fa4">'+t.priority+'</b>':''}${t.project?' · '+esc(t.project):''} · ${t.created_at.slice(0,16)}${t.assigned_to?' → '+esc(t.assigned_to):''}</div>
+        <div><b>${esc(t.title)}</b>${t.description?' <span style="color:#555">'+esc(t.description)+'</span>':''}</div>
+        <div class="row" style="margin-top:5px">
+          ${t.status==='open'?`<button onclick="taskAction('${t.id}','claim')">claim</button>`:''}
+          ${t.status==='claimed'?`<button onclick="taskAction('${t.id}','complete')">complete</button><button onclick="taskAction('${t.id}','fail')">fail</button>`:''}
+        </div>
+      </div>`).join('');
+  }catch(e){$('tlist').textContent=e.message;}
+}
+
+async function createTask(){
+  const title=$('ttitle').value.trim(); if(!title)return;
+  await req('POST','/tasks',{title,description:$('tdesc').value,project:$('tproject').value||null,priority:$('tpri').value});
+  $('ttitle').value=''; $('tdesc').value=''; loadTasks();
+}
+
+async function taskAction(id,action){
+  await req('POST',`/tasks/${id}/${action}`); loadTasks();
+}
+
+function startPoll(){
+  if(_poll)clearInterval(_poll);
+  let since=new Date(Date.now()-60000).toISOString();
+  $('ev').innerHTML='<div style="color:#444">polling every 3s…</div>';
+  async function poll(){
+    try{
+      const evs=await req('GET','/events?since='+since);
+      if(evs.length){
+        since=evs[evs.length-1].created_at;
+        evs.forEach(e=>{
+          const d=document.createElement('div');
+          d.className='el';
+          d.innerHTML=`${e.created_at.slice(11,19)} <span class="et">${esc(e.type)}</span> ${esc(e.agent_id)} ${esc(JSON.stringify(e.payload))}`;
+          $('ev').prepend(d);
+        });
+      }
+    }catch(_){}
+  }
+  poll(); _poll=setInterval(poll,3000);
+}
+
+$('aid').value=localStorage.getItem('aid')||'';
+$('akey').value=localStorage.getItem('akey')||'';
+if($('aid').value)connect();
+</script>
+</body>
+</html>
