@@ -108,6 +108,10 @@ class AgentRegister(BaseModel):
     agent_id: str
 
 
+class AgentRename(BaseModel):
+    new_id: str
+
+
 class AgentCreated(BaseModel):
     agent_id: str
     api_key: str

@@ -7,7 +7,7 @@
       "cwd": "/home/nprimeau/projects/Artel",
       "env": {
         "ARTEL_URL": "http://ARTEL_HOST:8000",
-        "MCP_AGENT_ID": "nimbus",
+        "MCP_AGENT_ID": "artel-lead",
         "MCP_AGENT_KEY": "REDACTED_API_KEY"
       }
     }
