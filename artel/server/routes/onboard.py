@@ -22,17 +22,34 @@ fi
 AGENT_ID=$(echo "$AGENT_ID" | tr -cs 'a-zA-Z0-9_-' '-' | sed 's/^-*//;s/-*$//')
 [ -z "$AGENT_ID" ] && AGENT_ID="agent-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
 
-printf "registering '%s' with %s ...\n" "$AGENT_ID" "$ARTEL_URL"
+ARTEL_URL="$ARTEL_URL" REG_KEY="$REG_KEY" BASE_ID="$AGENT_ID" python3 -c "
+import os, json, urllib.request, urllib.error, sys
+url, reg_key, base_id = os.environ['ARTEL_URL'], os.environ['REG_KEY'], os.environ['BASE_ID']
 
-curl -sf -X POST "$ARTEL_URL/agents/register" \
-    -H "content-type: application/json" \
-    -H "x-registration-key: $REG_KEY" \
-    -d "{{\"agent_id\": \"$AGENT_ID\"}}" \
-| python3 -c "
-import sys, json, os
-data = json.load(sys.stdin)
-if 'detail' in data:
-    print('error:', data['detail']); sys.exit(1)
+for attempt in range(1, 100):
+    agent_id = base_id if attempt == 1 else '{{}}-{{}}'.format(base_id, attempt)
+    req = urllib.request.Request(
+        url + '/agents/register',
+        data=json.dumps({{'agent_id': agent_id}}).encode(),
+        headers={{'content-type': 'application/json', 'x-registration-key': reg_key}},
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req) as r:
+            data = json.loads(r.read())
+        break
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        try: detail = json.loads(body).get('detail', body)
+        except Exception: detail = body
+        if e.code == 409:
+            continue
+        print('error {{}}: {{}}'.format(e.code, detail)); sys.exit(1)
+    except urllib.error.URLError as e:
+        print('error: could not reach {{}} — {{}}'.format(url, e.reason)); sys.exit(1)
+else:
+    print('error: could not find unique name for', base_id); sys.exit(1)
+
 with open('.mcp.json', 'w') as f:
     json.dump(data['mcp_config'], f, indent=2); f.write('\n')
 lines = open('.env').read().splitlines() if os.path.exists('.env') else []
