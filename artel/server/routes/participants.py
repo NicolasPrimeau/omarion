@@ -14,10 +14,11 @@ async def list_participants(agent_id: str = Depends(require_agent)):
     last_seen: dict[str, str | None] = {
         aid: None for aid in settings.api_keys().values()
     }
-    rows = db.execute(
+    for row in db.execute("SELECT id FROM agents").fetchall():
+        last_seen.setdefault(row["id"], None)
+    for row in db.execute(
         "SELECT agent_id, MAX(created_at) AS ts FROM events GROUP BY agent_id"
-    ).fetchall()
-    for row in rows:
+    ).fetchall():
         if row["agent_id"] in last_seen:
             last_seen[row["agent_id"]] = row["ts"]
     return [

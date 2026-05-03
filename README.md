@@ -88,7 +88,7 @@ Add to `.mcp.json` in your project:
 }
 ```
 
-Available tools: `memory_write`, `memory_search`, `memory_delta`, `task_create`, `task_list`, `task_claim`, `task_complete`, `list_participants`, `session_context`, `session_handoff`.
+Available tools: `memory_write`, `memory_search`, `memory_delta`, `task_create`, `task_list`, `task_claim`, `task_complete`, `task_fail`, `send_message`, `read_inbox`, `list_participants`, `session_context`, `session_handoff`.
 
 ---
 
@@ -144,6 +144,7 @@ Other
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `AGENT_KEYS` | — | `agent:key,agent:key:proj1;proj2,...` — optional third segment scopes agent to specific projects (`*` or omit for all) |
+| `REGISTRATION_KEY` | — | Bearer key required to register new agents via `POST /agents/register` |
 | `DB_PATH` | `artel.db` | SQLite path |
 | `UI_PASSWORD` | — | Web UI password |
 | `ANTHROPIC_API_KEY` | — | Required for archivist |
@@ -153,6 +154,17 @@ Other
 | `DECAY_WINDOW_DAYS` | `7` | Days without update before decay |
 | `MCP_AGENT_KEY` | — | API key for MCP connections |
 | `MCP_PORT` | `8001` | MCP SSE port |
+
+---
+
+## Testing
+
+```bash
+uv sync --dev
+uv run python -m pytest tests/ -v
+```
+
+40 integration tests covering memory CRUD, task lifecycle, messaging, events, session handoff, SSE broadcast, auth, and access control.
 
 ---
 

@@ -112,6 +112,7 @@ class AgentCreated(BaseModel):
     agent_id: str
     api_key: str
     created_at: str
+    mcp_config: dict | None = None
 
 
 class HandoffPost(BaseModel):

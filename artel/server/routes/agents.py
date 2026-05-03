@@ -1,6 +1,6 @@
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ...store.db import get_db
 from ..auth import require_registration_key
@@ -10,9 +10,26 @@ from ..models import AgentCreated, AgentRegister
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
+def _mcp_config(artel_url: str, agent_id: str, api_key: str) -> dict:
+    return {
+        "mcpServers": {
+            "artel": {
+                "type": "stdio",
+                "command": "uvx",
+                "args": ["--from", "artel-agents", "artel-mcp"],
+                "env": {
+                    "ARTEL_URL": artel_url,
+                    "MCP_AGENT_ID": agent_id,
+                    "MCP_AGENT_KEY": api_key,
+                },
+            }
+        }
+    }
+
+
 @router.post("/register", response_model=AgentCreated, status_code=201,
              dependencies=[Depends(require_registration_key)])
-async def register_agent(body: AgentRegister):
+async def register_agent(body: AgentRegister, request: Request):
     if not body.agent_id or not body.agent_id.replace("-", "").replace("_", "").isalnum():
         raise HTTPException(status_code=422, detail="agent_id must be alphanumeric with - or _")
     db = get_db()
@@ -27,7 +44,13 @@ async def register_agent(body: AgentRegister):
     )
     db.commit()
     row = db.execute("SELECT * FROM agents WHERE id=?", (body.agent_id,)).fetchone()
-    return AgentCreated(agent_id=row["id"], api_key=api_key, created_at=row["created_at"])
+    artel_url = settings.public_url or str(request.base_url).rstrip("/")
+    return AgentCreated(
+        agent_id=row["id"],
+        api_key=api_key,
+        created_at=row["created_at"],
+        mcp_config=_mcp_config(artel_url, row["id"], api_key),
+    )
 
 
 @router.get("", response_model=list[AgentCreated],

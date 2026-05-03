@@ -7,11 +7,10 @@ from fastapi.responses import StreamingResponse
 
 from ...store.db import get_db
 from ..auth import require_agent
+from ..broadcast import _subscribers, broadcast
 from ..models import EventEmit, EventEntry, new_id
 
 router = APIRouter(prefix="/events", tags=["events"])
-
-_subscribers: list[asyncio.Queue] = []
 
 
 def _row_to_event(row: sqlite3.Row) -> EventEntry:
@@ -22,18 +21,6 @@ def _row_to_event(row: sqlite3.Row) -> EventEntry:
         payload=json.loads(row["payload"]),
         created_at=row["created_at"],
     )
-
-
-def _broadcast(event: EventEntry) -> None:
-    data = event.model_dump_json()
-    dead: list[asyncio.Queue] = []
-    for q in _subscribers:
-        try:
-            q.put_nowait(data)
-        except asyncio.QueueFull:
-            dead.append(q)
-    for q in dead:
-        _subscribers.remove(q)
 
 
 @router.post("", response_model=EventEntry, status_code=201)
@@ -47,7 +34,7 @@ async def emit_event(body: EventEmit, agent_id: str = Depends(require_agent)):
     db.commit()
     row = db.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
     event = _row_to_event(row)
-    _broadcast(event)
+    broadcast(event)
     return event
 
 
