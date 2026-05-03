@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     ui_password: str = ""
     ui_agent_id: str = "nimbus"
     public_url: str = ""
+    mcp_url: str = ""
 
     def api_keys(self) -> dict[str, str]:
         pairs: dict[str, str] = {}
