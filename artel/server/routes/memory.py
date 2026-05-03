@@ -78,6 +78,7 @@ async def search_memory(
     q: str = Query(...),
     limit: int = Query(default=10, le=50),
     project: str | None = Query(default=None),
+    tag: str | None = Query(default=None),
     max_distance: float | None = Query(default=None),
     agent_id: str = Depends(require_agent),
 ):
@@ -99,9 +100,11 @@ async def search_memory(
     if project:
         results = [r for r in results if r["project"] == project]
     elif allowed is not None:
-        results = [r for r in results if r["project"] is None or r["project"] in allowed]
+        results = [r for r in results if r["scope"] == "global" or r["project"] is None or r["project"] in allowed]
     if max_distance is not None:
         results = [r for r in results if r["distance"] <= max_distance]
+    if tag:
+        results = [r for r in results if tag in json.loads(r["tags"])]
 
     return [_row_to_entry(r) for r in results]
 
@@ -109,6 +112,9 @@ async def search_memory(
 @router.get("", response_model=list[MemoryEntry])
 async def list_memory(
     type: str | None = Query(default=None),
+    tag: str | None = Query(default=None),
+    agent: str | None = Query(default=None),
+    confidence_min: float | None = Query(default=None, ge=0.0, le=1.0),
     updated_before: str | None = Query(default=None),
     created_before: str | None = Query(default=None),
     min_version: int | None = Query(default=None),
@@ -125,6 +131,15 @@ async def list_memory(
     if type:
         clauses.append("type = ?")
         params.append(type)
+    if tag:
+        clauses.append("EXISTS (SELECT 1 FROM json_each(tags) WHERE value = ?)")
+        params.append(tag)
+    if agent:
+        clauses.append("agent_id = ?")
+        params.append(agent)
+    if confidence_min is not None:
+        clauses.append("confidence >= ?")
+        params.append(confidence_min)
     if updated_before:
         clauses.append("updated_at < ?")
         params.append(updated_before)
@@ -136,7 +151,7 @@ async def list_memory(
         params.append(min_version)
     params.append(limit)
     rows = db.execute(
-        f"SELECT * FROM memory WHERE {' AND '.join(clauses)} ORDER BY updated_at LIMIT ?",
+        f"SELECT * FROM memory WHERE {' AND '.join(clauses)} ORDER BY updated_at DESC LIMIT ?",
         params,
     ).fetchall()
     return [_row_to_entry(r) for r in rows]

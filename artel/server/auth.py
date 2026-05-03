@@ -51,7 +51,7 @@ def project_filter(agent_id: str) -> tuple[str, list]:
     if allowed is None:
         return "", []
     placeholders = ",".join("?" * len(allowed))
-    return f"(project IS NULL OR project IN ({placeholders}))", list(allowed)
+    return f"(scope = 'global' OR project IS NULL OR project IN ({placeholders}))", list(allowed)
 
 
 AgentDep = Depends(require_agent)

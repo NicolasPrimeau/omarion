@@ -114,3 +114,83 @@ async def test_memory_event_written_to_db(client, mem_payload):
     events = r.json()
     types = [e["type"] for e in events]
     assert "memory.written" in types
+
+
+async def test_list_filter_by_tag(client):
+    await client.post("/memory", json={"content": "tagged entry", "type": "memory", "scope": "shared", "tags": ["deploy"], "parents": [], "confidence": 1.0}, headers=HEADERS)
+    await client.post("/memory", json={"content": "other entry", "type": "memory", "scope": "shared", "tags": ["infra"], "parents": [], "confidence": 1.0}, headers=HEADERS)
+
+    r = await client.get("/memory", params={"tag": "deploy"}, headers=HEADERS)
+    assert r.status_code == 200
+    results = r.json()
+    assert len(results) == 1
+    assert results[0]["tags"] == ["deploy"]
+
+
+async def test_list_filter_by_agent(client):
+    await client.post("/memory", json={"content": "from agent1", "type": "memory", "scope": "shared", "tags": [], "parents": [], "confidence": 1.0}, headers=HEADERS)
+    await client.post("/memory", json={"content": "from agent2", "type": "memory", "scope": "shared", "tags": [], "parents": [], "confidence": 1.0}, headers=HEADERS2)
+
+    r = await client.get("/memory", params={"agent": AGENT2}, headers=HEADERS)
+    assert r.status_code == 200
+    results = r.json()
+    assert all(e["agent_id"] == AGENT2 for e in results)
+
+
+async def test_list_filter_by_confidence_min(client):
+    await client.post("/memory", json={"content": "high confidence", "type": "memory", "scope": "shared", "tags": [], "parents": [], "confidence": 0.9}, headers=HEADERS)
+    await client.post("/memory", json={"content": "low confidence", "type": "memory", "scope": "shared", "tags": [], "parents": [], "confidence": 0.3}, headers=HEADERS)
+
+    r = await client.get("/memory", params={"confidence_min": 0.8}, headers=HEADERS)
+    assert r.status_code == 200
+    results = r.json()
+    assert all(e["confidence"] >= 0.8 for e in results)
+    assert any(e["content"] == "high confidence" for e in results)
+    assert not any(e["content"] == "low confidence" for e in results)
+
+
+async def test_search_filter_by_tag(client):
+    await client.post("/memory", json={"content": "deploy pipeline config", "type": "memory", "scope": "shared", "tags": ["deploy"], "parents": [], "confidence": 1.0}, headers=HEADERS)
+    await client.post("/memory", json={"content": "deploy pipeline config", "type": "memory", "scope": "shared", "tags": ["infra"], "parents": [], "confidence": 1.0}, headers=HEADERS)
+
+    r = await client.get("/memory/search", params={"q": "deploy", "tag": "deploy"}, headers=HEADERS)
+    assert r.status_code == 200
+    results = r.json()
+    assert all("deploy" in e["tags"] for e in results)
+
+
+async def test_global_scope_visible_across_projects(client, monkeypatch):
+    import artel.server.config as cfg_mod
+    monkeypatch.setattr(cfg_mod.settings, "agent_keys", f"restricted-agent:restrictedkey:proj-a")
+
+    import artel.store.db as db_mod
+    db_mod.get_db().execute("INSERT OR IGNORE INTO agents (id, api_key) VALUES (?, ?)", ("restricted-agent", "restrictedkey"))
+    db_mod.get_db().commit()
+
+    restricted_headers = {"x-agent-id": "restricted-agent", "x-api-key": "restrictedkey"}
+
+    await client.post("/memory", json={"content": "global knowledge", "type": "memory", "scope": "global", "tags": [], "parents": [], "confidence": 1.0, "project": "proj-b"}, headers=HEADERS)
+    await client.post("/memory", json={"content": "shared in proj-b", "type": "memory", "scope": "shared", "tags": [], "parents": [], "confidence": 1.0, "project": "proj-b"}, headers=HEADERS)
+
+    r = await client.get("/memory", headers=restricted_headers)
+    assert r.status_code == 200
+    contents = [e["content"] for e in r.json()]
+    assert "global knowledge" in contents
+    assert "shared in proj-b" not in contents
+
+
+async def test_private_scope_hidden_from_list(client):
+    await client.post("/memory", json={"content": "my secret", "type": "memory", "scope": "private", "tags": [], "parents": [], "confidence": 1.0}, headers=HEADERS)
+
+    r = await client.get("/memory", headers=HEADERS2)
+    assert r.status_code == 200
+    assert not any(e["content"] == "my secret" for e in r.json())
+
+
+async def test_soft_delete_not_in_list(client, mem_payload):
+    r = await client.post("/memory", json=mem_payload, headers=HEADERS)
+    eid = r.json()["id"]
+    await client.delete(f"/memory/{eid}", headers=HEADERS)
+
+    r2 = await client.get("/memory", headers=HEADERS)
+    assert not any(e["id"] == eid for e in r2.json())
