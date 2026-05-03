@@ -77,6 +77,8 @@ async def rename_self(body: AgentRename, agent_id: str = AgentDep):
     db.execute("UPDATE events SET agent_id=? WHERE agent_id=?", (new_id, agent_id))
     db.execute("UPDATE session_handoffs SET agent_id=? WHERE agent_id=?", (new_id, agent_id))
     db.commit()
+    if agent_id in _last_seen:
+        _last_seen[new_id] = _last_seen.pop(agent_id)
     updated = db.execute("SELECT * FROM agents WHERE id=?", (new_id,)).fetchone()
     return AgentCreated(agent_id=updated["id"], api_key=updated["api_key"], created_at=updated["created_at"])
 
@@ -92,6 +94,7 @@ async def delete_agent(agent_id: str):
         raise HTTPException(status_code=404, detail="agent not found")
     db.execute("DELETE FROM agents WHERE id=?", (agent_id,))
     db.commit()
+    _last_seen.pop(agent_id, None)
 
 
 @router.get("", response_model=list[AgentCreated],
