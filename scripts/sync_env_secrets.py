@@ -147,15 +147,19 @@ class EnvSecretsSync:
                     new_values[key] = local_val
                     new_store.secrets[key] = SecretMetadata.create(local_val)
                     result.added.append(key)
-                else:
+                elif strategy == ConflictStrategy.REMOTE:
                     result.updated.append(f"{key} (deleted remotely)")
+                else:
+                    new_values[key] = local_val
+                    new_store.secrets[key] = SecretMetadata.create(local_val)
+                    result.updated.append(f"{key} (restored remotely)")
             elif not local_val:
-                if remote_changed:
+                if strategy == ConflictStrategy.LOCAL:
+                    result.updated.append(f"{key} (deleted locally)")
+                else:
                     new_values[key] = remote_val
                     new_store.secrets[key] = remote_store.secrets.get(key, SecretMetadata.create(remote_val))
-                    result.added.append(key)
-                else:
-                    result.updated.append(f"{key} (deleted locally)")
+                    result.updated.append(f"{key} (restored locally)")
             elif local_hash == remote_hash:
                 new_values[key] = local_val
                 new_store.secrets[key] = SecretMetadata.create(local_val)

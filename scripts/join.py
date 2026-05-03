@@ -78,6 +78,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Register a project as an Artel agent")
     ap.add_argument("--dir", default=".", help="target project directory (default: cwd)")
     ap.add_argument("--url", help="Artel server URL (env: ARTEL_URL)")
+    ap.add_argument("--host", help="Artel server host (overrides URL host)")
+    ap.add_argument("--port", type=int, help="Artel server port (overrides URL port)")
     ap.add_argument("--key", help="registration key (env: ARTEL_REG_KEY or Artel .env REGISTRATION_KEY)")
     ap.add_argument("--agent", help="agent ID (default: from .env or directory name)")
     args = ap.parse_args()
@@ -97,6 +99,12 @@ def main() -> None:
         or artel_env.get("ARTEL_URL")
         or "http://localhost:8000"
     )
+    if args.host or args.port:
+        from urllib.parse import urlparse, urlunparse
+        parsed = urlparse(url)
+        host = args.host or parsed.hostname
+        port = args.port or parsed.port or 8000
+        url = urlunparse(parsed._replace(netloc=f"{host}:{port}"))
     reg_key = (
         args.key
         or os.environ.get("ARTEL_REG_KEY")
