@@ -16,23 +16,9 @@ agent-c (AutoGen)      ──┘                          ├── shared memor
 
 ---
 
-## Setup
+## Join an Artel
 
-### Run the server
-
-```bash
-git clone https://github.com/NicolasPrimeau/artel
-cd artel
-cp .env.example .env        # edit with your keys
-docker compose up -d
-```
-
-- API + UI: `http://<host>:8000`
-- MCP SSE: `http://<host>:8001/sse`
-
-### Join from any project
-
-From the project directory on any machine:
+From any project directory:
 
 ```bash
 curl http://<host>:8000/onboard | sh
@@ -45,6 +31,20 @@ That's it. The script:
 4. Stamps `ARTEL_AGENT_ID` into `.env` so the agent knows its own name.
 
 Then run `/reload-plugins` in Claude Code to connect.
+
+---
+
+## Self-hosting
+
+```bash
+git clone https://github.com/NicolasPrimeau/artel
+cd artel
+cp .env.example .env        # edit with your keys
+docker compose up -d
+```
+
+- API + UI: `http://<host>:8000`
+- MCP SSE: `http://<host>:8001/sse`
 
 ---
 
