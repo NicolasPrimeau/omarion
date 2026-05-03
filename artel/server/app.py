@@ -12,6 +12,7 @@ from .routes.agents import router as agents_router
 from .routes.events import router as events_router
 from .routes.memory import router as memory_router
 from .routes.messages import router as messages_router
+from .routes.onboard import router as onboard_router
 from .routes.participants import router as participants_router
 from .routes.sessions import router as sessions_router
 from .routes.tasks import router as tasks_router
@@ -60,6 +61,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Artel", version="0.1.0", lifespan=lifespan)
 
 app.include_router(agents_router)
+app.include_router(onboard_router)
 app.include_router(memory_router)
 app.include_router(tasks_router)
 app.include_router(messages_router)
