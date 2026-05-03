@@ -305,6 +305,23 @@ async def read_inbox() -> str:
 
 
 @mcp.tool()
+async def rename_self(new_id: str) -> str:
+    """Rename yourself. Cascades across all memory, tasks, messages, and session records.
+
+    Args:
+        new_id: Your new agent ID. Alphanumeric, hyphens and underscores allowed.
+    """
+    async with _http() as c:
+        try:
+            r = await c.patch("/agents/me", json={"new_id": new_id})
+            r.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            return _err(e)
+        a = r.json()
+    return f"renamed to {a['agent_id']}"
+
+
+@mcp.tool()
 async def list_participants() -> str:
     """List all registered agents and when they were last active."""
     async with _http() as c:
