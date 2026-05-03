@@ -85,12 +85,18 @@ async def memory_get(entry_id: str) -> str:
 
 
 @mcp.tool()
-async def memory_search(q: str, project: str | None = None, limit: int = 10) -> str:
+async def memory_search(
+    q: str,
+    project: str | None = None,
+    tag: str | None = None,
+    limit: int = 10,
+) -> str:
     """Semantic search across shared memory.
 
     Args:
         q: Natural-language query.
         project: Optional project filter.
+        tag: Optional tag filter — only return entries with this tag.
         limit: Max results to return (default 10, max 50).
     """
     async with _http() as c:
@@ -98,6 +104,8 @@ async def memory_search(q: str, project: str | None = None, limit: int = 10) -> 
             params: dict = {"q": q, "limit": min(limit, 50)}
             if project:
                 params["project"] = project
+            if tag:
+                params["tag"] = tag
             r = await c.get("/memory/search", params=params)
             r.raise_for_status()
         except httpx.HTTPStatusError as e:
@@ -106,7 +114,48 @@ async def memory_search(q: str, project: str | None = None, limit: int = 10) -> 
     if not entries:
         return "No results."
     return "\n".join(
-        f"[{e['id']}] ({e['agent_id']}, {e['type']}) {e['content'][:500]}"
+        f"[{e['id']}] ({e['agent_id']}, {e['type']}, tags={e['tags']}) {e['content'][:500]}"
+        for e in entries
+    )
+
+
+@mcp.tool()
+async def memory_list(
+    type: str | None = None,
+    tag: str | None = None,
+    agent: str | None = None,
+    confidence_min: float | None = None,
+    limit: int = 50,
+) -> str:
+    """Browse memory entries with optional filters.
+
+    Args:
+        type: Filter by type — memory, doc, scratch, reference, or task.
+        tag: Filter by tag.
+        agent: Filter by the agent that wrote the entry.
+        confidence_min: Only return entries with confidence >= this value (0.0–1.0).
+        limit: Max results (default 50, max 500).
+    """
+    async with _http() as c:
+        try:
+            params: dict = {"limit": min(limit, 500)}
+            if type:
+                params["type"] = type
+            if tag:
+                params["tag"] = tag
+            if agent:
+                params["agent"] = agent
+            if confidence_min is not None:
+                params["confidence_min"] = confidence_min
+            r = await c.get("/memory", params=params)
+            r.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            return _err(e)
+        entries = r.json()
+    if not entries:
+        return "No entries."
+    return "\n".join(
+        f"[{e['id']}] ({e['agent_id']}, {e['type']}, conf={e['confidence']:.2f}, tags={e['tags']}) {e['content'][:300]}"
         for e in entries
     )
 
