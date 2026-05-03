@@ -3,7 +3,7 @@ import secrets
 from fastapi import APIRouter, Depends, HTTPException, Request
 
 from ...store.db import get_db
-from ..auth import AgentDep, require_registration_key
+from ..auth import AgentDep, _last_seen, require_registration_key
 from ..config import settings
 from ..models import AgentCreated, AgentRegister, AgentRename
 
@@ -42,6 +42,7 @@ async def register_agent(body: AgentRegister, request: Request):
     )
     db.commit()
     row = db.execute("SELECT * FROM agents WHERE id=?", (body.agent_id,)).fetchone()
+    _last_seen[body.agent_id] = row["created_at"]
     base_url = settings.public_url or str(request.base_url).rstrip("/")
     mcp_url = (settings.mcp_url or base_url.replace(":8000", ":8001")).rstrip("/") + "/sse"
     return AgentCreated(
