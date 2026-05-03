@@ -10,6 +10,7 @@ class MCPSettings(BaseSettings):
     mcp_transport: str = "stdio"
     mcp_host: str = "0.0.0.0"
     mcp_port: int = 8001
+    mcp_project: str = ""
 
 
 settings = MCPSettings()

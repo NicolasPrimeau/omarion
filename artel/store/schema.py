@@ -5,6 +5,7 @@ PRAGMA foreign_keys=ON;
 CREATE TABLE IF NOT EXISTS agents (
     id          TEXT PRIMARY KEY,
     api_key     TEXT NOT NULL UNIQUE,
+    project     TEXT,
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 

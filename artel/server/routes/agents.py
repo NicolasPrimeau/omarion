@@ -10,7 +10,10 @@ from ..models import AgentCreated, AgentRegister, AgentRename
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
-def _mcp_config(mcp_url: str, agent_id: str, api_key: str) -> dict:
+def _mcp_config(mcp_url: str, agent_id: str, api_key: str, project: str | None = None) -> dict:
+    env = {"ARTEL_URL": mcp_url.replace("/sse", "").replace(":8001", ":8000")}
+    if project:
+        env["MCP_PROJECT"] = project
     return {
         "mcpServers": {
             "artel": {
@@ -25,6 +28,15 @@ def _mcp_config(mcp_url: str, agent_id: str, api_key: str) -> dict:
     }
 
 
+def _row_to_agent(row) -> AgentCreated:
+    return AgentCreated(
+        agent_id=row["id"],
+        api_key=row["api_key"],
+        project=row["project"],
+        created_at=row["created_at"],
+    )
+
+
 @router.post("/register", response_model=AgentCreated, status_code=201,
              dependencies=[Depends(require_registration_key)])
 async def register_agent(body: AgentRegister, request: Request):
@@ -37,8 +49,8 @@ async def register_agent(body: AgentRegister, request: Request):
         raise HTTPException(status_code=409, detail="agent_id already registered")
     api_key = secrets.token_urlsafe(32)
     db.execute(
-        "INSERT INTO agents (id, api_key) VALUES (?, ?)",
-        (body.agent_id, api_key),
+        "INSERT INTO agents (id, api_key, project) VALUES (?, ?, ?)",
+        (body.agent_id, api_key, body.project),
     )
     db.commit()
     row = db.execute("SELECT * FROM agents WHERE id=?", (body.agent_id,)).fetchone()
@@ -48,8 +60,9 @@ async def register_agent(body: AgentRegister, request: Request):
     return AgentCreated(
         agent_id=row["id"],
         api_key=api_key,
+        project=row["project"],
         created_at=row["created_at"],
-        mcp_config=_mcp_config(mcp_url, row["id"], api_key),
+        mcp_config=_mcp_config(mcp_url, row["id"], api_key, row["project"]),
     )
 
 
@@ -80,7 +93,7 @@ async def rename_self(body: AgentRename, agent_id: str = AgentDep):
     if agent_id in _last_seen:
         _last_seen[new_id] = _last_seen.pop(agent_id)
     updated = db.execute("SELECT * FROM agents WHERE id=?", (new_id,)).fetchone()
-    return AgentCreated(agent_id=updated["id"], api_key=updated["api_key"], created_at=updated["created_at"])
+    return _row_to_agent(updated)
 
 
 @router.delete("/{agent_id}", status_code=204,
@@ -102,7 +115,7 @@ async def delete_agent(agent_id: str):
 async def list_agents():
     db = get_db()
     rows = db.execute("SELECT * FROM agents ORDER BY created_at").fetchall()
-    dynamic = [AgentCreated(agent_id=r["id"], api_key=r["api_key"], created_at=r["created_at"]) for r in rows]
+    dynamic = [_row_to_agent(r) for r in rows]
     static = [
         AgentCreated(agent_id=aid, api_key=key, created_at="static")
         for key, aid in settings.api_keys().items()

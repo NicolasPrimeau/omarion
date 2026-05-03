@@ -16,8 +16,16 @@ def get_db(path: str = "artel.db") -> sqlite3.Connection:
         sqlite_vec.load(_conn)
         _conn.enable_load_extension(False)
         _conn.executescript(SCHEMA)
+        _migrate(_conn)
         _init_vec_table(_conn)
     return _conn
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(agents)").fetchall()}
+    if "project" not in cols:
+        conn.execute("ALTER TABLE agents ADD COLUMN project TEXT")
+        conn.commit()
 
 
 def _init_vec_table(conn: sqlite3.Connection) -> None:
