@@ -26,6 +26,16 @@ def _row_to_task(row: sqlite3.Row) -> TaskEntry:
     )
 
 
+@router.get("/{task_id}", response_model=TaskEntry)
+async def get_task(task_id: str, agent_id: str = Depends(require_agent)):
+    db = get_db()
+    row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="not found")
+    check_project(agent_id, row["project"])
+    return _row_to_task(row)
+
+
 @router.post("", response_model=TaskEntry, status_code=201)
 async def create_task(body: TaskCreate, agent_id: str = Depends(require_agent)):
     check_project(agent_id, body.project)
@@ -50,6 +60,7 @@ async def create_task(body: TaskCreate, agent_id: str = Depends(require_agent)):
 async def list_tasks(
     status: str | None = Query(default=None),
     agent: str | None = Query(default=None),
+    project: str | None = Query(default=None),
     agent_id: str = Depends(require_agent),
 ):
     db = get_db()
@@ -65,6 +76,9 @@ async def list_tasks(
     if agent:
         sql += " AND (created_by=? OR assigned_to=?)"
         params.extend([agent, agent])
+    if project:
+        sql += " AND project=?"
+        params.append(project)
     sql += " ORDER BY created_at DESC"
     rows = db.execute(sql, params).fetchall()
     return [_row_to_task(r) for r in rows]
@@ -100,6 +114,10 @@ async def complete_task(task_id: str, agent_id: str = Depends(require_agent)):
     if not row:
         raise HTTPException(status_code=404, detail="not found")
     check_project(agent_id, row["project"])
+    if row["status"] != "claimed":
+        raise HTTPException(status_code=409, detail="task not claimed")
+    if row["assigned_to"] != agent_id:
+        raise HTTPException(status_code=403, detail="forbidden")
     db.execute(
         """UPDATE tasks SET status='completed',
            updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",
@@ -121,6 +139,10 @@ async def fail_task(task_id: str, agent_id: str = Depends(require_agent)):
     if not row:
         raise HTTPException(status_code=404, detail="not found")
     check_project(agent_id, row["project"])
+    if row["status"] != "claimed":
+        raise HTTPException(status_code=409, detail="task not claimed")
+    if row["assigned_to"] != agent_id:
+        raise HTTPException(status_code=403, detail="forbidden")
     db.execute(
         """UPDATE tasks SET status='failed',
            updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",

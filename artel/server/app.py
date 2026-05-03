@@ -1,4 +1,6 @@
+import json
 import secrets
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
@@ -49,7 +51,13 @@ button:hover{background:#0a1a2a}
 </html>
 """
 
-app = FastAPI(title="Artel", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    get_db(settings.db_path)
+    yield
+
+
+app = FastAPI(title="Artel", version="0.1.0", lifespan=lifespan)
 
 app.include_router(agents_router)
 app.include_router(memory_router)
@@ -58,11 +66,6 @@ app.include_router(messages_router)
 app.include_router(events_router)
 app.include_router(sessions_router)
 app.include_router(participants_router)
-
-
-@app.on_event("startup")
-async def startup():
-    get_db(settings.db_path)
 
 
 @app.get("/health")
@@ -108,6 +111,6 @@ async def ui(request: Request):
     aid = settings.ui_agent_id
     akey = settings.ui_agent_key()
     html = _UI.read_text().replace(
-        "/*CREDS*/", f"window._aid={aid!r};window._akey={akey!r};"
+        "/*CREDS*/", f"window._aid={json.dumps(aid)};window._akey={json.dumps(akey)};"
     )
     return HTMLResponse(html)

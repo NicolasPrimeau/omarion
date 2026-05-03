@@ -1,13 +1,15 @@
 import json
 import sqlite3
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...store.db import get_db
 from ...store.embeddings import embed
 from ..auth import check_project, project_filter, require_agent
+from ..broadcast import broadcast
 from ..config import settings
-from ..models import MemoryEntry, MemoryPatch, MemoryWrite, new_id
+from ..models import EventEntry, MemoryEntry, MemoryPatch, MemoryWrite, new_id
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
@@ -52,11 +54,20 @@ async def write_memory(
         "INSERT INTO memory_vec (id, embedding) VALUES (?, ?)",
         (entry_id, json.dumps(vec)),
     )
+    event_id = new_id()
     db.execute(
         "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-        (new_id(), "memory.written", agent_id, json.dumps({"memory_id": entry_id})),
+        (event_id, "memory.written", agent_id, json.dumps({"memory_id": entry_id})),
     )
     db.commit()
+
+    broadcast(EventEntry(
+        id=event_id,
+        type="memory.written",
+        agent_id=agent_id,
+        payload={"memory_id": entry_id},
+        created_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+    ))
 
     row = db.execute("SELECT * FROM memory WHERE id=?", (entry_id,)).fetchone()
     return _row_to_entry(row)
@@ -180,11 +191,11 @@ async def patch_memory(
     if not row:
         raise HTTPException(status_code=404, detail="not found")
     check_project(agent_id, row["project"])
+    if row["agent_id"] != agent_id:
+        raise HTTPException(status_code=403, detail="forbidden")
 
     updates: dict = {}
     if body.content is not None:
-        if row["agent_id"] != agent_id:
-            raise HTTPException(status_code=403, detail="forbidden")
         updates["content"] = body.content
         vec = embed(body.content)
         db.execute("DELETE FROM memory_vec WHERE id=?", (entry_id,))
@@ -193,12 +204,8 @@ async def patch_memory(
             (entry_id, json.dumps(vec)),
         )
     if body.tags is not None:
-        if row["agent_id"] != agent_id:
-            raise HTTPException(status_code=403, detail="forbidden")
         updates["tags"] = json.dumps(body.tags)
     if body.scope is not None:
-        if row["agent_id"] != agent_id:
-            raise HTTPException(status_code=403, detail="forbidden")
         updates["scope"] = body.scope
     if body.confidence is not None:
         updates["confidence"] = body.confidence

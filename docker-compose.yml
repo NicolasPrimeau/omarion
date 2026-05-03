@@ -10,26 +10,32 @@ services:
     env_file: .env
     environment:
       - DB_PATH=/data/artel.db
-    command: ["uvicorn", "artel.server.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 15s
 
   archivist:
     build: .
     restart: unless-stopped
     volumes:
       - ./artel:/app/artel
-    command: ["watchfiles", "python -m artel.archivist", "/app/artel"]
+    command: ["python", "-m", "artel.archivist"]
     env_file: .env
     environment:
       - ARTEL_URL=http://artel:8000
     depends_on:
-      - artel
+      artel:
+        condition: service_healthy
 
   mcp:
     build: .
     restart: unless-stopped
     volumes:
       - ./artel:/app/artel
-    command: ["watchfiles", "python -m artel.mcp", "/app/artel"]
+    command: ["python", "-m", "artel.mcp"]
     ports:
       - "8001:8001"
     env_file: .env
@@ -38,7 +44,8 @@ services:
       - MCP_TRANSPORT=sse
       - MCP_PORT=8001
     depends_on:
-      - artel
+      artel:
+        condition: service_healthy
 
 volumes:
   artel-data:

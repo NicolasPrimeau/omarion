@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True)
+    model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")
 
     db_path: str = "artel.db"
     host: str = "0.0.0.0"
@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     registration_key: str = ""
     ui_password: str = ""
     ui_agent_id: str = "nimbus"
+    public_url: str = ""
 
     def api_keys(self) -> dict[str, str]:
         pairs: dict[str, str] = {}

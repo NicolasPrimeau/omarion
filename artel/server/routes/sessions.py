@@ -1,7 +1,7 @@
 import json
 import sqlite3
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from ...store.db import get_db
 from ..auth import require_agent
@@ -51,6 +51,8 @@ async def get_handoff(
     target_agent_id: str,
     agent_id: str = Depends(require_agent),
 ):
+    if target_agent_id != agent_id:
+        raise HTTPException(status_code=403, detail="forbidden")
     db = get_db()
     row = db.execute(
         """SELECT * FROM session_handoffs WHERE agent_id=?

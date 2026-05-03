@@ -1,11 +1,13 @@
 import json
 import sqlite3
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from ...store.db import get_db
 from ..auth import require_agent
-from ..models import MessageEntry, MessageSend, new_id
+from ..broadcast import broadcast
+from ..models import EventEntry, MessageEntry, MessageSend, new_id
 
 router = APIRouter(prefix="/messages", tags=["messages"])
 
@@ -30,12 +32,22 @@ async def send_message(body: MessageSend, agent_id: str = Depends(require_agent)
         "INSERT INTO messages (id, from_agent, to_agent, subject, body) VALUES (?,?,?,?,?)",
         (msg_id, agent_id, body.to, body.subject, body.body),
     )
+    event_id = new_id()
     db.execute(
         "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-        (new_id(), "message.received", agent_id,
+        (event_id, "message.received", agent_id,
          json.dumps({"message_id": msg_id, "to": body.to})),
     )
     db.commit()
+
+    broadcast(EventEntry(
+        id=event_id,
+        type="message.received",
+        agent_id=agent_id,
+        payload={"message_id": msg_id, "to": body.to},
+        created_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+    ))
+
     row = db.execute("SELECT * FROM messages WHERE id=?", (msg_id,)).fetchone()
     return _row_to_msg(row)
 
