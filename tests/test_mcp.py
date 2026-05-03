@@ -52,10 +52,9 @@ def _extract_id(result: str) -> str:
     return result.split("[")[1].split("]")[0]
 
 
-async def test_memory_write_returns_id_and_preview(mcp):
+async def test_memory_write_returns_id(mcp):
     result = await mcp.memory_write("the sky is blue")
     assert result.startswith("written [")
-    assert "the sky is blue" in result
 
 
 async def test_memory_write_private_scope(mcp):
@@ -69,7 +68,7 @@ async def test_memory_get_full_content(mcp):
     result = await mcp.memory_get(entry_id)
     assert "full content here" in result
     assert entry_id in result
-    assert "confidence=" in result
+    assert "conf=" in result
 
 
 async def test_memory_get_not_found(mcp):
@@ -184,18 +183,18 @@ async def test_task_claim_already_claimed(mcp):
 
 
 async def test_send_message_returns_confirmation(mcp):
-    result = await mcp.send_message(to=AGENT2, body="hello", subject="greet")
+    result = await mcp.message_send(to=AGENT2, body="hello", subject="greet")
     assert result.startswith("sent to")
     assert AGENT2 in result
 
 
 async def test_read_inbox_empty(mcp):
-    result = await mcp.read_inbox()
+    result = await mcp.message_inbox()
     assert result == "No unread messages."
 
 
 async def test_list_participants(mcp):
-    result = await mcp.list_participants()
+    result = await mcp.agent_list()
     assert TEST_AGENT in result
     assert AGENT2 in result
 
