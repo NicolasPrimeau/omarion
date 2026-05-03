@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 
 from ...store.db import get_db
-from ..auth import require_agent
+from ..auth import _last_seen, require_agent
 from ..config import settings
 from ..models import Participant
 
@@ -21,6 +21,9 @@ async def list_participants(agent_id: str = Depends(require_agent)):
     ).fetchall():
         if row["agent_id"] in last_seen:
             last_seen[row["agent_id"]] = row["ts"]
+    for aid, ts in _last_seen.items():
+        prev = last_seen.get(aid)
+        last_seen[aid] = max(ts, prev) if prev else ts
     return [
         Participant(agent_id=aid, last_seen=ts)
         for aid, ts in sorted(last_seen.items())
