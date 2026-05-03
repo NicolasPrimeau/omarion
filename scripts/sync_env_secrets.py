@@ -69,10 +69,11 @@ class EnvSecretsSync:
         self.client = boto3.client("secretsmanager")
         self.local_meta_file = env_file.parent / ".env.meta.json"
 
-    def _load_local_env(self) -> dict[str, str]:
-        if not self.env_file.exists():
-            raise FileNotFoundError(f"{self.env_file} not found")
-        return dict(dotenv_values(self.env_file))
+    def _load_local_env(self) -> tuple[dict[str, str], bool]:
+        created = not self.env_file.exists()
+        if created:
+            self.env_file.touch()
+        return dict(dotenv_values(self.env_file)), created
 
     def _load_local_store(self) -> SecretsStore:
         if not self.local_meta_file.exists():
@@ -115,7 +116,10 @@ class EnvSecretsSync:
             self.client.create_secret(Name=self.meta_secret_name, SecretString=secret_string)
 
     def sync(self, strategy: ConflictStrategy = ConflictStrategy.ABORT) -> SyncResult:
-        local_values = self._load_local_env()
+        local_values, created = self._load_local_env()
+        if created:
+            self.pull()
+            return SyncResult()
         local_store = self._load_local_store()
         remote_values = self._get_remote_values()
         remote_store = self._get_remote_store()
@@ -207,6 +211,7 @@ class EnvSecretsSync:
                 return input("value: ").strip()
 
     def pull(self) -> None:
+        self.env_file.touch()  # ensure file exists
         remote_values = self._get_remote_values()
         if not remote_values:
             print("no secrets found in remote store")
