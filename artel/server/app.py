@@ -14,6 +14,7 @@ from .routes.memory import router as memory_router
 from .routes.messages import router as messages_router
 from .routes.onboard import router as onboard_router
 from .routes.participants import router as participants_router
+from .routes.projects import router as projects_router
 from .routes.sessions import router as sessions_router
 from .routes.tasks import router as tasks_router
 
@@ -68,6 +69,7 @@ app.include_router(messages_router)
 app.include_router(events_router)
 app.include_router(sessions_router)
 app.include_router(participants_router)
+app.include_router(projects_router)
 
 
 @app.get("/health")

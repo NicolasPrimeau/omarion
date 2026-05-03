@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 from fastapi.responses import PlainTextResponse
 
 from ..config import settings
@@ -10,6 +10,7 @@ set -e
 
 ARTEL_URL="{artel_url}"
 REG_KEY="{reg_key}"
+PROJECT="{project}"
 
 AGENT_ID=""
 if [ -f ".env" ]; then
@@ -22,15 +23,19 @@ fi
 AGENT_ID=$(echo "$AGENT_ID" | tr -cs 'a-zA-Z0-9_-' '-' | sed 's/^-*//;s/-*$//')
 [ -z "$AGENT_ID" ] && AGENT_ID="agent-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
 
-ARTEL_URL="$ARTEL_URL" REG_KEY="$REG_KEY" BASE_ID="$AGENT_ID" python3 -c "
+ARTEL_URL="$ARTEL_URL" REG_KEY="$REG_KEY" BASE_ID="$AGENT_ID" PROJECT="$PROJECT" python3 -c "
 import os, json, urllib.request, urllib.error, sys
 url, reg_key, base_id = os.environ['ARTEL_URL'], os.environ['REG_KEY'], os.environ['BASE_ID']
+project = os.environ.get('PROJECT') or None
 
 for attempt in range(1, 100):
     agent_id = base_id if attempt == 1 else '{{}}-{{}}'.format(base_id, attempt)
+    payload = {{'agent_id': agent_id}}
+    if project:
+        payload['project'] = project
     req = urllib.request.Request(
         url + '/agents/register',
-        data=json.dumps({{'agent_id': agent_id}}).encode(),
+        data=json.dumps(payload).encode(),
         headers={{'content-type': 'application/json', 'x-registration-key': reg_key}},
         method='POST',
     )
@@ -53,10 +58,14 @@ else:
 with open('.mcp.json', 'w') as f:
     json.dump(data['mcp_config'], f, indent=2); f.write('\n')
 lines = open('.env').read().splitlines() if os.path.exists('.env') else []
-lines = [l for l in lines if not l.startswith('ARTEL_AGENT_ID=')]
+lines = [l for l in lines if not l.startswith('ARTEL_AGENT_ID=') and not l.startswith('MCP_PROJECT=')]
 lines.append('ARTEL_AGENT_ID=' + data['agent_id'])
+if project:
+    lines.append('MCP_PROJECT=' + project)
 open('.env', 'w').write('\n'.join(lines) + '\n')
 print('  agent id : ' + data['agent_id'])
+if project:
+    print('  project  : ' + project)
 print('  .mcp.json written, .env updated')
 print()
 print('run /reload-plugins in Claude Code to connect')
@@ -65,6 +74,10 @@ print('run /reload-plugins in Claude Code to connect')
 
 
 @router.get("/onboard", response_class=PlainTextResponse)
-async def onboard(request: Request):
+async def onboard(request: Request, project: str | None = Query(default=None)):
     artel_url = settings.public_url or str(request.base_url).rstrip("/")
-    return _SCRIPT.format(artel_url=artel_url, reg_key=settings.registration_key)
+    return _SCRIPT.format(
+        artel_url=artel_url,
+        reg_key=settings.registration_key,
+        project=project or "",
+    )

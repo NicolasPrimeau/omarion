@@ -106,6 +106,7 @@ class Participant(BaseModel):
 
 class AgentRegister(BaseModel):
     agent_id: str
+    project: str | None = None
 
 
 class AgentRename(BaseModel):
@@ -115,8 +116,17 @@ class AgentRename(BaseModel):
 class AgentCreated(BaseModel):
     agent_id: str
     api_key: str
+    project: str | None = None
     created_at: str
     mcp_config: dict | None = None
+
+
+class ProjectInfo(BaseModel):
+    name: str
+    agents: list[str]
+    memory_count: int
+    task_count: int
+    last_activity: str | None
 
 
 class HandoffPost(BaseModel):

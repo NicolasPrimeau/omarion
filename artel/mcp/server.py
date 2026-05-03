@@ -183,7 +183,7 @@ async def memory_write(
         content: What to store. Markdown is fine.
         type: See types above. Default: memory.
         scope: See scopes above. Default: shared.
-        project: Optional project name to scope the entry.
+        project: Project to scope the entry to. Defaults to MCP_PROJECT if set.
         tags: Tags for filtering and retrieval. Use them — they make memory_list useful.
         confidence: How certain you are (0.0–1.0). Default 1.0. Use lower for guesses.
     """
@@ -192,7 +192,7 @@ async def memory_write(
             r = await c.post("/memory", json={
                 "content": content,
                 "type": type,
-                "project": project,
+                "project": project or settings.mcp_project or None,
                 "scope": scope,
                 "tags": tags or [],
                 "confidence": confidence,
@@ -219,15 +219,16 @@ async def memory_search(
 
     Args:
         q: What you're looking for, in natural language.
-        project: Restrict to a project.
+        project: Restrict to a project. Defaults to MCP_PROJECT if set.
         tag: Restrict to entries with this tag.
         limit: How many results (default 10, max 50).
     """
     async with _http() as c:
         try:
             params: dict = {"q": q, "limit": min(limit, 50)}
-            if project:
-                params["project"] = project
+            effective_project = project or settings.mcp_project or None
+            if effective_project:
+                params["project"] = effective_project
             if tag:
                 params["tag"] = tag
             r = await c.get("/memory/search", params=params)
@@ -332,6 +333,34 @@ async def memory_delta(since: str) -> str:
         f"[{e['id']}] ({e['agent_id']}, {e['updated_at']}) {e['content'][:500]}"
         for e in entries
     )
+
+
+@mcp.tool()
+async def project_list() -> str:
+    """List all projects with their members, memory count, and last activity.
+
+    Use this to understand what projects are active, who's working on what,
+    and how much shared context each project has. Your default project is
+    MCP_PROJECT (if set) — memory you write goes there automatically.
+    """
+    async with _http() as c:
+        try:
+            r = await c.get("/projects")
+            r.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            return _err(e)
+        projects = r.json()
+    if not projects:
+        return "No projects yet."
+    lines = []
+    for p in projects:
+        marker = " ◀ your project" if p["name"] == settings.mcp_project else ""
+        lines.append(
+            f"{p['name']}{marker} — {p['memory_count']} memories, {p['task_count']} tasks "
+            f"| agents: {', '.join(p['agents']) or 'none'} "
+            f"| last: {(p['last_activity'] or 'never')[:16]}"
+        )
+    return "\n".join(lines)
 
 
 @mcp.tool()
