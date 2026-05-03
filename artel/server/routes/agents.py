@@ -10,17 +10,15 @@ from ..models import AgentCreated, AgentRegister, AgentRename
 router = APIRouter(prefix="/agents", tags=["agents"])
 
 
-def _mcp_config(artel_url: str, agent_id: str, api_key: str) -> dict:
+def _mcp_config(mcp_url: str, agent_id: str, api_key: str) -> dict:
     return {
         "mcpServers": {
             "artel": {
-                "type": "stdio",
-                "command": "uvx",
-                "args": ["--from", "artel-agents", "artel-mcp"],
-                "env": {
-                    "ARTEL_URL": artel_url,
-                    "MCP_AGENT_ID": agent_id,
-                    "MCP_AGENT_KEY": api_key,
+                "type": "sse",
+                "url": mcp_url,
+                "headers": {
+                    "x-agent-id": agent_id,
+                    "x-api-key": api_key,
                 },
             }
         }
@@ -44,12 +42,13 @@ async def register_agent(body: AgentRegister, request: Request):
     )
     db.commit()
     row = db.execute("SELECT * FROM agents WHERE id=?", (body.agent_id,)).fetchone()
-    artel_url = settings.public_url or str(request.base_url).rstrip("/")
+    base_url = settings.public_url or str(request.base_url).rstrip("/")
+    mcp_url = (settings.mcp_url or base_url.replace(":8000", ":8001")).rstrip("/") + "/sse"
     return AgentCreated(
         agent_id=row["id"],
         api_key=api_key,
         created_at=row["created_at"],
-        mcp_config=_mcp_config(artel_url, row["id"], api_key),
+        mcp_config=_mcp_config(mcp_url, row["id"], api_key),
     )
 
 

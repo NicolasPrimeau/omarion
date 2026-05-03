@@ -1,3 +1,5 @@
+import contextvars
+
 import httpx
 from mcp.server.fastmcp import FastMCP
 
@@ -5,14 +7,16 @@ from .config import settings
 
 mcp = FastMCP("artel", host=settings.mcp_host, port=settings.mcp_port)
 
-_HEADERS = {
-    "x-agent-id": settings.mcp_agent_id,
-    "x-api-key": settings.mcp_agent_key,
-}
+_agent_id: contextvars.ContextVar[str] = contextvars.ContextVar("agent_id")
+_api_key: contextvars.ContextVar[str] = contextvars.ContextVar("api_key")
 
 
 def _http() -> httpx.AsyncClient:
-    return httpx.AsyncClient(base_url=settings.artel_url, headers=_HEADERS, timeout=30.0)
+    headers = {
+        "x-agent-id": _agent_id.get(settings.mcp_agent_id),
+        "x-api-key": _api_key.get(settings.mcp_agent_key),
+    }
+    return httpx.AsyncClient(base_url=settings.artel_url, headers=headers, timeout=30.0)
 
 
 def _err(e: httpx.HTTPStatusError) -> str:
