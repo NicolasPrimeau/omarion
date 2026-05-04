@@ -139,6 +139,21 @@ async def rename_self(body: AgentRename, agent_id: str = AgentDep):
     return _row_to_agent(updated)
 
 
+@router.delete("/me", status_code=204)
+async def delete_self(agent_id: str = AgentDep):
+    if agent_id in settings.api_keys().values():
+        raise HTTPException(
+            status_code=422,
+            detail="static agents cannot be deleted via API — remove from AGENT_KEYS in .env",
+        )
+    db = get_db()
+    if not db.execute("SELECT id FROM agents WHERE id=?", (agent_id,)).fetchone():
+        raise HTTPException(status_code=404, detail="agent not found")
+    db.execute("DELETE FROM agents WHERE id=?", (agent_id,))
+    db.commit()
+    _last_seen.pop(agent_id, None)
+
+
 @router.delete("/{agent_id}", status_code=204, dependencies=[Depends(require_registration_key)])
 async def delete_agent(agent_id: str):
     if agent_id in settings.api_keys().values():
