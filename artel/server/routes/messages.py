@@ -53,12 +53,16 @@ async def send_message(body: MessageSend, agent_id: str = Depends(require_agent)
 
 
 @router.get("/inbox", response_model=list[MessageEntry])
-async def inbox(agent_id: str = Depends(require_agent)):
+async def inbox(
+    agent: str | None = Query(default=None),
+    agent_id: str = Depends(require_agent),
+):
     db = get_db()
+    target = agent or agent_id
     rows = db.execute(
         """SELECT * FROM messages WHERE (to_agent=? OR to_agent='broadcast')
            AND read=0 ORDER BY created_at DESC""",
-        (agent_id,),
+        (target,),
     ).fetchall()
     return [_row_to_msg(r) for r in rows]
 
