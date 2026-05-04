@@ -98,7 +98,9 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.6 'JetBrains Mono',mo
 <header>
   <b>artel</b>
   <span class="h-sep">|</span>
-  <span id="h-agent"></span>
+  <select id="h-agent-sel" onchange="onAgentChange()" title="active agent" style="background:#0d0d0d;border-color:#1e1e1e;color:#4af;font-size:13px;padding:4px 8px;font-family:'JetBrains Mono',monospace">
+    <option value="">all agents</option>
+  </select>
   <select id="h-project" onchange="onProjectChange()" title="active project">
     <option value="">all projects</option>
   </select>
@@ -237,6 +239,7 @@ let _agents=[];
 let _projects=[];
 
 function activeProject(){return $('h-project').value||null}
+function activeAgent(){return $('h-agent-sel').value||null}
 
 async function req(method,path,body){
   const r=await fetch(path,{method,headers:hdrs(),body:body?JSON.stringify(body):undefined});
@@ -269,10 +272,23 @@ function onProjectChange(){
   if(name==='tasks')loadTasks();
 }
 
+function onAgentChange(){
+  const agent=activeAgent();
+  // sync memory agent filter
+  $('q-agent').value=agent||'';
+  // sync sessions
+  const sa=$('sess-agent');
+  if(sa)sa.value=agent||'';
+  const panel=document.querySelector('.panel.on');
+  if(!panel)return;
+  const name=panel.id.replace('panel-','');
+  if(name==='memory')loadMem();
+  if(name==='sessions')loadSession();
+}
+
 // ── INIT ─────────────────────────────────────────────────
 
 async function init(){
-  $('h-agent').textContent=window._aid||'';
   await Promise.all([loadProjectsHeader(),loadAgentsGlobal()]);
   loadMem();
   checkInbox();
@@ -300,17 +316,16 @@ async function loadAgentsGlobal(){
     qa.innerHTML='<option value="">all agents</option>';
     const sa=$('sess-agent');
     sa.innerHTML='<option value="">select agent…</option>';
+    const ha=$('h-agent-sel');
+    ha.innerHTML='<option value="">all agents</option>';
     _agents.forEach(a=>{
       const o=document.createElement('option');
       o.value=a.agent_id;o.textContent=a.agent_id;
       dl.appendChild(o.cloneNode(true));
       qa.appendChild(o.cloneNode(true));
-      sa.appendChild(o);
+      sa.appendChild(o.cloneNode(true));
+      ha.appendChild(o);
     });
-    // pre-select self in sessions
-    if(window._aid){
-      sa.value=window._aid;
-    }
   }catch(_){}
 }
 
@@ -318,8 +333,10 @@ async function loadAgentsGlobal(){
 
 async function loadMem(){
   const proj=activeProject();
+  const agent=activeAgent()||$('q-agent').value;
   let url='/memory/delta?since=2000-01-01T00:00:00.000Z';
   if(proj)url+='&project='+encodeURIComponent(proj);
+  if(agent)url+='&agent='+encodeURIComponent(agent);
   try{renderMem((await req('GET',url)).reverse());}
   catch(e){$('mlist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
 }
@@ -585,9 +602,9 @@ function selectProject(name){
 // ── SESSIONS ─────────────────────────────────────────────
 
 function populateSessionAgents(){
-  // already populated in loadAgentsGlobal, just ensure self is selected
   const sa=$('sess-agent');
-  if(!sa.value&&window._aid)sa.value=window._aid;
+  const global=activeAgent();
+  if(global)sa.value=global;
 }
 
 async function loadSession(){
