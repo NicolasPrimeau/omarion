@@ -1,8 +1,25 @@
+import socket
+
+import httpx
 import uvicorn
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from .config import settings
+from .config import _creds_file, settings
 from .server import _agent_id, _api_key, mcp
+
+
+def _auto_register() -> tuple[str, str]:
+    _creds_file.parent.mkdir(parents=True, exist_ok=True)
+    suggested = socket.gethostname().split(".")[0]
+    resp = httpx.post(
+        f"{settings.artel_url}/agents/self-register",
+        json={"agent_id": suggested},
+        timeout=5,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    _creds_file.write_text(f"MCP_AGENT_ID={data['agent_id']}\nMCP_AGENT_KEY={data['api_key']}\n")
+    return data["agent_id"], data["api_key"]
 
 
 class AgentAuthMiddleware:
@@ -27,6 +44,8 @@ class AgentAuthMiddleware:
 
 
 def main():
+    if not settings.mcp_agent_key:
+        settings.mcp_agent_id, settings.mcp_agent_key = _auto_register()
     if settings.mcp_transport == "sse":
         app: ASGIApp = AgentAuthMiddleware(mcp.sse_app())
         uvicorn.run(app, host=settings.mcp_host, port=settings.mcp_port)

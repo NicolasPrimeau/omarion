@@ -109,6 +109,11 @@ class AgentRegister(BaseModel):
     project: str | None = None
 
 
+class AgentSelfRegister(BaseModel):
+    agent_id: str = "agent"
+    project: str | None = None
+
+
 class AgentRename(BaseModel):
     new_id: str
 

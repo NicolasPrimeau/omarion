@@ -1,11 +1,19 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_creds_file = Path.home() / ".config" / "artel" / "credentials"
 
 
 class MCPSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_ignore_empty=True, extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=[".env", str(_creds_file)],
+        env_ignore_empty=True,
+        extra="ignore",
+    )
 
     artel_url: str = "http://localhost:8000"
-    mcp_agent_id: str = "mcp"
+    mcp_agent_id: str = ""
     mcp_agent_key: str = ""
     mcp_transport: str = "stdio"
     mcp_host: str = "0.0.0.0"
