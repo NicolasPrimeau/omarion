@@ -161,7 +161,7 @@ async def session_context(agent_id: str | None = None) -> str:
     Args:
         agent_id: Whose context to load. Omit to load your own.
     """
-    target = agent_id or settings.mcp_agent_id
+    target = agent_id or _agent_id.get(settings.mcp_agent_id)
     async with _http() as c:
         try:
             r = await c.get(f"/sessions/handoff/{target}")
