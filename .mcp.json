@@ -1,17 +1,11 @@
 {
   "mcpServers": {
     "artel": {
-      "type": "stdio",
-      "command": "uv",
-      "args": [
-        "run",
-        "python",
-        "-m",
-        "artel.mcp"
-      ],
-      "env": {
-        "ARTEL_URL": "http://ARTEL_HOST:8000",
-        "MCP_PROJECT": "artel"
+      "type": "http",
+      "url": "http://ARTEL_HOST:8001/mcp",
+      "headers": {
+        "x-agent-id": "${MCP_AGENT_ID}",
+        "x-api-key": "${MCP_AGENT_KEY}"
       }
     }
   }

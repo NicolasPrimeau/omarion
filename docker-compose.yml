@@ -41,7 +41,7 @@ services:
     env_file: .env
     environment:
       - ARTEL_URL=http://artel:8000
-      - MCP_TRANSPORT=sse
+      - MCP_TRANSPORT=streamable-http
       - MCP_PORT=8001
     depends_on:
       artel:
