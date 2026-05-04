@@ -24,7 +24,9 @@ class ArtelClient:
         r.raise_for_status()
         return r.json()
 
-    async def search_memory(self, q: str, limit: int = 10, max_distance: float | None = None) -> list[dict]:
+    async def search_memory(
+        self, q: str, limit: int = 10, max_distance: float | None = None
+    ) -> list[dict]:
         params: dict = {"q": q, "limit": limit}
         if max_distance is not None:
             params["max_distance"] = max_distance
@@ -41,15 +43,18 @@ class ArtelClient:
         confidence: float = 1.0,
         project: str | None = None,
     ) -> dict:
-        r = await self._http.post("/memory", json={
-            "content": content,
-            "type": type,
-            "scope": "shared",
-            "tags": tags or [],
-            "parents": parents or [],
-            "confidence": confidence,
-            "project": project,
-        })
+        r = await self._http.post(
+            "/memory",
+            json={
+                "content": content,
+                "type": type,
+                "scope": "shared",
+                "tags": tags or [],
+                "parents": parents or [],
+                "confidence": confidence,
+                "project": project,
+            },
+        )
         r.raise_for_status()
         return r.json()
 

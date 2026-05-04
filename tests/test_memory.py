@@ -1,10 +1,18 @@
 import pytest
+
 from tests.conftest import AGENT2, HEADERS, HEADERS2, TEST_AGENT
 
 
 @pytest.fixture
 def mem_payload():
-    return {"content": "Paris is the capital of France", "type": "memory", "scope": "shared", "tags": ["geo"], "parents": [], "confidence": 1.0}
+    return {
+        "content": "Paris is the capital of France",
+        "type": "memory",
+        "scope": "shared",
+        "tags": ["geo"],
+        "parents": [],
+        "confidence": 1.0,
+    }
 
 
 async def test_write_and_get(client, mem_payload):
@@ -23,7 +31,9 @@ async def test_patch_content(client, mem_payload):
     r = await client.post("/memory", json=mem_payload, headers=HEADERS)
     eid = r.json()["id"]
 
-    r2 = await client.patch(f"/memory/{eid}", json={"content": "Berlin is the capital of Germany"}, headers=HEADERS)
+    r2 = await client.patch(
+        f"/memory/{eid}", json={"content": "Berlin is the capital of Germany"}, headers=HEADERS
+    )
     assert r2.status_code == 200
     assert r2.json()["content"] == "Berlin is the capital of Germany"
     assert r2.json()["version"] == 2
@@ -65,8 +75,30 @@ async def test_delete_by_other_agent_forbidden(client, mem_payload):
 
 
 async def test_search(client):
-    await client.post("/memory", json={"content": "alpha entry", "type": "memory", "scope": "shared", "tags": [], "parents": [], "confidence": 1.0}, headers=HEADERS)
-    await client.post("/memory", json={"content": "beta entry", "type": "memory", "scope": "shared", "tags": [], "parents": [], "confidence": 1.0}, headers=HEADERS)
+    await client.post(
+        "/memory",
+        json={
+            "content": "alpha entry",
+            "type": "memory",
+            "scope": "shared",
+            "tags": [],
+            "parents": [],
+            "confidence": 1.0,
+        },
+        headers=HEADERS,
+    )
+    await client.post(
+        "/memory",
+        json={
+            "content": "beta entry",
+            "type": "memory",
+            "scope": "shared",
+            "tags": [],
+            "parents": [],
+            "confidence": 1.0,
+        },
+        headers=HEADERS,
+    )
 
     r = await client.get("/memory/search", params={"q": "alpha"}, headers=HEADERS)
     assert r.status_code == 200
@@ -77,13 +109,26 @@ async def test_search(client):
 async def test_delta(client, mem_payload):
     await client.post("/memory", json=mem_payload, headers=HEADERS)
 
-    r = await client.get("/memory/delta", params={"since": "1970-01-01T00:00:00.000Z"}, headers=HEADERS)
+    r = await client.get(
+        "/memory/delta", params={"since": "1970-01-01T00:00:00.000Z"}, headers=HEADERS
+    )
     assert r.status_code == 200
     assert len(r.json()) >= 1
 
 
 async def test_private_scope_hidden_from_others(client):
-    r = await client.post("/memory", json={"content": "secret", "type": "memory", "scope": "private", "tags": [], "parents": [], "confidence": 1.0}, headers=HEADERS)
+    r = await client.post(
+        "/memory",
+        json={
+            "content": "secret",
+            "type": "memory",
+            "scope": "private",
+            "tags": [],
+            "parents": [],
+            "confidence": 1.0,
+        },
+        headers=HEADERS,
+    )
     eid = r.json()["id"]
 
     r2 = await client.get(f"/memory/{eid}", headers=HEADERS2)
@@ -91,8 +136,30 @@ async def test_private_scope_hidden_from_others(client):
 
 
 async def test_list_memory_by_type(client):
-    await client.post("/memory", json={"content": "scratch note", "type": "scratch", "scope": "shared", "tags": [], "parents": [], "confidence": 1.0}, headers=HEADERS)
-    await client.post("/memory", json={"content": "real memory", "type": "memory", "scope": "shared", "tags": [], "parents": [], "confidence": 1.0}, headers=HEADERS)
+    await client.post(
+        "/memory",
+        json={
+            "content": "scratch note",
+            "type": "scratch",
+            "scope": "shared",
+            "tags": [],
+            "parents": [],
+            "confidence": 1.0,
+        },
+        headers=HEADERS,
+    )
+    await client.post(
+        "/memory",
+        json={
+            "content": "real memory",
+            "type": "memory",
+            "scope": "shared",
+            "tags": [],
+            "parents": [],
+            "confidence": 1.0,
+        },
+        headers=HEADERS,
+    )
 
     r = await client.get("/memory", params={"type": "scratch"}, headers=HEADERS)
     assert r.status_code == 200
@@ -117,8 +184,30 @@ async def test_memory_event_written_to_db(client, mem_payload):
 
 
 async def test_list_filter_by_tag(client):
-    await client.post("/memory", json={"content": "tagged entry", "type": "memory", "scope": "shared", "tags": ["deploy"], "parents": [], "confidence": 1.0}, headers=HEADERS)
-    await client.post("/memory", json={"content": "other entry", "type": "memory", "scope": "shared", "tags": ["infra"], "parents": [], "confidence": 1.0}, headers=HEADERS)
+    await client.post(
+        "/memory",
+        json={
+            "content": "tagged entry",
+            "type": "memory",
+            "scope": "shared",
+            "tags": ["deploy"],
+            "parents": [],
+            "confidence": 1.0,
+        },
+        headers=HEADERS,
+    )
+    await client.post(
+        "/memory",
+        json={
+            "content": "other entry",
+            "type": "memory",
+            "scope": "shared",
+            "tags": ["infra"],
+            "parents": [],
+            "confidence": 1.0,
+        },
+        headers=HEADERS,
+    )
 
     r = await client.get("/memory", params={"tag": "deploy"}, headers=HEADERS)
     assert r.status_code == 200
@@ -128,8 +217,30 @@ async def test_list_filter_by_tag(client):
 
 
 async def test_list_filter_by_agent(client):
-    await client.post("/memory", json={"content": "from agent1", "type": "memory", "scope": "shared", "tags": [], "parents": [], "confidence": 1.0}, headers=HEADERS)
-    await client.post("/memory", json={"content": "from agent2", "type": "memory", "scope": "shared", "tags": [], "parents": [], "confidence": 1.0}, headers=HEADERS2)
+    await client.post(
+        "/memory",
+        json={
+            "content": "from agent1",
+            "type": "memory",
+            "scope": "shared",
+            "tags": [],
+            "parents": [],
+            "confidence": 1.0,
+        },
+        headers=HEADERS,
+    )
+    await client.post(
+        "/memory",
+        json={
+            "content": "from agent2",
+            "type": "memory",
+            "scope": "shared",
+            "tags": [],
+            "parents": [],
+            "confidence": 1.0,
+        },
+        headers=HEADERS2,
+    )
 
     r = await client.get("/memory", params={"agent": AGENT2}, headers=HEADERS)
     assert r.status_code == 200
@@ -138,8 +249,30 @@ async def test_list_filter_by_agent(client):
 
 
 async def test_list_filter_by_confidence_min(client):
-    await client.post("/memory", json={"content": "high confidence", "type": "memory", "scope": "shared", "tags": [], "parents": [], "confidence": 0.9}, headers=HEADERS)
-    await client.post("/memory", json={"content": "low confidence", "type": "memory", "scope": "shared", "tags": [], "parents": [], "confidence": 0.3}, headers=HEADERS)
+    await client.post(
+        "/memory",
+        json={
+            "content": "high confidence",
+            "type": "memory",
+            "scope": "shared",
+            "tags": [],
+            "parents": [],
+            "confidence": 0.9,
+        },
+        headers=HEADERS,
+    )
+    await client.post(
+        "/memory",
+        json={
+            "content": "low confidence",
+            "type": "memory",
+            "scope": "shared",
+            "tags": [],
+            "parents": [],
+            "confidence": 0.3,
+        },
+        headers=HEADERS,
+    )
 
     r = await client.get("/memory", params={"confidence_min": 0.8}, headers=HEADERS)
     assert r.status_code == 200
@@ -150,8 +283,30 @@ async def test_list_filter_by_confidence_min(client):
 
 
 async def test_search_filter_by_tag(client):
-    await client.post("/memory", json={"content": "deploy pipeline config", "type": "memory", "scope": "shared", "tags": ["deploy"], "parents": [], "confidence": 1.0}, headers=HEADERS)
-    await client.post("/memory", json={"content": "deploy pipeline config", "type": "memory", "scope": "shared", "tags": ["infra"], "parents": [], "confidence": 1.0}, headers=HEADERS)
+    await client.post(
+        "/memory",
+        json={
+            "content": "deploy pipeline config",
+            "type": "memory",
+            "scope": "shared",
+            "tags": ["deploy"],
+            "parents": [],
+            "confidence": 1.0,
+        },
+        headers=HEADERS,
+    )
+    await client.post(
+        "/memory",
+        json={
+            "content": "deploy pipeline config",
+            "type": "memory",
+            "scope": "shared",
+            "tags": ["infra"],
+            "parents": [],
+            "confidence": 1.0,
+        },
+        headers=HEADERS,
+    )
 
     r = await client.get("/memory/search", params={"q": "deploy", "tag": "deploy"}, headers=HEADERS)
     assert r.status_code == 200
@@ -161,16 +316,45 @@ async def test_search_filter_by_tag(client):
 
 async def test_global_scope_visible_across_projects(client, monkeypatch):
     import artel.server.config as cfg_mod
-    monkeypatch.setattr(cfg_mod.settings, "agent_keys", f"restricted-agent:restrictedkey:proj-a")
+
+    monkeypatch.setattr(cfg_mod.settings, "agent_keys", "restricted-agent:restrictedkey:proj-a")
 
     import artel.store.db as db_mod
-    db_mod.get_db().execute("INSERT OR IGNORE INTO agents (id, api_key) VALUES (?, ?)", ("restricted-agent", "restrictedkey"))
+
+    db_mod.get_db().execute(
+        "INSERT OR IGNORE INTO agents (id, api_key) VALUES (?, ?)",
+        ("restricted-agent", "restrictedkey"),
+    )
     db_mod.get_db().commit()
 
     restricted_headers = {"x-agent-id": "restricted-agent", "x-api-key": "restrictedkey"}
 
-    await client.post("/memory", json={"content": "global knowledge", "type": "memory", "scope": "global", "tags": [], "parents": [], "confidence": 1.0, "project": "proj-b"}, headers=HEADERS)
-    await client.post("/memory", json={"content": "shared in proj-b", "type": "memory", "scope": "shared", "tags": [], "parents": [], "confidence": 1.0, "project": "proj-b"}, headers=HEADERS)
+    await client.post(
+        "/memory",
+        json={
+            "content": "global knowledge",
+            "type": "memory",
+            "scope": "global",
+            "tags": [],
+            "parents": [],
+            "confidence": 1.0,
+            "project": "proj-b",
+        },
+        headers=HEADERS,
+    )
+    await client.post(
+        "/memory",
+        json={
+            "content": "shared in proj-b",
+            "type": "memory",
+            "scope": "shared",
+            "tags": [],
+            "parents": [],
+            "confidence": 1.0,
+            "project": "proj-b",
+        },
+        headers=HEADERS,
+    )
 
     r = await client.get("/memory", headers=restricted_headers)
     assert r.status_code == 200
@@ -180,7 +364,18 @@ async def test_global_scope_visible_across_projects(client, monkeypatch):
 
 
 async def test_private_scope_hidden_from_list(client):
-    await client.post("/memory", json={"content": "my secret", "type": "memory", "scope": "private", "tags": [], "parents": [], "confidence": 1.0}, headers=HEADERS)
+    await client.post(
+        "/memory",
+        json={
+            "content": "my secret",
+            "type": "memory",
+            "scope": "private",
+            "tags": [],
+            "parents": [],
+            "confidence": 1.0,
+        },
+        headers=HEADERS,
+    )
 
     r = await client.get("/memory", headers=HEADERS2)
     assert r.status_code == 200

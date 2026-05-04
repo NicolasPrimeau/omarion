@@ -1,8 +1,12 @@
-from tests.conftest import AGENT2, HEADERS, HEADERS2, TEST_AGENT
+from tests.conftest import HEADERS, HEADERS2, TEST_AGENT
 
 
 async def test_create_task(client):
-    r = await client.post("/tasks", json={"title": "fix the bug", "description": "it crashes", "priority": "high"}, headers=HEADERS)
+    r = await client.post(
+        "/tasks",
+        json={"title": "fix the bug", "description": "it crashes", "priority": "high"},
+        headers=HEADERS,
+    )
     assert r.status_code == 201
     task = r.json()
     assert task["title"] == "fix the bug"
@@ -58,7 +62,9 @@ async def test_fail_task(client):
 
 
 async def test_get_task_by_id(client):
-    r = await client.post("/tasks", json={"title": "get me", "description": "details here"}, headers=HEADERS)
+    r = await client.post(
+        "/tasks", json={"title": "get me", "description": "details here"}, headers=HEADERS
+    )
     tid = r.json()["id"]
 
     r2 = await client.get(f"/tasks/{tid}", headers=HEADERS)

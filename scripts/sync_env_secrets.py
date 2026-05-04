@@ -10,7 +10,7 @@ Usage:
 
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 
@@ -33,19 +33,20 @@ class SecretMetadata(BaseModel):
     @classmethod
     def create(cls, value: str) -> "SecretMetadata":
         return cls(
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
             hash=cls._hash(value),
         )
 
     @staticmethod
     def _hash(value: str) -> str:
         import hashlib
+
         return hashlib.sha256(value.encode()).hexdigest()
 
 
 class SecretsStore(BaseModel):
     secrets: dict[str, SecretMetadata] = Field(default_factory=dict)
-    last_sync: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    last_sync: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class ConflictInfo(BaseModel):
@@ -108,7 +109,7 @@ class EnvSecretsSync:
             return SecretsStore()
 
     def _put_remote_store(self, store: SecretsStore) -> None:
-        store.last_sync = datetime.now(timezone.utc).isoformat()
+        store.last_sync = datetime.now(UTC).isoformat()
         secret_string = store.model_dump_json(indent=2)
         try:
             self.client.update_secret(SecretId=self.meta_secret_name, SecretString=secret_string)
@@ -158,7 +159,9 @@ class EnvSecretsSync:
                     result.updated.append(f"{key} (deleted locally)")
                 else:
                     new_values[key] = remote_val
-                    new_store.secrets[key] = remote_store.secrets.get(key, SecretMetadata.create(remote_val))
+                    new_store.secrets[key] = remote_store.secrets.get(
+                        key, SecretMetadata.create(remote_val)
+                    )
                     result.updated.append(f"{key} (restored locally)")
             elif local_hash == remote_hash:
                 new_values[key] = local_val
@@ -170,7 +173,9 @@ class EnvSecretsSync:
                 result.updated.append(key)
             elif remote_changed and not local_changed:
                 new_values[key] = remote_val
-                new_store.secrets[key] = remote_store.secrets.get(key, SecretMetadata.create(remote_val))
+                new_store.secrets[key] = remote_store.secrets.get(
+                    key, SecretMetadata.create(remote_val)
+                )
                 result.updated.append(key)
             else:
                 conflict = ConflictInfo(key=key, local_value=local_val, remote_value=remote_val)
@@ -184,7 +189,9 @@ class EnvSecretsSync:
                     new_store.secrets[key] = SecretMetadata.create(local_val)
                 elif strategy == ConflictStrategy.REMOTE:
                     new_values[key] = remote_val
-                    new_store.secrets[key] = remote_store.secrets.get(key, SecretMetadata.create(remote_val))
+                    new_store.secrets[key] = remote_store.secrets.get(
+                        key, SecretMetadata.create(remote_val)
+                    )
                 else:
                     resolved = self._manual_resolve(conflict)
                     new_values[key] = resolved
@@ -222,7 +229,9 @@ class EnvSecretsSync:
             return
         env_lines = [f"{key}={value}" for key, value in sorted(remote_values.items())]
         self.env_file.write_text("\n".join(env_lines) + "\n")
-        new_store = SecretsStore(secrets={k: SecretMetadata.create(v) for k, v in remote_values.items()})
+        new_store = SecretsStore(
+            secrets={k: SecretMetadata.create(v) for k, v in remote_values.items()}
+        )
         self._save_local_store(new_store)
         print(f"pulled {len(remote_values)} secrets to {self.env_file}")
 
@@ -247,7 +256,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Sync .env with AWS Secrets Manager")
     parser.add_argument("--secret-name", default="artel/env")
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
-    parser.add_argument("--strategy", type=ConflictStrategy, default=ConflictStrategy.ABORT, choices=list(ConflictStrategy))
+    parser.add_argument(
+        "--strategy",
+        type=ConflictStrategy,
+        default=ConflictStrategy.ABORT,
+        choices=list(ConflictStrategy),
+    )
     parser.add_argument("--pull", action="store_true", help="overwrite local from remote")
     args = parser.parse_args()
 

@@ -45,9 +45,15 @@ async def write_memory(
         """INSERT INTO memory (id, type, agent_id, project, scope, content,
            confidence, parents, tags) VALUES (?,?,?,?,?,?,?,?,?)""",
         (
-            entry_id, body.type, agent_id, body.project, body.scope,
-            body.content, body.confidence,
-            json.dumps(body.parents), json.dumps(body.tags),
+            entry_id,
+            body.type,
+            agent_id,
+            body.project,
+            body.scope,
+            body.content,
+            body.confidence,
+            json.dumps(body.parents),
+            json.dumps(body.tags),
         ),
     )
     db.execute(
@@ -61,13 +67,15 @@ async def write_memory(
     )
     db.commit()
 
-    broadcast(EventEntry(
-        id=event_id,
-        type="memory.written",
-        agent_id=agent_id,
-        payload={"memory_id": entry_id},
-        created_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-    ))
+    broadcast(
+        EventEntry(
+            id=event_id,
+            type="memory.written",
+            agent_id=agent_id,
+            payload={"memory_id": entry_id},
+            created_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+        )
+    )
 
     row = db.execute("SELECT * FROM memory WHERE id=?", (entry_id,)).fetchone()
     return _row_to_entry(row)
@@ -100,7 +108,11 @@ async def search_memory(
     if project:
         results = [r for r in results if r["project"] == project]
     elif allowed is not None:
-        results = [r for r in results if r["scope"] == "global" or r["project"] is None or r["project"] in allowed]
+        results = [
+            r
+            for r in results
+            if r["scope"] == "global" or r["project"] is None or r["project"] in allowed
+        ]
     if max_distance is not None:
         results = [r for r in results if r["distance"] <= max_distance]
     if tag:

@@ -33,7 +33,9 @@ async def _lifespan(app: "ArtelMCP"):
 
 
 class ArtelMCP(FastMCP):
-    async def call_tool(self, name: str, arguments: dict[str, Any] | None) -> list[mcp_types.ContentBlock]:
+    async def call_tool(
+        self, name: str, arguments: dict[str, Any] | None
+    ) -> list[mcp_types.ContentBlock]:
         ctx = self.get_context()
         if ctx._request_context is not None:
             aid = _agent_id.get(settings.mcp_agent_id)
@@ -53,7 +55,9 @@ async def _sse_watcher():
                 headers=headers,
                 timeout=httpx.Timeout(None, connect=10.0),
             ) as client:
-                async with client.stream("GET", "/events/stream", params={"type": "message.received"}) as resp:
+                async with client.stream(
+                    "GET", "/events/stream", params={"type": "message.received"}
+                ) as resp:
                     async for line in resp.aiter_lines():
                         if not line.startswith("data: "):
                             continue
@@ -65,7 +69,9 @@ async def _sse_watcher():
                         to_agent = payload.get("to", "")
                         sender_id = event.get("agent_id", "?")
                         if _notification_queue is not None:
-                            await _notification_queue.put((to_agent, f"inbox: new message from {sender_id}"))
+                            await _notification_queue.put(
+                                (to_agent, f"inbox: new message from {sender_id}")
+                            )
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -78,8 +84,10 @@ async def _notification_sender():
             await asyncio.sleep(0.1)
             continue
         to_agent, msg = await _notification_queue.get()
-        targets = list(_sessions.values()) if to_agent == "broadcast" else (
-            [s] if (s := _sessions.get(to_agent)) else []
+        targets = (
+            list(_sessions.values())
+            if to_agent == "broadcast"
+            else ([s] if (s := _sessions.get(to_agent)) else [])
         )
         for session in targets:
             try:
@@ -145,6 +153,7 @@ def _fmt_memory(e: dict, full_content: bool = False) -> str:
 
 # ── Session ──────────────────────────────────────────────────────────────────
 
+
 @mcp.tool()
 async def session_context(agent_id: str | None = None) -> str:
     """CALL THIS FIRST at the start of every session, before doing any work.
@@ -204,11 +213,14 @@ async def session_handoff(
     """
     async with _http() as c:
         try:
-            r = await c.post("/sessions/handoff", json={
-                "summary": summary,
-                "next_steps": next_steps or [],
-                "in_progress": in_progress or [],
-            })
+            r = await c.post(
+                "/sessions/handoff",
+                json={
+                    "summary": summary,
+                    "next_steps": next_steps or [],
+                    "in_progress": in_progress or [],
+                },
+            )
             r.raise_for_status()
         except httpx.HTTPStatusError as e:
             return _err(e)
@@ -216,6 +228,7 @@ async def session_handoff(
 
 
 # ── Memory ───────────────────────────────────────────────────────────────────
+
 
 @mcp.tool()
 async def memory_write(
@@ -256,15 +269,18 @@ async def memory_write(
     """
     async with _http() as c:
         try:
-            r = await c.post("/memory", json={
-                "content": content,
-                "type": type,
-                "project": project or settings.mcp_project or None,
-                "scope": scope,
-                "tags": tags or [],
-                "confidence": confidence,
-                "parents": [],
-            })
+            r = await c.post(
+                "/memory",
+                json={
+                    "content": content,
+                    "type": type,
+                    "project": project or settings.mcp_project or None,
+                    "scope": scope,
+                    "tags": tags or [],
+                    "confidence": confidence,
+                    "parents": [],
+                },
+            )
             r.raise_for_status()
         except httpx.HTTPStatusError as e:
             return _err(e)
@@ -396,6 +412,7 @@ async def memory_delta(since: str) -> str:
 
 # ── Projects & Agents ────────────────────────────────────────────────────────
 
+
 @mcp.tool()
 async def project_list() -> str:
     """List all projects with their members, memory count, and last activity.
@@ -468,6 +485,7 @@ async def agent_rename(new_id: str) -> str:
 
 # ── Messages ─────────────────────────────────────────────────────────────────
 
+
 @mcp.tool()
 async def message_inbox() -> str:
     """Read and clear your unread messages. Call this at session start.
@@ -519,6 +537,7 @@ async def message_send(to: str, body: str, subject: str = "") -> str:
 
 
 # ── Tasks ────────────────────────────────────────────────────────────────────
+
 
 @mcp.tool()
 async def task_list(status: str | None = None, project: str | None = None) -> str:
@@ -573,12 +592,15 @@ async def task_create(
     """
     async with _http() as c:
         try:
-            r = await c.post("/tasks", json={
-                "title": title,
-                "description": description,
-                "project": project or settings.mcp_project or None,
-                "priority": priority,
-            })
+            r = await c.post(
+                "/tasks",
+                json={
+                    "title": title,
+                    "description": description,
+                    "project": project or settings.mcp_project or None,
+                    "priority": priority,
+                },
+            )
             r.raise_for_status()
         except httpx.HTTPStatusError as e:
             return _err(e)

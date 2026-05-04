@@ -44,8 +44,16 @@ async def create_task(body: TaskCreate, agent_id: str = Depends(require_agent)):
     db.execute(
         """INSERT INTO tasks (id, title, description, created_by, project,
            priority, assigned_to, due_at) VALUES (?,?,?,?,?,?,?,?)""",
-        (task_id, body.title, body.description, agent_id, body.project,
-         body.priority, body.assigned_to, body.due_at),
+        (
+            task_id,
+            body.title,
+            body.description,
+            agent_id,
+            body.project,
+            body.priority,
+            body.assigned_to,
+            body.due_at,
+        ),
     )
     db.execute(
         "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",

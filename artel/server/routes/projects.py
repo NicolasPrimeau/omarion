@@ -16,7 +16,12 @@ async def list_projects(agent_id: str = Depends(require_agent)):
 
     def _ensure(name: str) -> dict:
         if name not in projects:
-            projects[name] = {"agents": set(), "memory_count": 0, "task_count": 0, "last_activity": None}
+            projects[name] = {
+                "agents": set(),
+                "memory_count": 0,
+                "task_count": 0,
+                "last_activity": None,
+            }
         return projects[name]
 
     for row in db.execute(
@@ -39,9 +44,7 @@ async def list_projects(agent_id: str = Depends(require_agent)):
         if not p["last_activity"] or row["last"] > p["last_activity"]:
             p["last_activity"] = row["last"]
 
-    for row in db.execute(
-        "SELECT id, project FROM agents WHERE project IS NOT NULL"
-    ).fetchall():
+    for row in db.execute("SELECT id, project FROM agents WHERE project IS NOT NULL").fetchall():
         p = _ensure(row["project"])
         p["agents"].add(row["id"])
 

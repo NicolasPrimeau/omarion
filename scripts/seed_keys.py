@@ -3,7 +3,6 @@ import secrets
 import sys
 from pathlib import Path
 
-
 _DERIVED = {
     "archivist": "ARCHIVIST_KEY",
     "nimbus": "MCP_AGENT_KEY",
@@ -20,8 +19,9 @@ def main():
 
     if env_path.exists():
         lines = [
-            l for l in env_path.read_text().splitlines()
-            if not any(l.startswith(p) for p in drop_prefixes)
+            line
+            for line in env_path.read_text().splitlines()
+            if not any(line.startswith(p) for p in drop_prefixes)
         ]
         content = "\n".join(lines).rstrip() + "\n"
     else:
