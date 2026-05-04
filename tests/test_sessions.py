@@ -2,11 +2,15 @@ from tests.conftest import HEADERS, TEST_AGENT
 
 
 async def test_handoff_store_and_retrieve(client):
-    r = await client.post("/sessions/handoff", json={
-        "summary": "finished memory work",
-        "next_steps": ["deploy", "monitor"],
-        "in_progress": [],
-    }, headers=HEADERS)
+    r = await client.post(
+        "/sessions/handoff",
+        json={
+            "summary": "finished memory work",
+            "next_steps": ["deploy", "monitor"],
+            "in_progress": [],
+        },
+        headers=HEADERS,
+    )
     assert r.status_code == 201
     assert "id" in r.json()
 
@@ -29,24 +33,30 @@ async def test_handoff_cross_agent_forbidden(client):
     r = await client.post("/sessions/handoff", json={"summary": "mine"}, headers=HEADERS)
     assert r.status_code == 201
 
-    from tests.conftest import AGENT2, HEADERS2
+    from tests.conftest import HEADERS2
+
     r2 = await client.get(f"/sessions/handoff/{TEST_AGENT}", headers=HEADERS2)
     assert r2.status_code == 403
 
 
 async def test_memory_delta_included_in_context(client):
     import asyncio
+
     await client.post("/sessions/handoff", json={"summary": "first session"}, headers=HEADERS)
     await asyncio.sleep(0.005)
 
-    await client.post("/memory", json={
-        "content": "new knowledge since handoff",
-        "type": "memory",
-        "scope": "shared",
-        "tags": [],
-        "parents": [],
-        "confidence": 1.0,
-    }, headers=HEADERS)
+    await client.post(
+        "/memory",
+        json={
+            "content": "new knowledge since handoff",
+            "type": "memory",
+            "scope": "shared",
+            "tags": [],
+            "parents": [],
+            "confidence": 1.0,
+        },
+        headers=HEADERS,
+    )
 
     r = await client.get(f"/sessions/handoff/{TEST_AGENT}", headers=HEADERS)
     data = r.json()

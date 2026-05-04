@@ -37,8 +37,12 @@ def _row_to_agent(row) -> AgentCreated:
     )
 
 
-@router.post("/register", response_model=AgentCreated, status_code=201,
-             dependencies=[Depends(require_registration_key)])
+@router.post(
+    "/register",
+    response_model=AgentCreated,
+    status_code=201,
+    dependencies=[Depends(require_registration_key)],
+)
 async def register_agent(body: AgentRegister, request: Request):
     if not body.agent_id or not body.agent_id.replace("-", "").replace("_", "").isalnum():
         raise HTTPException(status_code=422, detail="agent_id must be alphanumeric with - or _")
@@ -73,16 +77,23 @@ async def self_register(body: AgentSelfRegister):
         raise HTTPException(status_code=422, detail="agent_id must be alphanumeric with - or _")
     db = get_db()
     candidate, i = base, 1
-    while (db.execute("SELECT id FROM agents WHERE id=?", (candidate,)).fetchone()
-           or candidate in settings.api_keys().values()):
+    while (
+        db.execute("SELECT id FROM agents WHERE id=?", (candidate,)).fetchone()
+        or candidate in settings.api_keys().values()
+    ):
         candidate = f"{base}-{i}"
         i += 1
     api_key = secrets.token_urlsafe(32)
-    db.execute("INSERT INTO agents (id, api_key, project) VALUES (?, ?, ?)", (candidate, api_key, body.project))
+    db.execute(
+        "INSERT INTO agents (id, api_key, project) VALUES (?, ?, ?)",
+        (candidate, api_key, body.project),
+    )
     db.commit()
     row = db.execute("SELECT * FROM agents WHERE id=?", (candidate,)).fetchone()
     _last_seen[candidate] = row["created_at"]
-    return AgentCreated(agent_id=row["id"], api_key=api_key, project=row["project"], created_at=row["created_at"])
+    return AgentCreated(
+        agent_id=row["id"], api_key=api_key, project=row["project"], created_at=row["created_at"]
+    )
 
 
 @router.get("/me", response_model=AgentCreated)
@@ -109,7 +120,10 @@ async def rename_self(body: AgentRename, agent_id: str = AgentDep):
         raise HTTPException(status_code=409, detail="agent_id already taken")
     row = db.execute("SELECT * FROM agents WHERE id=?", (agent_id,)).fetchone()
     if not row:
-        raise HTTPException(status_code=422, detail="static agents cannot be renamed via API — update AGENT_KEYS in .env")
+        raise HTTPException(
+            status_code=422,
+            detail="static agents cannot be renamed via API — update AGENT_KEYS in .env",
+        )
     db.execute("UPDATE agents SET id=? WHERE id=?", (new_id, agent_id))
     db.execute("UPDATE memory SET agent_id=? WHERE agent_id=?", (new_id, agent_id))
     db.execute("UPDATE tasks SET created_by=? WHERE created_by=?", (new_id, agent_id))
@@ -125,11 +139,13 @@ async def rename_self(body: AgentRename, agent_id: str = AgentDep):
     return _row_to_agent(updated)
 
 
-@router.delete("/{agent_id}", status_code=204,
-               dependencies=[Depends(require_registration_key)])
+@router.delete("/{agent_id}", status_code=204, dependencies=[Depends(require_registration_key)])
 async def delete_agent(agent_id: str):
     if agent_id in settings.api_keys().values():
-        raise HTTPException(status_code=422, detail="static agents cannot be deleted via API — remove from AGENT_KEYS in .env")
+        raise HTTPException(
+            status_code=422,
+            detail="static agents cannot be deleted via API — remove from AGENT_KEYS in .env",
+        )
     db = get_db()
     row = db.execute("SELECT id FROM agents WHERE id=?", (agent_id,)).fetchone()
     if not row:
@@ -139,8 +155,7 @@ async def delete_agent(agent_id: str):
     _last_seen.pop(agent_id, None)
 
 
-@router.get("", response_model=list[AgentCreated],
-            dependencies=[Depends(require_registration_key)])
+@router.get("", response_model=list[AgentCreated], dependencies=[Depends(require_registration_key)])
 async def list_agents():
     db = get_db()
     rows = db.execute("SELECT * FROM agents ORDER BY created_at").fetchall()

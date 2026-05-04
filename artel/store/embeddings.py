@@ -1,3 +1,4 @@
+import numpy as np
 from fastembed import TextEmbedding
 
 _model: TextEmbedding | None = None

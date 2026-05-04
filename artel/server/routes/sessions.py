@@ -36,7 +36,10 @@ async def post_handoff(body: HandoffPost, agent_id: str = Depends(require_agent)
            (id, agent_id, host, summary, in_progress, next_steps, memory_refs)
            VALUES (?,?,?,?,?,?,?)""",
         (
-            handoff_id, agent_id, body.host, body.summary,
+            handoff_id,
+            agent_id,
+            body.host,
+            body.summary,
             json.dumps(body.in_progress),
             json.dumps(body.next_steps),
             json.dumps(body.memory_refs),

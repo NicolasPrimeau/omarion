@@ -53,6 +53,7 @@ button:hover{background:#0a1a2a}
 </html>
 """
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     get_db(settings.db_path)

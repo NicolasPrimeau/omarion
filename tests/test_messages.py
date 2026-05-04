@@ -2,7 +2,9 @@ from tests.conftest import AGENT2, HEADERS, HEADERS2, TEST_AGENT
 
 
 async def test_send_and_receive(client):
-    r = await client.post("/messages", json={"to": AGENT2, "subject": "hello", "body": "world"}, headers=HEADERS)
+    r = await client.post(
+        "/messages", json={"to": AGENT2, "subject": "hello", "body": "world"}, headers=HEADERS
+    )
     assert r.status_code == 201
     msg = r.json()
     assert msg["from_agent"] == TEST_AGENT
@@ -20,7 +22,9 @@ async def test_inbox_shows_unread(client):
 
 
 async def test_inbox_excludes_other_agent(client):
-    await client.post("/messages", json={"to": TEST_AGENT, "body": "for testagent"}, headers=HEADERS2)
+    await client.post(
+        "/messages", json={"to": TEST_AGENT, "body": "for testagent"}, headers=HEADERS2
+    )
 
     r = await client.get("/messages/inbox", headers=HEADERS2)
     assert r.status_code == 200
@@ -47,7 +51,9 @@ async def test_inbox_empty_after_mark_read(client):
 
 
 async def test_broadcast_message_received_by_all(client):
-    r = await client.post("/messages", json={"to": "broadcast", "body": "attention all"}, headers=HEADERS)
+    r = await client.post(
+        "/messages", json={"to": "broadcast", "body": "attention all"}, headers=HEADERS
+    )
     assert r.status_code == 201
 
     r1 = await client.get("/messages/inbox", headers=HEADERS)

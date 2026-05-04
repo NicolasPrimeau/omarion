@@ -21,12 +21,15 @@ client = httpx.Client(
     headers={"x-agent-id": AGENT_ID, "x-api-key": API_KEY},
 )
 
-entry = client.post("/memory", json={
-    "content": "The BuildData refresh pipeline runs nightly at 02:00 UTC.",
-    "type": "memory",
-    "tags": ["infra", "builddata"],
-    "confidence": 0.9,
-}).json()
+entry = client.post(
+    "/memory",
+    json={
+        "content": "The BuildData refresh pipeline runs nightly at 02:00 UTC.",
+        "type": "memory",
+        "tags": ["infra", "builddata"],
+        "confidence": 0.9,
+    },
+).json()
 print("wrote memory:", entry["id"])
 
 results = client.get("/memory/search", params={"q": "BuildData pipeline", "limit": 5}).json()
@@ -39,16 +42,22 @@ print("participants:")
 for p in participants:
     print(f"  {p['agent_id']} — last seen: {p['last_seen'] or 'never'}")
 
-msg = client.post("/messages", json={
-    "to": "archivist",
-    "subject": "heads up",
-    "body": "I just wrote new pipeline memory, please synthesize when ready.",
-}).json()
+msg = client.post(
+    "/messages",
+    json={
+        "to": "archivist",
+        "subject": "heads up",
+        "body": "I just wrote new pipeline memory, please synthesize when ready.",
+    },
+).json()
 print("sent message:", msg["id"])
 
-task = client.post("/tasks", json={
-    "title": "Audit BuildData pipeline latency",
-    "description": "Check if nightly job completes before 04:00 UTC SLA.",
-    "priority": "high",
-}).json()
+task = client.post(
+    "/tasks",
+    json={
+        "title": "Audit BuildData pipeline latency",
+        "description": "Check if nightly job completes before 04:00 UTC SLA.",
+        "priority": "high",
+    },
+).json()
 print("created task:", task["id"])

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import Depends, Header, HTTPException
 
@@ -25,7 +25,7 @@ async def require_agent(
 ) -> str:
     if not _verify_agent(x_agent_id, x_api_key):
         raise HTTPException(status_code=401, detail="invalid credentials")
-    _last_seen[x_agent_id] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    _last_seen[x_agent_id] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z")
     return x_agent_id
 
 

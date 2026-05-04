@@ -1,11 +1,10 @@
 import asyncio
 
 import httpx
-import pytest
 import pytest_asyncio
 from httpx import ASGITransport
 
-from tests.conftest import AGENT2, HEADERS, HEADERS2, KEY2, TEST_AGENT, TEST_KEY
+from tests.conftest import AGENT2, KEY2, TEST_AGENT, TEST_KEY
 
 
 @pytest_asyncio.fixture

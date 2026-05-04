@@ -14,6 +14,7 @@ HEADERS2 = {"x-agent-id": AGENT2, "x-api-key": KEY2}
 @pytest.fixture(autouse=True)
 def mock_embed(monkeypatch):
     import artel.store.embeddings as emb
+
     monkeypatch.setattr(emb, "embed", lambda text: [0.0] * 384)
 
 
@@ -36,6 +37,7 @@ async def client(tmp_path, monkeypatch):
     conn.commit()
 
     from artel.server.app import app
+
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c
 

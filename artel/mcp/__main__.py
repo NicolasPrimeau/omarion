@@ -29,9 +29,15 @@ class AgentAuthMiddleware:
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] in ("http", "websocket"):
             headers = dict(scope.get("headers", []))
-            qs = dict(p.split(b"=", 1) for p in scope.get("query_string", b"").split(b"&") if b"=" in p)
-            aid = (headers.get(b"x-agent-id") or qs.get(b"agent_id") or b"").decode() or settings.mcp_agent_id
-            akey = (headers.get(b"x-api-key") or qs.get(b"api_key") or b"").decode() or settings.mcp_agent_key
+            qs = dict(
+                p.split(b"=", 1) for p in scope.get("query_string", b"").split(b"&") if b"=" in p
+            )
+            aid = (
+                headers.get(b"x-agent-id") or qs.get(b"agent_id") or b""
+            ).decode() or settings.mcp_agent_id
+            akey = (
+                headers.get(b"x-api-key") or qs.get(b"api_key") or b""
+            ).decode() or settings.mcp_agent_key
             t1 = _agent_id.set(aid)
             t2 = _api_key.set(akey)
             try:
@@ -57,7 +63,9 @@ def _credentials_valid() -> bool:
 
 def main():
     if settings.mcp_transport in ("sse", "streamable-http"):
-        app_fn = mcp.streamable_http_app if settings.mcp_transport == "streamable-http" else mcp.sse_app
+        app_fn = (
+            mcp.streamable_http_app if settings.mcp_transport == "streamable-http" else mcp.sse_app
+        )
         app: ASGIApp = AgentAuthMiddleware(app_fn())
         uvicorn.run(app, host=settings.mcp_host, port=settings.mcp_port)
     else:

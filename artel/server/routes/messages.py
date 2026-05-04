@@ -35,18 +35,19 @@ async def send_message(body: MessageSend, agent_id: str = Depends(require_agent)
     event_id = new_id()
     db.execute(
         "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-        (event_id, "message.received", agent_id,
-         json.dumps({"message_id": msg_id, "to": body.to})),
+        (event_id, "message.received", agent_id, json.dumps({"message_id": msg_id, "to": body.to})),
     )
     db.commit()
 
-    broadcast(EventEntry(
-        id=event_id,
-        type="message.received",
-        agent_id=agent_id,
-        payload={"message_id": msg_id, "to": body.to},
-        created_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
-    ))
+    broadcast(
+        EventEntry(
+            id=event_id,
+            type="message.received",
+            agent_id=agent_id,
+            payload={"message_id": msg_id, "to": body.to},
+            created_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+        )
+    )
 
     row = db.execute("SELECT * FROM messages WHERE id=?", (msg_id,)).fetchone()
     return _row_to_msg(row)
