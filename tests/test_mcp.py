@@ -230,3 +230,19 @@ async def test_session_context_includes_memory_delta(mcp):
 
     context = await mcp.session_context()
     assert "something new after handoff" in context
+
+
+async def test_agent_delete_self(mcp):
+    import artel.store.db as db_mod
+
+    result = await mcp.agent_delete()
+    assert "deregistered" in result
+    assert "credentials" in result
+    row = db_mod.get_db().execute("SELECT id FROM agents WHERE id=?", (TEST_AGENT,)).fetchone()
+    assert row is None
+
+
+async def test_agent_delete_removes_from_participants(mcp):
+    await mcp.agent_delete()
+    result = await mcp.agent_list()
+    assert TEST_AGENT not in result

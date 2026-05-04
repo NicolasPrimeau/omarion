@@ -464,6 +464,27 @@ async def agent_list() -> str:
 
 
 @mcp.tool()
+async def agent_delete() -> str:
+    """Deregister yourself from Artel.
+
+    Removes your agent record from the server. Your memory, tasks, and messages
+    are retained for the fleet. After calling this, clean up locally:
+      rm ~/.config/artel/credentials
+      rm .mcp.json
+    """
+    async with _http() as c:
+        try:
+            r = await c.delete("/agents/me")
+            r.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            return _err(e)
+    return (
+        f"agent {_agent_id.get(settings.mcp_agent_id)!r} deregistered. "
+        "Clean up locally: rm ~/.config/artel/credentials && rm .mcp.json"
+    )
+
+
+@mcp.tool()
 async def agent_rename(new_id: str) -> str:
     """Rename yourself. Cascades the new ID across all memory, tasks, messages, and sessions.
 
