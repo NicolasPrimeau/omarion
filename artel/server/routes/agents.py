@@ -11,13 +11,10 @@ router = APIRouter(prefix="/agents", tags=["agents"])
 
 
 def _mcp_config(mcp_url: str, agent_id: str, api_key: str, project: str | None = None) -> dict:
-    env = {"ARTEL_URL": mcp_url.replace("/sse", "").replace(":8001", ":8000")}
-    if project:
-        env["MCP_PROJECT"] = project
     return {
         "mcpServers": {
             "artel": {
-                "type": "sse",
+                "type": "http",
                 "url": mcp_url,
                 "headers": {
                     "x-agent-id": agent_id,
@@ -60,7 +57,7 @@ async def register_agent(body: AgentRegister, request: Request):
     row = db.execute("SELECT * FROM agents WHERE id=?", (body.agent_id,)).fetchone()
     _last_seen[body.agent_id] = row["created_at"]
     base_url = settings.public_url or str(request.base_url).rstrip("/")
-    mcp_url = (settings.mcp_url or base_url.replace(":8000", ":8001")).rstrip("/") + "/sse"
+    mcp_url = (settings.mcp_url or base_url.replace(":8000", ":8001")).rstrip("/") + "/mcp"
     return AgentCreated(
         agent_id=row["id"],
         api_key=api_key,
