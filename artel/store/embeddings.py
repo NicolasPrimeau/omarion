@@ -1,19 +1,17 @@
-import numpy as np
-from sentence_transformers import SentenceTransformer
+from fastembed import TextEmbedding
 
-_model: SentenceTransformer | None = None
+_model: TextEmbedding | None = None
 
 
-def get_model() -> SentenceTransformer:
+def get_model() -> TextEmbedding:
     global _model
     if _model is None:
-        _model = SentenceTransformer("all-MiniLM-L6-v2")
+        _model = TextEmbedding("sentence-transformers/all-MiniLM-L6-v2")
     return _model
 
 
 def embed(text: str) -> list[float]:
-    vec = get_model().encode(text, normalize_embeddings=True)
-    return vec.tolist()
+    return next(get_model().embed([text])).tolist()
 
 
 def cosine_similarity(a: list[float], b: list[float]) -> float:
