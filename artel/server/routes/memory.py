@@ -160,6 +160,8 @@ async def list_memory(
 @router.get("/delta", response_model=list[MemoryEntry])
 async def memory_delta(
     since: str = Query(...),
+    agent: str | None = Query(default=None),
+    project: str | None = Query(default=None),
     agent_id: str = Depends(require_agent),
 ):
     db = get_db()
@@ -168,7 +170,13 @@ async def memory_delta(
              WHERE updated_at > ? AND deleted_at IS NULL
                AND (scope != 'private' OR agent_id = ?)"""
     params: list = [since, agent_id]
-    if pf_clause:
+    if agent:
+        sql += " AND agent_id = ?"
+        params.append(agent)
+    if project:
+        sql += " AND project = ?"
+        params.append(project)
+    elif pf_clause:
         sql += f" AND {pf_clause}"
         params.extend(pf_params)
     sql += " ORDER BY updated_at"
