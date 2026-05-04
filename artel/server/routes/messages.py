@@ -2,7 +2,7 @@ import json
 import sqlite3
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...store.db import get_db
 from ..auth import require_agent
