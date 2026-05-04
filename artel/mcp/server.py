@@ -14,15 +14,13 @@ from .config import settings
 _agent_id: contextvars.ContextVar[str] = contextvars.ContextVar("agent_id")
 _api_key: contextvars.ContextVar[str] = contextvars.ContextVar("api_key")
 
-_active_session: ServerSession | None = None
-_session_ready: asyncio.Event | None = None
-_notification_queue: asyncio.Queue[str] | None = None
+_sessions: dict[str, ServerSession] = {}
+_notification_queue: asyncio.Queue[tuple[str, str]] | None = None
 
 
 @asynccontextmanager
 async def _lifespan(app: "ArtelMCP"):
-    global _session_ready, _notification_queue
-    _session_ready = asyncio.Event()
+    global _notification_queue
     _notification_queue = asyncio.Queue()
     watcher = asyncio.create_task(_sse_watcher())
     sender = asyncio.create_task(_notification_sender())
@@ -36,13 +34,10 @@ async def _lifespan(app: "ArtelMCP"):
 
 class ArtelMCP(FastMCP):
     async def call_tool(self, name: str, arguments: dict[str, Any] | None) -> list[mcp_types.ContentBlock]:
-        global _active_session
-        if _active_session is None:
-            ctx = self.get_context()
-            if ctx._request_context is not None:
-                _active_session = ctx._request_context.session
-                if _session_ready is not None:
-                    _session_ready.set()
+        ctx = self.get_context()
+        if ctx._request_context is not None:
+            aid = _agent_id.get(settings.mcp_agent_id)
+            _sessions[aid] = ctx._request_context.session
         return await super().call_tool(name, arguments)
 
 
@@ -68,11 +63,9 @@ async def _sse_watcher():
                             continue
                         payload = event.get("payload", {})
                         to_agent = payload.get("to", "")
-                        if to_agent not in (settings.mcp_agent_id, "broadcast"):
-                            continue
                         sender_id = event.get("agent_id", "?")
                         if _notification_queue is not None:
-                            await _notification_queue.put(f"inbox: new message from {sender_id}")
+                            await _notification_queue.put((to_agent, f"inbox: new message from {sender_id}"))
         except asyncio.CancelledError:
             raise
         except Exception:
@@ -81,16 +74,18 @@ async def _sse_watcher():
 
 async def _notification_sender():
     while True:
-        if _notification_queue is None or _session_ready is None:
+        if _notification_queue is None:
             await asyncio.sleep(0.1)
             continue
-        msg = await _notification_queue.get()
-        await _session_ready.wait()
-        if _active_session is not None:
+        to_agent, msg = await _notification_queue.get()
+        targets = list(_sessions.values()) if to_agent == "broadcast" else (
+            [s] if (s := _sessions.get(to_agent)) else []
+        )
+        for session in targets:
             try:
-                await _active_session.send_log_message("warning", msg)
+                await session.send_log_message("warning", msg)
             except Exception:
-                pass
+                _sessions.pop(to_agent, None)
 
 
 mcp = ArtelMCP(
