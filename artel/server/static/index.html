@@ -9,29 +9,31 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font:15px/1.6 Inter,system-ui,sans-serif;background:#0d0d0d;color:#c8c8c8}
-header{display:flex;gap:8px;padding:10px 18px;background:#111;border-bottom:1px solid #1e1e1e;align-items:center}
-header b{color:#4af;font-size:17px;letter-spacing:.5px;flex:1}
-header span{color:#444;font-size:13px;font-family:'JetBrains Mono',monospace}
-a.out{color:#555;font-size:13px;text-decoration:none}
+header{display:flex;gap:10px;padding:9px 18px;background:#111;border-bottom:1px solid #1e1e1e;align-items:center}
+header b{color:#4af;font-size:17px;letter-spacing:.5px}
+.h-sep{color:#222;padding:0 2px}
+#h-agent{color:#888;font-size:13px;font-family:'JetBrains Mono',monospace}
+.spacer{flex:1}
+a.out{color:#444;font-size:13px;text-decoration:none}
 a.out:hover{color:#c8c8c8}
 input,select,textarea,button{background:#161616;color:#c8c8c8;border:1px solid #2a2a2a;padding:6px 11px;font:15px Inter,sans-serif;border-radius:3px}
-input:focus,textarea:focus{outline:none;border-color:#4af}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#4af}
 button{cursor:pointer}
 button:hover{background:#1e1e1e}
 button.p{color:#4af;border-color:#4af}
 button.p:hover{background:#0a1520}
-button.danger{color:#f55;border-color:#f55}
-button.danger:hover{background:#180000}
-nav{display:flex;background:#111;border-bottom:1px solid #1e1e1e}
-nav button{border:none;border-bottom:2px solid transparent;padding:10px 18px;border-radius:0;background:none;font:500 14px Inter,sans-serif;letter-spacing:.3px;color:#555;position:relative}
+button.danger{color:#f55;border-color:#333}
+button.danger:hover{background:#180000;border-color:#f55}
+select#h-project{background:#0d0d0d;border-color:#1e1e1e;color:#c8c8c8;font-size:13px;padding:4px 8px}
+nav{display:flex;background:#111;border-bottom:1px solid #1e1e1e;overflow-x:auto}
+nav button{border:none;border-bottom:2px solid transparent;padding:9px 16px;border-radius:0;background:none;font:500 13px Inter,sans-serif;letter-spacing:.3px;color:#555;white-space:nowrap;position:relative}
 nav button.on{border-bottom-color:#4af;color:#4af}
 nav button:hover{color:#c8c8c8;background:none}
-.badge{position:absolute;top:7px;right:8px;background:#4af;color:#000;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;line-height:16px}
-.panel{display:none;padding:18px 20px;max-width:980px}
+.badge{position:absolute;top:6px;right:7px;background:#4af;color:#000;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;line-height:15px}
+.panel{display:none;padding:18px 20px;max-width:1040px}
 .panel.on{display:block}
 .toolbar{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
 .toolbar input,.toolbar select{min-width:0}
-.spacer{flex:1}
 .write-box{background:#111;border:1px solid #1e1e1e;border-radius:4px;padding:14px;margin-bottom:16px}
 .write-box textarea{width:100%;margin-bottom:8px;resize:vertical}
 .write-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -39,9 +41,9 @@ nav button:hover{color:#c8c8c8;background:none}
 .card{padding:12px 14px;border:1px solid #1e1e1e;margin-bottom:7px;background:#111;border-radius:3px}
 .card:hover{border-color:#2a2a2a}
 .meta{color:#444;font-size:12px;margin-bottom:6px;font-family:'JetBrains Mono',monospace;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.meta-id{color:#333}
+.meta-id{color:#2a2a2a}
 .meta-agent{color:#4af;font-weight:500}
-.meta-time{color:#333}
+.meta-time{color:#2a2a2a}
 .tag{background:#0e1e0e;color:#3a7;padding:1px 6px;border-radius:2px;font-size:11px;font-family:'JetBrains Mono',monospace}
 .pill{padding:1px 6px;border-radius:2px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:500}
 .pill.memory{color:#6af;background:#001828}
@@ -49,9 +51,10 @@ nav button:hover{color:#c8c8c8;background:none}
 .pill.scratch{color:#888;background:#141414}
 .pill.reference{color:#fa4;background:#1a0e00}
 .pill.private{color:#f55;background:#180000}
+.pill.project{color:#4af;background:#001420;border:1px solid #1a2a3a}
 .conf{color:#3a3a3a;font-size:11px}
 .conf span{color:#3a7}
-pre{white-space:pre-wrap;word-break:break-word;font:14px/1.6 'JetBrains Mono',monospace;color:#c8c8c8}
+pre{white-space:pre-wrap;word-break:break-word;font:13px/1.6 'JetBrains Mono',monospace;color:#c8c8c8}
 .card-actions{display:flex;gap:6px;margin-top:8px}
 .s{padding:1px 6px;border-radius:2px;font-size:12px;font-family:'JetBrains Mono',monospace;font-weight:500}
 .s.open{color:#fa4;background:#1a1200}
@@ -60,31 +63,46 @@ pre{white-space:pre-wrap;word-break:break-word;font:14px/1.6 'JetBrains Mono',mo
 .s.failed{color:#f55;background:#180000}
 .pri.high{color:#f75;font-size:11px;font-family:'JetBrains Mono',monospace}
 .pri.low{color:#555;font-size:11px;font-family:'JetBrains Mono',monospace}
-#ev-log{height:380px;overflow-y:auto;font:13px/1.6 'JetBrains Mono',monospace;border:1px solid #1e1e1e;border-radius:3px;padding:8px}
-.el{padding:2px 0;border-bottom:1px solid #161616;display:flex;gap:8px}
-.el-time{color:#333;min-width:65px}
-.el-type{color:#4af;min-width:160px}
-.el-agent{color:#888;min-width:100px}
-.el-payload{color:#555;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#ev-log{height:360px;overflow-y:auto;font:13px/1.6 'JetBrains Mono',monospace;border:1px solid #1e1e1e;border-radius:3px;padding:8px}
+.el{padding:2px 0;border-bottom:1px solid #141414;display:flex;gap:8px}
+.el-time{color:#2a2a2a;min-width:65px}
+.el-type{color:#4af;min-width:180px}
+.el-agent{color:#666;min-width:100px}
+.el-payload{color:#444;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sse-status{font-size:12px;font-family:'JetBrains Mono',monospace;padding:3px 8px;border-radius:3px}
 .sse-status.on{color:#4a8;background:#001408}
-.sse-status.off{color:#555;background:#141414}
+.sse-status.off{color:#444;background:#141414}
 .empty{color:#333;padding:20px 0;font-size:14px}
-.participant-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-top:4px}
-.pc{padding:10px 14px;border:1px solid #1e1e1e;border-radius:3px;background:#111}
-.pc-name{color:#c8c8c8;font-weight:500;margin-bottom:2px}
-.pc-seen{color:#444;font-size:12px;font-family:'JetBrains Mono',monospace}
-.pc.active .pc-name{color:#4af}
-.pc.active{border-color:#1a2a3a}
-.flash{color:#4a8;font-size:13px;margin-left:8px;opacity:0;transition:opacity .3s}
+.agent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;margin-top:4px}
+.ac{padding:12px 14px;border:1px solid #1e1e1e;border-radius:3px;background:#111}
+.ac-name{color:#c8c8c8;font-weight:500;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.ac-name .dot{width:7px;height:7px;border-radius:50%;background:#2a2a2a;flex-shrink:0}
+.ac.active .ac-name .dot{background:#4a8}
+.ac.active .ac-name{color:#e8e8e8}
+.ac-meta{color:#444;font-size:12px;font-family:'JetBrains Mono',monospace;display:flex;flex-direction:column;gap:2px}
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-top:4px}
+.pj{padding:14px 16px;border:1px solid #1e1e1e;border-radius:3px;background:#111;cursor:pointer}
+.pj:hover{border-color:#2a2a2a}
+.pj.mine{border-color:#1a2a3a}
+.pj-name{color:#4af;font-weight:500;font-size:15px;margin-bottom:6px}
+.pj-agents{color:#888;font-size:12px;font-family:'JetBrains Mono',monospace;margin-bottom:4px}
+.pj-stats{color:#333;font-size:12px;font-family:'JetBrains Mono',monospace;display:flex;gap:12px}
+.pj-stat-val{color:#555}
+.flash{color:#4a8;font-size:13px;margin-left:6px;opacity:0;transition:opacity .3s}
 .flash.show{opacity:1}
+.section-label{color:#333;font-size:11px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
 </style>
 </head>
 <body>
 <script>/*CREDS*/</script>
 <header>
   <b>artel</b>
-  <span id="agent-label"></span>
+  <span class="h-sep">|</span>
+  <span id="h-agent"></span>
+  <select id="h-project" onchange="onProjectChange()" title="active project">
+    <option value="">all projects</option>
+  </select>
+  <div class="spacer"></div>
   <a class="out" href="/ui/logout">logout</a>
 </header>
 <nav>
@@ -92,25 +110,29 @@ pre{white-space:pre-wrap;word-break:break-word;font:14px/1.6 'JetBrains Mono',mo
   <button onclick="tab('tasks',this)">tasks</button>
   <button onclick="tab('messages',this)" id="btn-messages">messages</button>
   <button onclick="tab('events',this)">events</button>
-  <button onclick="tab('participants',this)">participants</button>
+  <button onclick="tab('agents',this)">agents</button>
+  <button onclick="tab('projects',this)">projects</button>
   <button onclick="tab('sessions',this)">sessions</button>
 </nav>
 
 <!-- MEMORY -->
 <div id="panel-memory" class="panel on">
   <div class="toolbar">
-    <input id="q" placeholder="search memory…" style="flex:1;min-width:160px" onkeydown="if(event.key==='Enter')search()">
-    <input id="qproject" placeholder="project" style="width:110px">
+    <input id="q" placeholder="search…" style="flex:1;min-width:140px" onkeydown="if(event.key==='Enter')search()">
+    <select id="q-agent" style="width:130px"><option value="">all agents</option></select>
+    <select id="q-type" style="width:110px" onchange="search()">
+      <option value="">all types</option>
+      <option>memory</option><option>doc</option><option>scratch</option><option>reference</option>
+    </select>
     <button onclick="search()">search</button>
     <button onclick="loadMem()">all</button>
   </div>
   <div class="write-box">
     <textarea id="mc" placeholder="write memory…" rows="3"></textarea>
     <div class="write-row">
-      <input id="mproject" placeholder="project" style="width:110px">
       <input id="mtags" placeholder="tags (comma-separated)" style="flex:1">
       <select id="mtype"><option>memory</option><option>scratch</option><option>doc</option><option>reference</option></select>
-      <select id="mscope"><option value="shared">shared</option><option value="private">private</option></select>
+      <select id="mscope"><option value="shared">shared</option><option value="private">private</option><option value="global">global</option></select>
       <button class="p" onclick="writeMem()">write</button>
       <span class="flash" id="mem-flash">saved</span>
     </div>
@@ -124,15 +146,12 @@ pre{white-space:pre-wrap;word-break:break-word;font:14px/1.6 'JetBrains Mono',mo
     <select id="tf" onchange="loadTasks()">
       <option value="">all</option><option>open</option><option>claimed</option><option>completed</option><option>failed</option>
     </select>
-    <input id="tproject-filter" placeholder="project" style="width:110px" onkeydown="if(event.key==='Enter')loadTasks()">
     <button onclick="loadTasks()">refresh</button>
-    <div class="spacer"></div>
   </div>
   <div class="write-box">
     <div class="write-row">
       <input id="ttitle" placeholder="title" style="flex:2">
-      <input id="tdesc" placeholder="description" style="flex:3">
-      <input id="tproject" placeholder="project" style="width:100px">
+      <input id="tdesc" placeholder="description (optional)" style="flex:3">
       <select id="tpri"><option>normal</option><option>low</option><option>high</option></select>
       <button class="p" onclick="createTask()">create</button>
     </div>
@@ -144,16 +163,18 @@ pre{white-space:pre-wrap;word-break:break-word;font:14px/1.6 'JetBrains Mono',mo
 <div id="panel-messages" class="panel">
   <div class="write-box">
     <div class="write-row" style="margin-bottom:8px">
-      <input id="mto" placeholder="to (agent_id or broadcast)" style="flex:1">
-      <input id="msub" placeholder="subject" style="flex:1">
+      <input id="mto" placeholder="to…" style="flex:1" list="agent-list-dl">
+      <datalist id="agent-list-dl"></datalist>
+      <input id="msub" placeholder="subject (optional)" style="flex:1">
     </div>
     <textarea id="mbody" placeholder="message…" rows="3"></textarea>
     <div class="write-row" style="margin-top:8px">
       <div class="spacer"></div>
       <button class="p" onclick="sendMsg()">send</button>
+      <span class="flash" id="msg-flash">sent</span>
     </div>
   </div>
-  <div style="color:#444;font-size:12px;font-family:'JetBrains Mono',monospace;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">inbox</div>
+  <div class="section-label">inbox</div>
   <div id="msglist"></div>
 </div>
 
@@ -168,23 +189,35 @@ pre{white-space:pre-wrap;word-break:break-word;font:14px/1.6 'JetBrains Mono',mo
   <div id="ev-log"><div class="empty">connect to stream live events</div></div>
 </div>
 
-<!-- PARTICIPANTS -->
-<div id="panel-participants" class="panel">
+<!-- AGENTS -->
+<div id="panel-agents" class="panel">
   <div class="toolbar">
-    <button onclick="loadParticipants()">refresh</button>
+    <button onclick="loadAgents()">refresh</button>
   </div>
-  <div id="plist"></div>
+  <div id="alist"></div>
+</div>
+
+<!-- PROJECTS -->
+<div id="panel-projects" class="panel">
+  <div class="toolbar">
+    <button onclick="loadProjects()">refresh</button>
+  </div>
+  <div id="pjlist"></div>
 </div>
 
 <!-- SESSIONS -->
 <div id="panel-sessions" class="panel">
   <div class="toolbar">
-    <button class="p" onclick="loadSession()">load context</button>
+    <select id="sess-agent" onchange="loadSession()" style="width:180px">
+      <option value="">select agent…</option>
+    </select>
+    <button class="p" onclick="loadSession()">load</button>
+    <div class="spacer"></div>
     <span class="flash" id="session-flash">saved</span>
   </div>
   <div id="session-context" style="margin-bottom:16px"></div>
-  <div class="write-box">
-    <div style="color:#444;font-size:12px;font-family:'JetBrains Mono',monospace;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">save handoff</div>
+  <div class="write-box" id="handoff-box" style="display:none">
+    <div class="section-label" style="margin-bottom:10px">save handoff</div>
     <textarea id="hs-summary" placeholder="what did you accomplish this session?" rows="3" style="width:100%;margin-bottom:8px"></textarea>
     <textarea id="hs-next" placeholder="next steps (one per line)" rows="2" style="width:100%;margin-bottom:8px"></textarea>
     <textarea id="hs-inprogress" placeholder="task IDs in progress (one per line)" rows="2" style="width:100%;margin-bottom:8px"></textarea>
@@ -200,10 +233,10 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
 const hdrs=()=>({'content-type':'application/json','x-agent-id':window._aid,'x-api-key':window._akey});
 let _sseAbort=null;
+let _agents=[];
+let _projects=[];
 
-document.addEventListener('DOMContentLoaded',()=>{
-  $('agent-label').textContent=window._aid||'';
-});
+function activeProject(){return $('h-project').value||null}
 
 async function req(method,path,body){
   const r=await fetch(path,{method,headers:hdrs(),body:body?JSON.stringify(body):undefined});
@@ -212,54 +245,121 @@ async function req(method,path,body){
 }
 
 function flash(id){
-  const el=$(id); el.classList.add('show');
+  const el=$(id);el.classList.add('show');
   setTimeout(()=>el.classList.remove('show'),2000);
 }
 
 function tab(name,btn){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('on'));
-  $('panel-'+name).classList.add('on'); btn.classList.add('on');
+  $('panel-'+name).classList.add('on');btn.classList.add('on');
   if(name==='memory')loadMem();
   if(name==='tasks')loadTasks();
   if(name==='messages')loadInbox();
-  if(name==='participants')loadParticipants();
-  if(name==='sessions')loadSession();
+  if(name==='agents')loadAgents();
+  if(name==='projects')loadProjects();
+  if(name==='sessions'){populateSessionAgents();loadSession();}
+}
+
+function onProjectChange(){
+  const panel=document.querySelector('.panel.on');
+  if(!panel)return;
+  const name=panel.id.replace('panel-','');
+  if(name==='memory')loadMem();
+  if(name==='tasks')loadTasks();
+}
+
+// ── INIT ─────────────────────────────────────────────────
+
+async function init(){
+  $('h-agent').textContent=window._aid||'';
+  await Promise.all([loadProjectsHeader(),loadAgentsGlobal()]);
+  loadMem();
+  checkInbox();
+  setInterval(checkInbox,30000);
+}
+
+async function loadProjectsHeader(){
+  try{
+    _projects=await req('GET','/projects');
+    const sel=$('h-project');
+    _projects.forEach(p=>{
+      const o=document.createElement('option');
+      o.value=p.name;o.textContent=p.name;
+      sel.appendChild(o);
+    });
+  }catch(_){}
+}
+
+async function loadAgentsGlobal(){
+  try{
+    _agents=await req('GET','/participants');
+    const dl=$('agent-list-dl');
+    dl.innerHTML='';
+    const qa=$('q-agent');
+    qa.innerHTML='<option value="">all agents</option>';
+    const sa=$('sess-agent');
+    sa.innerHTML='<option value="">select agent…</option>';
+    _agents.forEach(a=>{
+      const o=document.createElement('option');
+      o.value=a.agent_id;o.textContent=a.agent_id;
+      dl.appendChild(o.cloneNode(true));
+      qa.appendChild(o.cloneNode(true));
+      sa.appendChild(o);
+    });
+    // pre-select self in sessions
+    if(window._aid){
+      sa.value=window._aid;
+    }
+  }catch(_){}
 }
 
 // ── MEMORY ──────────────────────────────────────────────
 
 async function loadMem(){
-  try{ renderMem((await req('GET','/memory/delta?since=2000-01-01T00:00:00.000Z')).reverse()); }
-  catch(e){ $('mlist').innerHTML=`<div class="empty">${esc(e.message)}</div>`; }
+  const proj=activeProject();
+  let url='/memory/delta?since=2000-01-01T00:00:00.000Z';
+  if(proj)url+='&project='+encodeURIComponent(proj);
+  try{renderMem((await req('GET',url)).reverse());}
+  catch(e){$('mlist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
 }
 
 async function search(){
   const q=$('q').value.trim();
-  if(!q)return loadMem();
-  const proj=$('qproject').value.trim();
-  let url='/memory/search?q='+encodeURIComponent(q)+'&limit=20';
-  if(proj)url+='&project='+encodeURIComponent(proj);
-  try{ renderMem(await req('GET',url)); }
-  catch(e){ $('mlist').innerHTML=`<div class="empty">${esc(e.message)}</div>`; }
+  const agent=$('q-agent').value;
+  const type=$('q-type').value;
+  const proj=activeProject();
+  if(!q&&!agent&&!type)return loadMem();
+  if(q){
+    let url='/memory/search?q='+encodeURIComponent(q)+'&limit=30';
+    if(proj)url+='&project='+encodeURIComponent(proj);
+    if(agent)url+='&agent='+encodeURIComponent(agent);
+    try{renderMem(await req('GET',url));}
+    catch(e){$('mlist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
+  }else{
+    let url='/memory?limit=100';
+    if(proj)url+='&project='+encodeURIComponent(proj);
+    if(agent)url+='&agent='+encodeURIComponent(agent);
+    if(type)url+='&type='+encodeURIComponent(type);
+    try{renderMem(await req('GET',url));}
+    catch(e){$('mlist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
+  }
 }
 
 function renderMem(es){
-  if(!es.length){ $('mlist').innerHTML='<div class="empty">no entries</div>'; return; }
+  if(!es.length){$('mlist').innerHTML='<div class="empty">no entries</div>';return;}
   $('mlist').innerHTML=es.map(e=>{
     const conf=e.confidence<1?`<span class="conf">conf <span>${(e.confidence*100).toFixed(0)}%</span></span>`:'';
-    const scope=e.scope==='private'?`<span class="pill private">private</span>`:'';
+    const scope=e.scope==='private'?`<span class="pill private">private</span>`:e.scope==='global'?`<span class="pill" style="color:#fa4;background:#1a0e00">global</span>`:'';
     const tags=e.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join(' ');
+    const proj=e.project?`<span class="pill project">${esc(e.project)}</span>`:'';
     return `<div class="card">
       <div class="meta">
-        <span class="meta-id">${e.id.slice(0,8)}</span>
         <span class="meta-agent">${esc(e.agent_id)}</span>
         <span class="pill ${e.type}">${e.type}</span>
-        ${scope}
-        ${e.project?`<span style="color:#555">${esc(e.project)}</span>`:''}
-        ${conf}
-        ${tags}
+        ${proj}${scope}${conf}${tags}
         <span class="meta-time" style="margin-left:auto">${e.updated_at.slice(0,16)}</span>
+        <span class="meta-id">${e.id.slice(0,8)}</span>
       </div>
       <pre>${esc(e.content)}</pre>
       <div class="card-actions">
@@ -270,57 +370,58 @@ function renderMem(es){
 }
 
 async function writeMem(){
-  const c=$('mc').value.trim(); if(!c)return;
+  const c=$('mc').value.trim();if(!c)return;
   const tags=$('mtags').value.split(',').map(t=>t.trim()).filter(Boolean);
-  await req('POST','/memory',{content:c,type:$('mtype').value,project:$('mproject').value||null,scope:$('mscope').value,tags,confidence:1.0,parents:[]});
-  $('mc').value=''; $('mtags').value=''; flash('mem-flash'); loadMem();
+  const proj=activeProject();
+  await req('POST','/memory',{content:c,type:$('mtype').value,project:proj,scope:$('mscope').value,tags,confidence:1.0,parents:[]});
+  $('mc').value='';$('mtags').value='';flash('mem-flash');loadMem();
 }
 
 async function deleteMem(id){
   if(!confirm('Delete this entry?'))return;
-  await req('DELETE',`/memory/${id}`); loadMem();
+  await req('DELETE',`/memory/${id}`);loadMem();
 }
 
 // ── TASKS ────────────────────────────────────────────────
 
 async function loadTasks(){
   const s=$('tf').value;
-  const proj=$('tproject-filter').value.trim();
-  let url='/tasks'; const params=[];
+  const proj=activeProject();
+  let url='/tasks';const params=[];
   if(s)params.push('status='+s);
   if(proj)params.push('project='+encodeURIComponent(proj));
   if(params.length)url+='?'+params.join('&');
   try{
     const ts=await req('GET',url);
-    if(!ts.length){ $('tlist').innerHTML='<div class="empty">no tasks</div>'; return; }
+    if(!ts.length){$('tlist').innerHTML='<div class="empty">no tasks</div>';return;}
     $('tlist').innerHTML=ts.map(t=>`
       <div class="card">
         <div class="meta">
-          <span class="meta-id">${t.id.slice(0,8)}</span>
           <span class="s ${t.status}">${t.status}</span>
           ${t.priority!=='normal'?`<span class="pri ${t.priority}">${t.priority}</span>`:''}
-          ${t.project?`<span style="color:#555">${esc(t.project)}</span>`:''}
-          <span style="color:#555">by ${esc(t.created_by)}</span>
-          ${t.assigned_to?`<span style="color:#4af">→ ${esc(t.assigned_to)}</span>`:''}
+          ${t.project?`<span class="pill project">${esc(t.project)}</span>`:''}
+          <span style="color:#444">by <span class="meta-agent">${esc(t.created_by)}</span></span>
+          ${t.assigned_to?`<span style="color:#666">→ <span style="color:#4af">${esc(t.assigned_to)}</span></span>`:''}
           <span class="meta-time" style="margin-left:auto">${t.created_at.slice(0,16)}</span>
         </div>
-        <div><b style="color:#e0e0e0">${esc(t.title)}</b>${t.description?` <span style="color:#666">${esc(t.description)}</span>`:''}</div>
+        <div><span style="color:#e0e0e0">${esc(t.title)}</span>${t.description?` <span style="color:#555;font-size:13px">${esc(t.description)}</span>`:''}</div>
         <div class="card-actions">
           ${t.status==='open'?`<button onclick="taskAction('${t.id}','claim')">claim</button>`:''}
           ${t.status==='claimed'?`<button onclick="taskAction('${t.id}','complete')">complete</button><button class="danger" onclick="taskAction('${t.id}','fail')">fail</button>`:''}
         </div>
       </div>`).join('');
-  }catch(e){ $('tlist').innerHTML=`<div class="empty">${esc(e.message)}</div>`; }
+  }catch(e){$('tlist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
 }
 
 async function createTask(){
-  const title=$('ttitle').value.trim(); if(!title)return;
-  await req('POST','/tasks',{title,description:$('tdesc').value,project:$('tproject').value||null,priority:$('tpri').value});
-  $('ttitle').value=''; $('tdesc').value=''; $('tproject').value=''; loadTasks();
+  const title=$('ttitle').value.trim();if(!title)return;
+  const proj=activeProject();
+  await req('POST','/tasks',{title,description:$('tdesc').value,project:proj,priority:$('tpri').value});
+  $('ttitle').value='';$('tdesc').value='';loadTasks();
 }
 
 async function taskAction(id,action){
-  await req('POST',`/tasks/${id}/${action}`); loadTasks();
+  await req('POST',`/tasks/${id}/${action}`);loadTasks();
 }
 
 // ── MESSAGES ─────────────────────────────────────────────
@@ -329,18 +430,18 @@ async function loadInbox(){
   $('btn-messages').querySelector('.badge')?.remove();
   try{
     const ms=await req('GET','/messages/inbox');
-    if(!ms.length){ $('msglist').innerHTML='<div class="empty">no unread messages</div>'; return; }
+    if(!ms.length){$('msglist').innerHTML='<div class="empty">no unread messages</div>';return;}
     $('msglist').innerHTML=ms.map(m=>`
       <div class="card">
         <div class="meta">
           <span class="meta-agent">${esc(m.from_agent)}</span>
-          ${m.subject?`<span style="color:#888">${esc(m.subject)}</span>`:''}
+          ${m.subject?`<span style="color:#666">${esc(m.subject)}</span>`:''}
           <span class="meta-time" style="margin-left:auto">${m.created_at.slice(0,16)}</span>
         </div>
         <pre>${esc(m.body)}</pre>
-        <div class="card-actions"><button onclick="markRead('${m.id}')">mark read</button></div>
+        <div class="card-actions"><button onclick="markRead('${m.id}')">mark read</button><button onclick="replyTo('${esc(m.from_agent)}')">reply</button></div>
       </div>`).join('');
-  }catch(e){ $('msglist').innerHTML=`<div class="empty">${esc(e.message)}</div>`; }
+  }catch(e){$('msglist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
 }
 
 async function checkInbox(){
@@ -350,21 +451,27 @@ async function checkInbox(){
     btn.querySelector('.badge')?.remove();
     if(ms.length){
       const b=document.createElement('span');
-      b.className='badge'; b.textContent=ms.length; btn.appendChild(b);
+      b.className='badge';b.textContent=ms.length;btn.appendChild(b);
     }
   }catch(_){}
 }
 
 async function sendMsg(){
-  const to=$('mto').value.trim(); if(!to)return;
-  const body=$('mbody').value.trim(); if(!body)return;
+  const to=$('mto').value.trim();if(!to)return;
+  const body=$('mbody').value.trim();if(!body)return;
   await req('POST','/messages',{to,subject:$('msub').value||'',body});
-  $('mto').value=''; $('msub').value=''; $('mbody').value='';
-  loadInbox();
+  $('mto').value='';$('msub').value='';$('mbody').value='';
+  flash('msg-flash');loadInbox();
 }
 
 async function markRead(id){
-  await req('POST',`/messages/${id}/read`); loadInbox();
+  await req('POST',`/messages/${id}/read`);loadInbox();
+}
+
+function replyTo(agent){
+  $('mto').value=agent;
+  $('mbody').focus();
+  document.querySelectorAll('nav button').forEach(b=>{if(b.textContent.trim()==='messages')tab('messages',b);});
 }
 
 // ── EVENTS (SSE) ─────────────────────────────────────────
@@ -377,109 +484,169 @@ function startSSE(){
   (async()=>{
     try{
       const r=await fetch('/events/stream',{headers:hdrs(),signal:_sseAbort.signal});
-      if(!r.ok){ setSSEOff('error '+r.status); return; }
-      $('sse-status').textContent='connected'; $('sse-status').className='sse-status on';
+      if(!r.ok){setSSEOff('error '+r.status);return;}
+      $('sse-status').textContent='connected';$('sse-status').className='sse-status on';
       $('ev-log').innerHTML='';
-      const reader=r.body.getReader(); const dec=new TextDecoder();
+      const reader=r.body.getReader();const dec=new TextDecoder();
       let buf='';
       while(true){
         const{done,value}=await reader.read();
         if(done)break;
         buf+=dec.decode(value,{stream:true});
-        const lines=buf.split('\n'); buf=lines.pop();
+        const lines=buf.split('\n');buf=lines.pop();
         for(const line of lines){
           if(line.startsWith('data: ')&&line.length>6){
-            try{ appendEvent(JSON.parse(line.slice(6))); }catch(_){}
+            try{appendEvent(JSON.parse(line.slice(6)));}catch(_){}
           }
         }
       }
       setSSEOff('disconnected');
-    }catch(e){
-      if(e.name!=='AbortError')setSSEOff('error');
-    }
+    }catch(e){if(e.name!=='AbortError')setSSEOff('error');}
   })();
 }
 
 function stopSSE(){
-  if(_sseAbort){ _sseAbort.abort(); _sseAbort=null; }
+  if(_sseAbort){_sseAbort.abort();_sseAbort=null;}
   setSSEOff('disconnected');
 }
 
-function setSSEOff(msg){
-  $('sse-status').textContent=msg; $('sse-status').className='sse-status off';
-}
+function setSSEOff(msg){$('sse-status').textContent=msg;$('sse-status').className='sse-status off';}
 
 function appendEvent(e){
-  const d=document.createElement('div'); d.className='el';
+  const d=document.createElement('div');d.className='el';
   d.innerHTML=`<span class="el-time">${e.created_at.slice(11,19)}</span><span class="el-type">${esc(e.type)}</span><span class="el-agent">${esc(e.agent_id)}</span><span class="el-payload">${esc(JSON.stringify(e.payload))}</span>`;
   const log=$('ev-log');
   if(log.firstChild?.className==='empty')log.innerHTML='';
   log.prepend(d);
 }
 
-// ── PARTICIPANTS ─────────────────────────────────────────
+// ── AGENTS ───────────────────────────────────────────────
 
-async function loadParticipants(){
+async function loadAgents(){
   try{
-    const ps=await req('GET','/participants');
-    if(!ps.length){ $('plist').innerHTML='<div class="empty">no participants</div>'; return; }
+    const [participants,projects]=await Promise.all([
+      req('GET','/participants'),
+      req('GET','/projects').catch(()=>[]),
+    ]);
+    const agentProjects={};
+    projects.forEach(p=>p.agents.forEach(a=>{
+      (agentProjects[a]||(agentProjects[a]=[])).push(p.name);
+    }));
     const now=Date.now();
-    $('plist').innerHTML='<div class="participant-grid">'+ps.map(p=>{
+    if(!participants.length){$('alist').innerHTML='<div class="empty">no agents</div>';return;}
+    const sorted=[...participants].sort((a,b)=>{
+      const ta=a.last_seen?Date.parse(a.last_seen):0;
+      const tb=b.last_seen?Date.parse(b.last_seen):0;
+      return tb-ta;
+    });
+    $('alist').innerHTML='<div class="agent-grid">'+sorted.map(p=>{
       const seenMs=p.last_seen?Date.parse(p.last_seen):null;
       const active=seenMs&&(now-seenMs)<300000;
       const seenLabel=p.last_seen?p.last_seen.slice(0,16):'never';
-      return `<div class="pc${active?' active':''}">
-        <div class="pc-name">${esc(p.agent_id)}${active?' <span style="color:#4a8;font-size:11px">● active</span>':''}</div>
-        <div class="pc-seen">last seen: ${seenLabel}</div>
+      const projs=(agentProjects[p.agent_id]||[]).map(n=>`<span class="pill project">${esc(n)}</span>`).join(' ');
+      return `<div class="ac${active?' active':''}">
+        <div class="ac-name"><span class="dot"></span>${esc(p.agent_id)}${p.agent_id===window._aid?' <span style="color:#555;font-size:11px">(you)</span>':''}</div>
+        <div class="ac-meta">
+          <span>last seen: ${seenLabel}</span>
+          ${projs?`<span style="margin-top:4px">${projs}</span>`:''}
+        </div>
       </div>`;
     }).join('')+'</div>';
-  }catch(e){ $('plist').innerHTML=`<div class="empty">${esc(e.message)}</div>`; }
+  }catch(e){$('alist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
+}
+
+// ── PROJECTS ─────────────────────────────────────────────
+
+async function loadProjects(){
+  try{
+    const ps=await req('GET','/projects');
+    if(!ps.length){$('pjlist').innerHTML='<div class="empty">no projects</div>';return;}
+    $('pjlist').innerHTML='<div class="proj-grid">'+ps.map(p=>{
+      const mine=p.name===$('h-project').value;
+      const last=p.last_activity?p.last_activity.slice(0,16):'never';
+      return `<div class="pj${mine?' mine':''}" onclick="selectProject('${esc(p.name)}')">
+        <div class="pj-name">${esc(p.name)}${mine?' <span style="color:#4a8;font-size:11px">◀ active</span>':''}</div>
+        <div class="pj-agents">${p.agents.join(', ')||'no agents'}</div>
+        <div class="pj-stats">
+          <span><span class="pj-stat-val">${p.memory_count}</span> memories</span>
+          <span><span class="pj-stat-val">${p.task_count}</span> tasks</span>
+          <span>last: <span class="pj-stat-val">${last}</span></span>
+        </div>
+      </div>`;
+    }).join('')+'</div>';
+  }catch(e){$('pjlist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
+}
+
+function selectProject(name){
+  $('h-project').value=name;
+  onProjectChange();
 }
 
 // ── SESSIONS ─────────────────────────────────────────────
 
+function populateSessionAgents(){
+  // already populated in loadAgentsGlobal, just ensure self is selected
+  const sa=$('sess-agent');
+  if(!sa.value&&window._aid)sa.value=window._aid;
+}
+
 async function loadSession(){
+  const agent=$('sess-agent').value;
+  if(!agent)return;
+  const isSelf=agent===window._aid;
+  $('handoff-box').style.display=isSelf?'block':'none';
   try{
-    const d=await req('GET',`/sessions/handoff/${window._aid}`);
+    const d=await req('GET',`/sessions/handoff/${agent}`);
     const h=d.last_handoff;
     let html='';
     if(h){
-      html+=`<div class="card"><div class="meta"><span class="meta-agent">${esc(h.agent_id)}</span><span class="meta-time" style="margin-left:auto">${h.created_at.slice(0,16)}</span></div>`;
-      html+=`<pre>${esc(h.summary)}</pre>`;
-      if(h.next_steps&&h.next_steps.length){
-        html+=`<div style="margin-top:6px;color:#444;font-size:12px;font-family:'JetBrains Mono',monospace">next steps:</div>`;
-        html+=h.next_steps.map(s=>`<div style="padding:2px 0;color:#888">${esc(s)}</div>`).join('');
+      html+=`<div class="card">
+        <div class="meta">
+          <span class="meta-agent">${esc(h.agent_id)}</span>
+          <span class="meta-time" style="margin-left:auto">${h.created_at.slice(0,16)}</span>
+        </div>
+        <pre>${esc(h.summary)}</pre>`;
+      if(h.next_steps?.length){
+        html+=`<div style="margin-top:8px"><div class="section-label" style="margin-bottom:4px">next steps</div>`;
+        html+=h.next_steps.map(s=>`<div style="padding:2px 0;color:#888;font-size:13px">→ ${esc(s)}</div>`).join('');
+        html+='</div>';
       }
-      if(h.in_progress&&h.in_progress.length){
-        html+=`<div style="margin-top:6px;color:#444;font-size:12px;font-family:'JetBrains Mono',monospace">in progress:</div>`;
+      if(h.in_progress?.length){
+        html+=`<div style="margin-top:8px"><div class="section-label" style="margin-bottom:4px">in progress</div>`;
         html+=h.in_progress.map(s=>`<div style="padding:2px 0"><span class="pill memory">${esc(s)}</span></div>`).join('');
+        html+='</div>';
       }
       html+='</div>';
-    } else {
-      html='<div class="empty">no previous session</div>';
+    }else{
+      html='<div class="empty">no previous session for '+esc(agent)+'</div>';
     }
-    if(d.memory_delta&&d.memory_delta.length){
-      html+=`<div style="color:#444;font-size:12px;font-family:'JetBrains Mono',monospace;margin:10px 0 6px;text-transform:uppercase;letter-spacing:.5px">memory since last session (${d.memory_delta.length})</div>`;
-      html+=d.memory_delta.map(e=>`<div class="card"><div class="meta"><span class="meta-id">${e.id.slice(0,8)}</span><span class="meta-agent">${esc(e.agent_id)}</span><span class="meta-time" style="margin-left:auto">${e.updated_at.slice(0,16)}</span></div><pre>${esc(e.content.slice(0,300))}</pre></div>`).join('');
+    if(d.memory_delta?.length){
+      html+=`<div class="section-label" style="margin:14px 0 8px">memory since last session (${d.memory_delta.length})</div>`;
+      html+=d.memory_delta.map(e=>`<div class="card">
+        <div class="meta">
+          <span class="meta-agent">${esc(e.agent_id)}</span>
+          <span class="pill ${e.type}">${e.type}</span>
+          ${e.project?`<span class="pill project">${esc(e.project)}</span>`:''}
+          <span class="meta-time" style="margin-left:auto">${e.updated_at.slice(0,16)}</span>
+        </div>
+        <pre>${esc(e.content.slice(0,400))}</pre>
+      </div>`).join('');
     }
     $('session-context').innerHTML=html;
-  }catch(e){ $('session-context').innerHTML=`<div class="empty">${esc(e.message)}</div>`; }
+  }catch(e){$('session-context').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
 }
 
 async function saveHandoff(){
-  const summary=$('hs-summary').value.trim(); if(!summary)return;
+  const summary=$('hs-summary').value.trim();if(!summary)return;
   const next_steps=$('hs-next').value.split('\n').map(s=>s.trim()).filter(Boolean);
   const in_progress=$('hs-inprogress').value.split('\n').map(s=>s.trim()).filter(Boolean);
   await req('POST','/sessions/handoff',{summary,next_steps,in_progress});
-  $('hs-summary').value=''; $('hs-next').value=''; $('hs-inprogress').value='';
-  flash('session-flash'); loadSession();
+  $('hs-summary').value='';$('hs-next').value='';$('hs-inprogress').value='';
+  flash('session-flash');loadSession();
 }
 
-// ── INIT ─────────────────────────────────────────────────
-
-loadMem();
-checkInbox();
-setInterval(checkInbox, 30000);
+// ── BOOT ─────────────────────────────────────────────────
+init();
 </script>
 </body>
 </html>
