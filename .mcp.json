@@ -10,7 +10,8 @@
         "artel.mcp"
       ],
       "env": {
-        "ARTEL_URL": "http://ARTEL_HOST:8000"
+        "ARTEL_URL": "http://ARTEL_HOST:8000",
+        "MCP_PROJECT": "artel"
       }
     }
   }

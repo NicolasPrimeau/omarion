@@ -13,7 +13,7 @@ def _auto_register() -> tuple[str, str]:
     suggested = socket.gethostname().split(".")[0]
     resp = httpx.post(
         f"{settings.artel_url}/agents/self-register",
-        json={"agent_id": suggested},
+        json={"agent_id": suggested, "project": settings.mcp_project or None},
         timeout=5,
     )
     resp.raise_for_status()
