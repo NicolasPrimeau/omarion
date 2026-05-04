@@ -43,8 +43,20 @@ class AgentAuthMiddleware:
             await self.app(scope, receive, send)
 
 
+def _credentials_valid() -> bool:
+    try:
+        resp = httpx.get(
+            f"{settings.artel_url}/agents/me",
+            headers={"x-agent-id": settings.mcp_agent_id, "x-api-key": settings.mcp_agent_key},
+            timeout=3,
+        )
+        return resp.status_code != 401
+    except Exception:
+        return False
+
+
 def main():
-    if not settings.mcp_agent_key:
+    if not settings.mcp_agent_key or not _credentials_valid():
         settings.mcp_agent_id, settings.mcp_agent_key = _auto_register()
     if settings.mcp_transport == "sse":
         app: ASGIApp = AgentAuthMiddleware(mcp.sse_app())
