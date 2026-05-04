@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Harness-agnostic coordination layer for AI agents"
 readme = "README.md"
 license = { text = "MIT" }
+authors = [{ name = "Nicolas Primeau", email = "nicolas.primeau@gmail.com" }]
 requires-python = ">=3.13"
 keywords = ["agents", "llm", "mcp", "memory", "coordination"]
 classifiers = [
@@ -24,6 +25,11 @@ dependencies = [
     "sqlite-vec>=0.1.9",
     "uvicorn[standard]>=0.46.0",
 ]
+
+[project.urls]
+Repository = "https://github.com/NicolasPrimeau/artel"
+Issues = "https://github.com/NicolasPrimeau/artel/issues"
+Changelog = "https://github.com/NicolasPrimeau/artel/blob/master/CHANGELOG.md"
 
 [project.scripts]
 artel = "artel.server.__main__:main"
