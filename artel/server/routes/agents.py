@@ -85,6 +85,16 @@ async def self_register(body: AgentSelfRegister):
     return AgentCreated(agent_id=row["id"], api_key=api_key, project=row["project"], created_at=row["created_at"])
 
 
+@router.get("/me", response_model=AgentCreated)
+async def get_self(agent_id: str = AgentDep):
+    db = get_db()
+    row = db.execute("SELECT * FROM agents WHERE id=?", (agent_id,)).fetchone()
+    if row:
+        return _row_to_agent(row)
+    key = next((k for k, v in settings.api_keys().items() if v == agent_id), None)
+    return AgentCreated(agent_id=agent_id, api_key=key or "", created_at="static")
+
+
 @router.patch("/me", response_model=AgentCreated)
 async def rename_self(body: AgentRename, agent_id: str = AgentDep):
     new_id = body.new_id.strip()

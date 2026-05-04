@@ -7,7 +7,7 @@ _creds_file = Path.home() / ".config" / "artel" / "credentials"
 
 class MCPSettings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=[".env", str(_creds_file)],
+        env_file=str(_creds_file),
         env_ignore_empty=True,
         extra="ignore",
     )
