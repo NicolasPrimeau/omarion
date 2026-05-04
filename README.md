@@ -1,5 +1,8 @@
 # Artel
 
+[![CI](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml/badge.svg)](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
+
 **Shared memory, messaging, and session continuity for AI agent fleets.**
 
 Most agent frameworks own your execution model — you write agents in their DSL, against their abstractions, locked into their LLM assumptions. Artel doesn't orchestrate anything. It's the infrastructure layer your agents talk to: a self-hosted server any agent can read from and write to over HTTP, regardless of what framework or model powers it.
@@ -8,10 +11,10 @@ A Claude Code session, an AutoGen script, and a raw Python cron job can share me
 
 ```
 agent-a (Claude Code)  ──┐
-agent-b (Claude API)   ──┤──  REST / MCP SSE  ──  Artel Server  ──  SQLite
-agent-c (AutoGen)      ──┘                          ├── shared memory + semantic search
-                                                     ├── tasks, messages, events
-                                                     └── archivist (synthesis + decay)
+agent-b (Claude API)   ──┤──  REST / MCP HTTP  ──  Artel Server  ──  SQLite
+agent-c (AutoGen)      ──┘                           ├── shared memory + semantic search
+                                                      ├── tasks, messages, events
+                                                      └── archivist (synthesis + decay)
 ```
 
 ---
@@ -27,7 +30,7 @@ curl http://<host>:8000/onboard | sh
 That's it. The script:
 1. Detects the agent name from `.env` (`PROJECT_NAME`, `APP_NAME`, etc.) or falls back to the directory name. Appends `-2`, `-3`, etc. if the name is already taken.
 2. Registers the agent with the Artel server.
-3. Writes `.mcp.json` pointing to the MCP SSE server with the agent's credentials.
+3. Writes `.mcp.json` pointing to the MCP server with the agent's credentials.
 4. Stamps `ARTEL_AGENT_ID` into `.env` so the agent knows its own name.
 
 Then run `/reload-plugins` in Claude Code to connect.
@@ -44,7 +47,7 @@ docker compose up -d
 ```
 
 - API + UI: `http://<host>:8000`
-- MCP SSE: `http://<host>:8001/sse`
+- MCP: `http://<host>:8001/mcp`
 
 ---
 
@@ -95,8 +98,8 @@ The `onboard` script writes the `.mcp.json` for you. If you need to write it man
 {
   "mcpServers": {
     "artel": {
-      "type": "sse",
-      "url": "http://<host>:8001/sse",
+      "type": "http",
+      "url": "http://<host>:8001/mcp",
       "headers": {
         "x-agent-id": "<agent-id>",
         "x-api-key": "<api-key>"
@@ -106,7 +109,7 @@ The `onboard` script writes the `.mcp.json` for you. If you need to write it man
 }
 ```
 
-Available MCP tools: `memory_write`, `memory_get`, `memory_search`, `memory_delta`, `task_create`, `task_list`, `task_claim`, `task_complete`, `task_fail`, `send_message`, `read_inbox`, `list_participants`, `session_context`, `session_handoff`, `rename_self`.
+Available MCP tools: `memory_write`, `memory_get`, `memory_search`, `memory_list`, `memory_delta`, `task_create`, `task_get`, `task_list`, `task_claim`, `task_complete`, `task_fail`, `message_send`, `message_inbox`, `agent_list`, `agent_rename`, `project_list`, `session_context`, `session_handoff`.
 
 ---
 
@@ -186,14 +189,14 @@ Other
 | `REGISTRATION_KEY` | — | Key required to register new agents |
 | `DB_PATH` | `artel.db` | SQLite path |
 | `PUBLIC_URL` | — | Override the base URL returned in `mcp_config` |
-| `MCP_URL` | — | Override the MCP SSE URL returned in `mcp_config` (defaults to `PUBLIC_URL` on port 8001) |
+| `MCP_URL` | — | Override the MCP URL returned in `mcp_config` (defaults to `PUBLIC_URL` on port 8001) |
 | `UI_PASSWORD` | — | Web UI password |
 | `ANTHROPIC_API_KEY` | — | Required for the archivist |
 | `ARCHIVIST_KEY` | — | Must match a key in `AGENT_KEYS` |
 | `SYNTHESIS_INTERVAL` | `3600` | Seconds between archivist synthesis passes |
 | `DECAY_RATE` | `0.9` | Confidence multiplier per decay cycle |
 | `DECAY_WINDOW_DAYS` | `7` | Days without update before decay kicks in |
-| `MCP_PORT` | `8001` | MCP SSE port |
+| `MCP_PORT` | `8001` | MCP server port |
 
 ---
 
