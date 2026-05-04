@@ -1,12 +1,101 @@
+import asyncio
 import contextvars
+import json
+from contextlib import asynccontextmanager
+from typing import Any
 
 import httpx
+import mcp.types as mcp_types
 from mcp.server.fastmcp import FastMCP
+from mcp.server.session import ServerSession
 
 from .config import settings
 
-mcp = FastMCP(
+_agent_id: contextvars.ContextVar[str] = contextvars.ContextVar("agent_id")
+_api_key: contextvars.ContextVar[str] = contextvars.ContextVar("api_key")
+
+_active_session: ServerSession | None = None
+_session_ready: asyncio.Event | None = None
+_notification_queue: asyncio.Queue[str] | None = None
+
+
+@asynccontextmanager
+async def _lifespan(app: "ArtelMCP"):
+    global _session_ready, _notification_queue
+    _session_ready = asyncio.Event()
+    _notification_queue = asyncio.Queue()
+    watcher = asyncio.create_task(_sse_watcher())
+    sender = asyncio.create_task(_notification_sender())
+    try:
+        yield
+    finally:
+        watcher.cancel()
+        sender.cancel()
+        await asyncio.gather(watcher, sender, return_exceptions=True)
+
+
+class ArtelMCP(FastMCP):
+    async def call_tool(self, name: str, arguments: dict[str, Any] | None) -> list[mcp_types.ContentBlock]:
+        global _active_session
+        if _active_session is None:
+            ctx = self.get_context()
+            if ctx._request_context is not None:
+                _active_session = ctx._request_context.session
+                if _session_ready is not None:
+                    _session_ready.set()
+        return await super().call_tool(name, arguments)
+
+
+async def _sse_watcher():
+    headers = {
+        "x-agent-id": settings.mcp_agent_id,
+        "x-api-key": settings.mcp_agent_key,
+    }
+    while True:
+        try:
+            async with httpx.AsyncClient(
+                base_url=settings.artel_url,
+                headers=headers,
+                timeout=httpx.Timeout(None, connect=10.0),
+            ) as client:
+                async with client.stream("GET", "/events/stream", params={"type": "message.received"}) as resp:
+                    async for line in resp.aiter_lines():
+                        if not line.startswith("data: "):
+                            continue
+                        try:
+                            event = json.loads(line[6:])
+                        except json.JSONDecodeError:
+                            continue
+                        payload = event.get("payload", {})
+                        to_agent = payload.get("to", "")
+                        if to_agent not in (settings.mcp_agent_id, "broadcast"):
+                            continue
+                        sender_id = event.get("agent_id", "?")
+                        if _notification_queue is not None:
+                            await _notification_queue.put(f"inbox: new message from {sender_id}")
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            await asyncio.sleep(5)
+
+
+async def _notification_sender():
+    while True:
+        if _notification_queue is None or _session_ready is None:
+            await asyncio.sleep(0.1)
+            continue
+        msg = await _notification_queue.get()
+        await _session_ready.wait()
+        if _active_session is not None:
+            try:
+                await _active_session.send_log_message("warning", msg)
+            except Exception:
+                pass
+
+
+mcp = ArtelMCP(
     "artel",
+    lifespan=_lifespan,
     host=settings.mcp_host,
     port=settings.mcp_port,
     instructions="""You are connected to Artel — a shared coordination layer for a fleet of AI agents.
@@ -33,9 +122,6 @@ IDENTITY:
 - Your agent_id and api_key are in your environment (MCP_AGENT_ID, MCP_AGENT_KEY).
 - All agents share the same memory, tasks, and message bus. What you write, others can read.""",
 )
-
-_agent_id: contextvars.ContextVar[str] = contextvars.ContextVar("agent_id")
-_api_key: contextvars.ContextVar[str] = contextvars.ContextVar("api_key")
 
 
 def _http() -> httpx.AsyncClient:

@@ -3,12 +3,14 @@
     "artel": {
       "type": "stdio",
       "command": "uv",
-      "args": ["run", "python", "-m", "artel.mcp"],
-      "cwd": "/home/nprimeau/projects/Artel",
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "artel.mcp"
+      ],
       "env": {
-        "ARTEL_URL": "http://ARTEL_HOST:8000",
-        "MCP_AGENT_ID": "artel-lead",
-        "MCP_AGENT_KEY": "REDACTED_API_KEY"
+        "ARTEL_URL": "http://ARTEL_HOST:8000"
       }
     }
   }
