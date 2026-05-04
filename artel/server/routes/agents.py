@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from ...store.db import get_db
 from ..auth import AgentDep, _last_seen, require_registration_key
 from ..config import settings
-from ..models import AgentCreated, AgentRegister, AgentRename
+from ..models import AgentCreated, AgentRegister, AgentRename, AgentSelfRegister
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
@@ -64,6 +64,25 @@ async def register_agent(body: AgentRegister, request: Request):
         created_at=row["created_at"],
         mcp_config=_mcp_config(mcp_url, row["id"], api_key, row["project"]),
     )
+
+
+@router.post("/self-register", response_model=AgentCreated, status_code=201)
+async def self_register(body: AgentSelfRegister):
+    base = (body.agent_id or "agent").strip()
+    if not base.replace("-", "").replace("_", "").isalnum():
+        raise HTTPException(status_code=422, detail="agent_id must be alphanumeric with - or _")
+    db = get_db()
+    candidate, i = base, 1
+    while (db.execute("SELECT id FROM agents WHERE id=?", (candidate,)).fetchone()
+           or candidate in settings.api_keys().values()):
+        candidate = f"{base}-{i}"
+        i += 1
+    api_key = secrets.token_urlsafe(32)
+    db.execute("INSERT INTO agents (id, api_key, project) VALUES (?, ?, ?)", (candidate, api_key, body.project))
+    db.commit()
+    row = db.execute("SELECT * FROM agents WHERE id=?", (candidate,)).fetchone()
+    _last_seen[candidate] = row["created_at"]
+    return AgentCreated(agent_id=row["id"], api_key=api_key, project=row["project"], created_at=row["created_at"])
 
 
 @router.patch("/me", response_model=AgentCreated)
