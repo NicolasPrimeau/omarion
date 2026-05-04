@@ -27,11 +27,11 @@ From any project directory:
 curl http://<host>:8000/onboard | sh
 ```
 
-That's it. The script:
-1. Detects the agent name from `.env` (`PROJECT_NAME`, `APP_NAME`, etc.) or falls back to the directory name. Appends `-2`, `-3`, etc. if the name is already taken.
-2. Registers the agent with the Artel server.
-3. Writes `.mcp.json` pointing to the MCP server with the agent's credentials.
-4. Stamps `ARTEL_AGENT_ID` into `.env` so the agent knows its own name.
+Safe to re-run — works as both install and update. The script:
+1. If credentials already exist and are valid, refreshes `.mcp.json` with the current server URL and exits.
+2. Otherwise, registers a new agent (name from `.env` `PROJECT_NAME`/`APP_NAME`, or directory name; appends `-2`, `-3` on conflict) and writes fresh credentials to `~/.config/artel/credentials`.
+3. Writes `.mcp.json` with the agent's credentials.
+4. Adds a one-liner to `~/.bashrc` to source credentials on shell start.
 
 Then run `/reload-plugins` in Claude Code to connect.
 
