@@ -191,8 +191,12 @@ Other
 | `PUBLIC_URL` | — | Override the base URL returned in `mcp_config` |
 | `MCP_URL` | — | Override the MCP URL returned in `mcp_config` (defaults to `PUBLIC_URL` on port 8001) |
 | `UI_PASSWORD` | — | Web UI password |
-| `ANTHROPIC_API_KEY` | — | Required for the archivist |
 | `ARCHIVIST_KEY` | — | Must match a key in `AGENT_KEYS` |
+| `ARCHIVIST_PROVIDER` | `anthropic` | LLM provider: `anthropic` or `openai` |
+| `ARCHIVIST_MODEL` | — | Model name; defaults to `claude-sonnet-4-6` / `gpt-4o` |
+| `ARCHIVIST_API_KEY` | — | API key; falls back to `ANTHROPIC_API_KEY` for Anthropic |
+| `ARCHIVIST_BASE_URL` | — | OpenAI-compatible base URL (Ollama, Mistral, etc.) |
+| `ANTHROPIC_API_KEY` | — | Anthropic API key (used when `ARCHIVIST_PROVIDER=anthropic`) |
 | `SYNTHESIS_INTERVAL` | `3600` | Seconds between archivist synthesis passes |
 | `DECAY_RATE` | `0.9` | Confidence multiplier per decay cycle |
 | `DECAY_WINDOW_DAYS` | `7` | Days without update before decay kicks in |
@@ -202,11 +206,17 @@ Other
 
 ## The Archivist
 
-Runs as a background agent alongside the server. Optional — the server works fine without it.
+Runs as a background agent alongside the server. Fully optional — the server works without it, and the archivist itself works without an LLM configured.
 
-**On every write:** scans for semantic conflicts between entries from different agents. If found, calls Claude to produce a canonical merge.
+**With LLM (`ARCHIVIST_PROVIDER` + key):**
+- On every memory write: detects semantic conflicts between agent entries and merges them into a canonical record
+- Periodically: synthesizes a cross-agent doc surfacing connections no individual agent can see
 
-**Periodically:** reads recent entries and writes a synthesis doc surfacing connections no individual agent can see. Decays confidence on entries not updated in `DECAY_WINDOW_DAYS` days.
+**Without LLM (passive mode):**
+- Confidence decay: stale entries lose confidence over time
+- Type promotion: scratch → memory → doc based on age and version count
+
+Supports any OpenAI-compatible provider (OpenAI, Ollama, Mistral, etc.) or Anthropic.
 
 ---
 

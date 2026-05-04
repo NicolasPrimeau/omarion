@@ -1,26 +1,20 @@
-import anthropic
-
 from .client import ArtelClient
 from .config import settings
+from .llm import complete, is_configured
 
 _MAX_DISTANCE = 1.0 - settings.conflict_threshold
 
-_anthropic: anthropic.AsyncAnthropic | None = None
-
-
-def _client() -> anthropic.AsyncAnthropic:
-    global _anthropic
-    if _anthropic is None:
-        _anthropic = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
-    return _anthropic
-
 
 async def check_and_merge(entry_id: str, client: ArtelClient) -> None:
+    if not is_configured():
+        return
+
     entry = await client.get_memory(entry_id)
     similar = await client.search_memory(entry["content"], limit=6, max_distance=_MAX_DISTANCE)
 
     conflicts = [
-        s for s in similar
+        s
+        for s in similar
         if s["id"] != entry_id
         and s["agent_id"] != entry["agent_id"]
         and s["agent_id"] != settings.archivist_id
@@ -47,19 +41,15 @@ async def check_and_merge(entry_id: str, client: ArtelClient) -> None:
 
 
 async def _merge(a: dict, b: dict) -> str:
-    msg = await _client().messages.create(
-        model="claude-sonnet-4-6",
+    return await complete(
+        system="You are the Artel archivist. Merge conflicting memory entries into one canonical entry.",
+        user=(
+            f"Two agents wrote conflicting memory entries. "
+            f"Produce one canonical merged entry.\n\n"
+            f"Entry A (agent: {a['agent_id']}):\n{a['content']}\n\n"
+            f"Entry B (agent: {b['agent_id']}):\n{b['content']}\n\n"
+            "Write the merged entry. Resolve contradictions. Be concise. "
+            "Return only the merged content, no preamble."
+        ),
         max_tokens=1024,
-        messages=[{
-            "role": "user",
-            "content": (
-                f"Two agents wrote conflicting memory entries. "
-                f"Produce one canonical merged entry.\n\n"
-                f"Entry A (agent: {a['agent_id']}):\n{a['content']}\n\n"
-                f"Entry B (agent: {b['agent_id']}):\n{b['content']}\n\n"
-                "Write the merged entry. Resolve contradictions. Be concise. "
-                "Return only the merged content, no preamble."
-            ),
-        }],
     )
-    return msg.content[0].text

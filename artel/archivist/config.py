@@ -8,6 +8,10 @@ class ArchivistSettings(BaseSettings):
     archivist_id: str = "archivist"
     archivist_key: str = ""
     anthropic_api_key: str = ""
+    archivist_provider: str = "anthropic"
+    archivist_model: str = ""
+    archivist_api_key: str = ""
+    archivist_base_url: str = ""
     synthesis_interval: int = 3600
     conflict_threshold: float = 0.92
     decay_rate: float = 0.9

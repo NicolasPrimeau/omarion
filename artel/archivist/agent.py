@@ -4,6 +4,7 @@ import logging
 from .client import ArtelClient
 from .config import settings
 from .conflict import check_and_merge
+from .llm import is_configured
 from .synthesis import decay_confidence, run_promotion, run_synthesis
 
 log = logging.getLogger(__name__)
@@ -37,6 +38,16 @@ async def _scheduler(client: ArtelClient) -> None:
 
 async def run() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    if is_configured():
+        log.info(
+            "archivist starting — provider=%s model=%s",
+            settings.archivist_provider,
+            settings.archivist_model or "default",
+        )
+    else:
+        log.info(
+            "archivist starting in passive mode (no LLM configured) — decay and promotion only"
+        )
     client = ArtelClient()
     try:
         await asyncio.gather(
