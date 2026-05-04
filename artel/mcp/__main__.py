@@ -56,12 +56,13 @@ def _credentials_valid() -> bool:
 
 
 def main():
-    if not settings.mcp_agent_key or not _credentials_valid():
-        settings.mcp_agent_id, settings.mcp_agent_key = _auto_register()
-    if settings.mcp_transport == "sse":
-        app: ASGIApp = AgentAuthMiddleware(mcp.sse_app())
+    if settings.mcp_transport in ("sse", "streamable-http"):
+        app_fn = mcp.streamable_http_app if settings.mcp_transport == "streamable-http" else mcp.sse_app
+        app: ASGIApp = AgentAuthMiddleware(app_fn())
         uvicorn.run(app, host=settings.mcp_host, port=settings.mcp_port)
     else:
+        if not settings.mcp_agent_key or not _credentials_valid():
+            settings.mcp_agent_id, settings.mcp_agent_key = _auto_register()
         mcp.run(transport="stdio")
 
 
