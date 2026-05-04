@@ -5,7 +5,7 @@
 ```
 Agents (any machine, any LLM framework)
   ↕  REST API  /  MCP
-Artel Server (server: ARTEL_HOST)
+Artel Server (server)
   ├── FastAPI — request handling, auth
   ├── SQLite WAL — canonical state (memory, tasks, messages, events)
   ├── sqlite-vec — embedding index for semantic search
