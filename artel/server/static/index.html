@@ -270,20 +270,23 @@ function onProjectChange(){
   const name=panel.id.replace('panel-','');
   if(name==='memory')loadMem();
   if(name==='tasks')loadTasks();
+  if(name==='agents')loadAgents();
+  if(name==='projects')loadProjects();
 }
 
 function onAgentChange(){
   const agent=activeAgent();
-  // sync memory agent filter
   $('q-agent').value=agent||'';
-  // sync sessions
   const sa=$('sess-agent');
   if(sa)sa.value=agent||'';
   const panel=document.querySelector('.panel.on');
   if(!panel)return;
   const name=panel.id.replace('panel-','');
   if(name==='memory')loadMem();
+  if(name==='tasks')loadTasks();
+  if(name==='messages')loadInbox();
   if(name==='sessions')loadSession();
+  if(name==='events'&&_sseAbort)startSSE();
 }
 
 // ── INIT ─────────────────────────────────────────────────
@@ -404,9 +407,11 @@ async function deleteMem(id){
 async function loadTasks(){
   const s=$('tf').value;
   const proj=activeProject();
+  const agent=activeAgent();
   let url='/tasks';const params=[];
   if(s)params.push('status='+s);
   if(proj)params.push('project='+encodeURIComponent(proj));
+  if(agent)params.push('agent='+encodeURIComponent(agent));
   if(params.length)url+='?'+params.join('&');
   try{
     const ts=await req('GET',url);
@@ -445,8 +450,10 @@ async function taskAction(id,action){
 
 async function loadInbox(){
   $('btn-messages').querySelector('.badge')?.remove();
+  const agent=activeAgent();
+  const url='/messages/inbox'+(agent?'?agent='+encodeURIComponent(agent):'');
   try{
-    const ms=await req('GET','/messages/inbox');
+    const ms=await req('GET',url);
     if(!ms.length){$('msglist').innerHTML='<div class="empty">no unread messages</div>';return;}
     $('msglist').innerHTML=ms.map(m=>`
       <div class="card">
@@ -463,7 +470,9 @@ async function loadInbox(){
 
 async function checkInbox(){
   try{
-    const ms=await req('GET','/messages/inbox');
+    const agent=activeAgent();
+    const url='/messages/inbox'+(agent?'?agent='+encodeURIComponent(agent):'');
+    const ms=await req('GET',url);
     const btn=$('btn-messages');
     btn.querySelector('.badge')?.remove();
     if(ms.length){
@@ -498,9 +507,11 @@ function startSSE(){
   _sseAbort=new AbortController();
   $('sse-status').textContent='connecting…';
   $('sse-status').className='sse-status off';
+  const agent=activeAgent();
+  const streamUrl='/events/stream'+(agent?'?agent='+encodeURIComponent(agent):'');
   (async()=>{
     try{
-      const r=await fetch('/events/stream',{headers:hdrs(),signal:_sseAbort.signal});
+      const r=await fetch(streamUrl,{headers:hdrs(),signal:_sseAbort.signal});
       if(!r.ok){setSSEOff('error '+r.status);return;}
       $('sse-status').textContent='connected';$('sse-status').className='sse-status on';
       $('ev-log').innerHTML='';

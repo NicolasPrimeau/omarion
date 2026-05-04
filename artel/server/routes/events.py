@@ -42,6 +42,7 @@ async def emit_event(body: EventEmit, agent_id: str = Depends(require_agent)):
 async def poll_events(
     since: str = Query(...),
     type: str | None = Query(default=None),
+    agent: str | None = Query(default=None),
     agent_id: str = Depends(require_agent),
 ):
     db = get_db()
@@ -50,6 +51,9 @@ async def poll_events(
     if type:
         sql += "AND type=? "
         params.append(type)
+    if agent:
+        sql += "AND agent_id=? "
+        params.append(agent)
     sql += "ORDER BY created_at"
     rows = db.execute(sql, params).fetchall()
     return [_row_to_event(r) for r in rows]
@@ -58,6 +62,7 @@ async def poll_events(
 @router.get("/stream")
 async def event_stream(
     type: str | None = Query(default=None),
+    agent: str | None = Query(default=None),
     agent_id: str = Depends(require_agent),
 ):
     queue: asyncio.Queue = asyncio.Queue(maxsize=100)
@@ -68,9 +73,11 @@ async def event_stream(
             while True:
                 try:
                     data = await asyncio.wait_for(queue.get(), timeout=30)
-                    if type:
+                    if type or agent:
                         event = json.loads(data)
-                        if event.get("type") != type:
+                        if type and event.get("type") != type:
+                            continue
+                        if agent and event.get("agent_id") != agent:
                             continue
                     yield f"data: {data}\n\n"
                 except TimeoutError:
