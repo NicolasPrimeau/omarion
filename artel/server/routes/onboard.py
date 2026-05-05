@@ -11,15 +11,15 @@ set -e
 ARTEL_URL="{artel_url}"
 PROJECT="{project}"
 
-_git_name() {
+_git_name() {{
     remote=$(git remote get-url origin 2>/dev/null) || true
     if [ -n "$remote" ]; then
         basename "$remote" .git
     fi
-}
+}}
 _repo=$(_git_name)
 if [ -n "$_repo" ]; then
-    DEFAULT_ID="$(hostname -s)-${_repo}"
+    DEFAULT_ID="$(hostname -s)-${{_repo}}"
 else
     DEFAULT_ID="$(hostname -s)"
 fi
