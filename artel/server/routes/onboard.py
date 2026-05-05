@@ -28,7 +28,7 @@ _CREDS="$HOME/.config/artel/credentials"
 if [ ! -f "$_CREDS" ] || ! grep -q '^MCP_AGENT_KEY=' "$_CREDS"; then
     printf "Agent name [%s]: " "$DEFAULT_ID"
     read AGENT_ID < /dev/tty
-    AGENT_ID="${AGENT_ID:-$DEFAULT_ID}"
+    AGENT_ID="${{AGENT_ID:-$DEFAULT_ID}}"
 else
     AGENT_ID="$DEFAULT_ID"
 fi
