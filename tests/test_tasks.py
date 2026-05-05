@@ -135,6 +135,35 @@ async def test_update_task(client):
     assert t["priority"] == "high"
 
 
+async def test_update_task_append(client):
+    r = await client.post(
+        "/tasks", json={"title": "log task", "description": "initial notes"}, headers=HEADERS
+    )
+    tid = r.json()["id"]
+
+    r2 = await client.patch(
+        f"/tasks/{tid}", json={"description": "progress update", "append": True}, headers=HEADERS
+    )
+    assert r2.status_code == 200
+    assert r2.json()["description"] == "initial notes\n\n---\nprogress update"
+
+    r3 = await client.patch(
+        f"/tasks/{tid}", json={"description": "second update", "append": True}, headers=HEADERS
+    )
+    assert r3.json()["description"] == "initial notes\n\n---\nprogress update\n\n---\nsecond update"
+
+
+async def test_update_task_append_empty_existing(client):
+    r = await client.post("/tasks", json={"title": "fresh task"}, headers=HEADERS)
+    tid = r.json()["id"]
+
+    r2 = await client.patch(
+        f"/tasks/{tid}", json={"description": "first note", "append": True}, headers=HEADERS
+    )
+    assert r2.status_code == 200
+    assert r2.json()["description"] == "first note"
+
+
 async def test_task_lifecycle(client):
     r = await client.post("/tasks", json={"title": "lifecycle"}, headers=HEADERS)
     tid = r.json()["id"]

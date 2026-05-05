@@ -95,7 +95,7 @@ def _write_mcp(aid, akey):
     mcp_config = {{
         'mcpServers': {{
             'artel': {{
-                'type': 'sse',
+                'type': 'http',
                 'url': _mcp_base(url) + '/mcp',
                 'headers': {{'x-agent-id': aid, 'x-api-key': akey}},
             }}

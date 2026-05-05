@@ -73,6 +73,7 @@ class TaskEntry(BaseModel):
 
 class TaskUpdate(BaseModel):
     description: str | None = None
+    append: bool = False
     title: str | None = None
     priority: Priority | None = None
 

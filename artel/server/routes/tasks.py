@@ -147,20 +147,31 @@ async def update_task(task_id: str, body: TaskUpdate, agent_id: str = Depends(re
     if not row:
         raise HTTPException(status_code=404, detail="not found")
     check_project(agent_id, row["project"])
-    updates: dict = {}
+    set_parts: list[str] = []
+    params: list = []
     if body.description is not None:
-        updates["description"] = body.description
+        if body.append:
+            set_parts.append(
+                "description = CASE WHEN description IS NOT NULL AND description != '' "
+                "THEN description || ? ELSE ? END"
+            )
+            params.extend([f"\n\n---\n{body.description}", body.description])
+        else:
+            set_parts.append("description=?")
+            params.append(body.description)
     if body.title is not None:
-        updates["title"] = body.title
+        set_parts.append("title=?")
+        params.append(body.title)
     if body.priority is not None:
-        updates["priority"] = body.priority
-    if updates:
-        set_parts = [f"{k}=?" for k in updates] + [
-            "updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')"
-        ]
+        set_parts.append("priority=?")
+        params.append(body.priority)
+    if set_parts:
+        set_parts.append("updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')")
+        params.append(task_id)
+        db.execute(f"UPDATE tasks SET {', '.join(set_parts)} WHERE id=?", params)
         db.execute(
-            f"UPDATE tasks SET {', '.join(set_parts)} WHERE id=?",
-            [*updates.values(), task_id],
+            "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
+            (new_id(), "task.updated", agent_id, json.dumps({"task_id": task_id})),
         )
         db.commit()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
