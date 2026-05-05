@@ -119,6 +119,22 @@ async def test_complete_unclaimed_task_rejected(client):
     assert r2.status_code == 409
 
 
+async def test_update_task(client):
+    r = await client.post("/tasks", json={"title": "original title"}, headers=HEADERS)
+    tid = r.json()["id"]
+
+    r2 = await client.patch(
+        f"/tasks/{tid}",
+        json={"title": "updated title", "description": "progress notes", "priority": "high"},
+        headers=HEADERS,
+    )
+    assert r2.status_code == 200
+    t = r2.json()
+    assert t["title"] == "updated title"
+    assert t["description"] == "progress notes"
+    assert t["priority"] == "high"
+
+
 async def test_task_lifecycle(client):
     r = await client.post("/tasks", json={"title": "lifecycle"}, headers=HEADERS)
     tid = r.json()["id"]

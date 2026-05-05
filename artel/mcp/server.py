@@ -135,19 +135,29 @@ def _http() -> httpx.AsyncClient:
     return httpx.AsyncClient(base_url=settings.artel_url, headers=headers, timeout=30.0)
 
 
-def _err(e: httpx.HTTPStatusError) -> str:
-    try:
-        detail = e.response.json().get("detail", e.response.text)
-    except Exception:
-        detail = e.response.text
-    return f"error {e.response.status_code}: {detail}"
+def _err(e: Exception) -> str:
+    if isinstance(e, httpx.HTTPStatusError):
+        try:
+            detail = e.response.json().get("detail", e.response.text)
+        except Exception:
+            detail = e.response.text
+        return f"error {e.response.status_code}: {detail}"
+    if isinstance(e, httpx.ConnectError):
+        return f"error: cannot connect to Artel server — {e}"
+    if isinstance(e, httpx.ReadTimeout):
+        return "error: request timed out"
+    return f"error: {type(e).__name__}: {e}"
 
 
 def _fmt_memory(e: dict, full_content: bool = False) -> str:
     tags = ", ".join(e["tags"]) if e["tags"] else "—"
     project = f" project={e['project']}" if e.get("project") else ""
     meta = f"[{e['id']}] ({e['agent_id']}, {e['type']}, conf={e['confidence']:.2f}, tags={tags}{project})"
-    content = e["content"] if full_content else e["content"][:300]
+    raw = e["content"]
+    if full_content or len(raw) <= 300:
+        content = raw
+    else:
+        content = raw[:300] + " …(truncated, use memory_get for full content)"
     return f"{meta}\n{content}"
 
 
@@ -170,11 +180,16 @@ async def session_context(agent_id: str | None = None) -> str:
         try:
             r = await c.get(f"/sessions/handoff/{target}")
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         data = r.json()
 
-    parts: list[str] = []
+    parts: list[str] = [f"agent: {target}"]
     h = data.get("last_handoff")
     if h:
         parts.append(f"## Last session ({h['created_at'][:16]})\n{h['summary']}")
@@ -222,7 +237,12 @@ async def session_handoff(
                 },
             )
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         return f"handoff saved [{r.json()['id']}]"
 
@@ -282,10 +302,16 @@ async def memory_write(
                 },
             )
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         entry = r.json()
-    return f"written [{entry['id']}]"
+    snippet = entry["content"][:80].replace("\n", " ")
+    return f"written [{entry['id']}] ({entry['type']}) {snippet!r}"
 
 
 @mcp.tool()
@@ -317,7 +343,12 @@ async def memory_search(
                 params["tag"] = tag
             r = await c.get("/memory/search", params=params)
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         entries = r.json()
     if not entries:
@@ -362,7 +393,12 @@ async def memory_list(
                 params["confidence_min"] = confidence_min
             r = await c.get("/memory", params=params)
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         entries = r.json()
     if not entries:
@@ -381,10 +417,81 @@ async def memory_get(entry_id: str) -> str:
         try:
             r = await c.get(f"/memory/{entry_id}")
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         e = r.json()
     return _fmt_memory(e, full_content=True)
+
+
+@mcp.tool()
+async def memory_update(
+    entry_id: str,
+    content: str | None = None,
+    confidence: float | None = None,
+    tags: list[str] | None = None,
+    type: str | None = None,
+    project: str | None = None,
+) -> str:
+    """Update a memory entry you own.
+
+    Args:
+        entry_id: The UUID of the entry to update.
+        content: New content. Omit to leave unchanged.
+        confidence: New confidence score (0.0–1.0). Omit to leave unchanged.
+        tags: Replace tags list. Omit to leave unchanged.
+        type: New type (memory, doc, scratch, reference). Omit to leave unchanged.
+        project: Move entry to a different project. Omit to leave unchanged.
+    """
+    patch: dict = {}
+    if content is not None:
+        patch["content"] = content
+    if confidence is not None:
+        patch["confidence"] = confidence
+    if tags is not None:
+        patch["tags"] = tags
+    if type is not None:
+        patch["type"] = type
+    if project is not None:
+        patch["project"] = project
+    async with _http() as c:
+        try:
+            r = await c.patch(f"/memory/{entry_id}", json=patch)
+            r.raise_for_status()
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
+            return _err(e)
+        e = r.json()
+    return _fmt_memory(e, full_content=False)
+
+
+@mcp.tool()
+async def memory_delete(entry_id: str) -> str:
+    """Soft-delete a memory entry. Only the entry's owner can delete it.
+
+    Args:
+        entry_id: The UUID of the entry to delete.
+    """
+    async with _http() as c:
+        try:
+            r = await c.delete(f"/memory/{entry_id}")
+            r.raise_for_status()
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
+            return _err(e)
+    return f"deleted [{entry_id}]"
 
 
 @mcp.tool()
@@ -402,7 +509,12 @@ async def memory_delta(since: str) -> str:
         try:
             r = await c.get("/memory/delta", params={"since": since})
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         entries = r.json()
     if not entries:
@@ -425,7 +537,12 @@ async def project_list() -> str:
         try:
             r = await c.get("/projects")
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         projects = r.json()
     if not projects:
@@ -452,15 +569,27 @@ async def agent_list() -> str:
         try:
             r = await c.get("/participants")
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         participants = r.json()
     if not participants:
         return "No agents."
-    return "\n".join(
-        f"{p['agent_id']} — last seen: {p['last_seen'][:16] if p['last_seen'] else 'never'}"
-        for p in participants
-    )
+    lines = []
+    for p in participants:
+        parts = [
+            f"{p['agent_id']} — last seen: {p['last_seen'][:16] if p['last_seen'] else 'never'}"
+        ]
+        if p.get("project"):
+            parts.append(f"project={p['project']}")
+        if p.get("active_task_id"):
+            parts.append(f"task={p['active_task_id']}")
+        lines.append("  ".join(parts))
+    return "\n".join(lines)
 
 
 @mcp.tool()
@@ -476,7 +605,12 @@ async def agent_delete() -> str:
         try:
             r = await c.delete("/agents/me")
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
     return (
         f"agent {_agent_id.get(settings.mcp_agent_id)!r} deregistered. "
@@ -498,7 +632,12 @@ async def agent_rename(new_id: str) -> str:
         try:
             r = await c.patch("/agents/me", json={"new_id": new_id})
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         a = r.json()
     return f"renamed to {a['agent_id']}"
@@ -518,7 +657,12 @@ async def message_inbox() -> str:
         try:
             r = await c.get("/messages/inbox")
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         messages = r.json()
         for m in messages:
@@ -551,7 +695,12 @@ async def message_send(to: str, body: str, subject: str = "") -> str:
         try:
             r = await c.post("/messages", json={"to": to, "subject": subject, "body": body})
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         m = r.json()
     return f"sent to {m['to_agent']} [{m['id']}]"
@@ -580,7 +729,12 @@ async def task_list(status: str | None = None, project: str | None = None) -> st
                 params["project"] = project
             r = await c.get("/tasks", params=params)
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         tasks = r.json()
     if not tasks:
@@ -623,7 +777,12 @@ async def task_create(
                 },
             )
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         t = r.json()
     return f"created [{t['id']}] [{t['priority']}] {t['title']}"
@@ -643,7 +802,12 @@ async def task_claim(task_id: str) -> str:
         try:
             r = await c.post(f"/tasks/{task_id}/claim")
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         t = r.json()
     return f"claimed [{t['id']}] {t['title']}"
@@ -660,7 +824,12 @@ async def task_complete(task_id: str) -> str:
         try:
             r = await c.post(f"/tasks/{task_id}/complete")
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         t = r.json()
     return f"completed [{t['id']}] {t['title']}"
@@ -680,7 +849,12 @@ async def task_fail(task_id: str) -> str:
         try:
             r = await c.post(f"/tasks/{task_id}/fail")
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         t = r.json()
     return f"failed [{t['id']}] {t['title']}"
@@ -697,7 +871,12 @@ async def task_get(task_id: str) -> str:
         try:
             r = await c.get(f"/tasks/{task_id}")
             r.raise_for_status()
-        except httpx.HTTPStatusError as e:
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
             return _err(e)
         t = r.json()
     assigned = t["assigned_to"] or "unassigned"
@@ -709,3 +888,60 @@ async def task_get(task_id: str) -> str:
     if t["description"]:
         lines.append(t["description"])
     return "\n".join(lines)
+
+
+@mcp.tool()
+async def task_update(
+    task_id: str,
+    description: str | None = None,
+    append: bool = False,
+    title: str | None = None,
+    priority: str | None = None,
+) -> str:
+    """Update a task's description, title, or priority.
+
+    Use to record progress notes on a task you're working on, or to correct metadata.
+    Any agent in the project can update a task, not just the assignee.
+
+    Args:
+        task_id: ID of the task to update.
+        description: Text for the description field. Omit to leave unchanged.
+        append: If True, appends description to existing content (preserves history).
+                If False (default), replaces entirely.
+        title: New title. Omit to leave unchanged.
+        priority: low, normal, or high. Omit to leave unchanged.
+    """
+    async with _http() as c:
+        if append and description is not None:
+            try:
+                r = await c.get(f"/tasks/{task_id}")
+                r.raise_for_status()
+                existing = r.json().get("description", "")
+            except (
+                httpx.HTTPStatusError,
+                httpx.ConnectError,
+                httpx.ReadTimeout,
+                httpx.TransportError,
+            ) as e:
+                return _err(e)
+            description = f"{existing}\n\n---\n{description}" if existing else description
+
+        patch: dict = {}
+        if description is not None:
+            patch["description"] = description
+        if title is not None:
+            patch["title"] = title
+        if priority is not None:
+            patch["priority"] = priority
+        try:
+            r = await c.patch(f"/tasks/{task_id}", json=patch)
+            r.raise_for_status()
+        except (
+            httpx.HTTPStatusError,
+            httpx.ConnectError,
+            httpx.ReadTimeout,
+            httpx.TransportError,
+        ) as e:
+            return _err(e)
+        t = r.json()
+    return f"updated [{t['id']}] {t['title']}"
