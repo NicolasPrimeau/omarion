@@ -98,6 +98,7 @@ class ArtelClient:
         if event_type:
             params["type"] = event_type
         async with self._http.stream("GET", "/events/stream", params=params) as response:
+            response.raise_for_status()
             async for line in response.aiter_lines():
                 if line.startswith("data: "):
                     data = line[6:].strip()
