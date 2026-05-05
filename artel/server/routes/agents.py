@@ -151,7 +151,9 @@ async def delete_self(agent_id: str = AgentDep):
     _last_seen.pop(agent_id, None)
 
 
-@router.patch("/{agent_id}", response_model=AgentCreated, dependencies=[Depends(require_registration_key)])
+@router.patch(
+    "/{agent_id}", response_model=AgentCreated, dependencies=[Depends(require_registration_key)]
+)
 async def rename_agent(agent_id: str, body: AgentRename):
     new_id = body.new_id.strip()
     if not new_id or not new_id.replace("-", "").replace("_", "").isalnum():
