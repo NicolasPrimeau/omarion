@@ -151,6 +151,36 @@ async def delete_self(agent_id: str = AgentDep):
     _last_seen.pop(agent_id, None)
 
 
+@router.patch("/{agent_id}", response_model=AgentCreated, dependencies=[Depends(require_registration_key)])
+async def rename_agent(agent_id: str, body: AgentRename):
+    new_id = body.new_id.strip()
+    if not new_id or not new_id.replace("-", "").replace("_", "").isalnum():
+        raise HTTPException(status_code=422, detail="new_id must be alphanumeric with - or _")
+    if new_id == agent_id:
+        raise HTTPException(status_code=422, detail="new_id is same as current id")
+    db = get_db()
+    if db.execute("SELECT id FROM agents WHERE id=?", (new_id,)).fetchone():
+        raise HTTPException(status_code=409, detail="agent_id already taken")
+    if new_id in settings.api_keys().values():
+        raise HTTPException(status_code=409, detail="agent_id already taken")
+    row = db.execute("SELECT * FROM agents WHERE id=?", (agent_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="agent not found or is a static agent")
+    db.execute("UPDATE agents SET id=? WHERE id=?", (new_id, agent_id))
+    db.execute("UPDATE memory SET agent_id=? WHERE agent_id=?", (new_id, agent_id))
+    db.execute("UPDATE tasks SET created_by=? WHERE created_by=?", (new_id, agent_id))
+    db.execute("UPDATE tasks SET assigned_to=? WHERE assigned_to=?", (new_id, agent_id))
+    db.execute("UPDATE messages SET from_agent=? WHERE from_agent=?", (new_id, agent_id))
+    db.execute("UPDATE messages SET to_agent=? WHERE to_agent=?", (new_id, agent_id))
+    db.execute("UPDATE events SET agent_id=? WHERE agent_id=?", (new_id, agent_id))
+    db.execute("UPDATE session_handoffs SET agent_id=? WHERE agent_id=?", (new_id, agent_id))
+    db.commit()
+    if agent_id in _last_seen:
+        _last_seen[new_id] = _last_seen.pop(agent_id)
+    updated = db.execute("SELECT * FROM agents WHERE id=?", (new_id,)).fetchone()
+    return _row_to_agent(updated)
+
+
 @router.delete("/{agent_id}", status_code=204, dependencies=[Depends(require_registration_key)])
 async def delete_agent(agent_id: str):
     if agent_id in settings.api_keys().values():

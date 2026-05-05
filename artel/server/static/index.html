@@ -195,6 +195,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.6 'JetBrains Mono',mo
 <div id="panel-agents" class="panel">
   <div class="toolbar">
     <button onclick="loadAgents()">refresh</button>
+    <button onclick="clearRegKey()" style="margin-left:auto;font-size:12px;color:#444;border-color:#222">clear admin key</button>
   </div>
   <div id="alist"></div>
 </div>
@@ -237,6 +238,22 @@ const hdrs=()=>({'content-type':'application/json','x-agent-id':window._aid,'x-a
 let _sseAbort=null;
 let _agents=[];
 let _projects=[];
+let _regKey=sessionStorage.getItem('artel-regkey')||'';
+
+function clearRegKey(){_regKey='';sessionStorage.removeItem('artel-regkey');}
+async function adminKey(){
+  if(_regKey)return _regKey;
+  const k=prompt('Registration key:');
+  if(!k)return null;
+  _regKey=k;sessionStorage.setItem('artel-regkey',k);
+  return k;
+}
+async function adminReq(method,path,body){
+  const k=await adminKey();if(!k)return;
+  const r=await fetch(path,{method,headers:{'content-type':'application/json','x-registration-key':k},body:body?JSON.stringify(body):undefined});
+  if(!r.ok){const t=await r.text();if(r.status===403||r.status===401){_regKey='';sessionStorage.removeItem('artel-regkey');}throw new Error(t);}
+  return method==='DELETE'?null:r.json();
+}
 
 function activeProject(){return $('h-project').value||null}
 function activeAgent(){return $('h-agent-sel').value||null}
@@ -373,7 +390,7 @@ function renderMem(es){
     const scope=e.scope==='private'?`<span class="pill private">private</span>`:e.scope==='global'?`<span class="pill" style="color:#fa4;background:#1a0e00">global</span>`:'';
     const tags=e.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join(' ');
     const proj=e.project?`<span class="pill project">${esc(e.project)}</span>`:'';
-    return `<div class="card">
+    return `<div class="card" id="mc-${e.id}">
       <div class="meta">
         <span class="meta-agent">${esc(e.agent_id)}</span>
         <span class="pill ${e.type}">${e.type}</span>
@@ -381,12 +398,37 @@ function renderMem(es){
         <span class="meta-time" style="margin-left:auto">${e.updated_at.slice(0,16)}</span>
         <span class="meta-id">${e.id.slice(0,8)}</span>
       </div>
-      <pre>${esc(e.content)}</pre>
+      <pre id="mpre-${e.id}">${esc(e.content)}</pre>
+      <div id="medit-${e.id}" style="display:none">
+        <textarea id="mta-${e.id}" rows="4" style="width:100%;margin-bottom:6px">${esc(e.content)}</textarea>
+        <div class="write-row">
+          <button class="p" onclick="saveMem('${e.id}')">save</button>
+          <button onclick="cancelEditMem('${e.id}')">cancel</button>
+        </div>
+      </div>
       <div class="card-actions">
+        <button onclick="startEditMem('${e.id}')">edit</button>
         <button class="danger" onclick="deleteMem('${e.id}')">delete</button>
       </div>
     </div>`;
   }).join('');
+}
+
+function startEditMem(id){
+  $('mpre-'+id).style.display='none';
+  $('medit-'+id).style.display='block';
+  $('mta-'+id).focus();
+}
+
+function cancelEditMem(id){
+  $('mpre-'+id).style.display='';
+  $('medit-'+id).style.display='none';
+}
+
+async function saveMem(id){
+  const content=$('mta-'+id).value.trim();if(!content)return;
+  await req('PATCH',`/memory/${id}`,{content});
+  flash('mem-flash');loadMem();
 }
 
 async function writeMem(){
@@ -572,15 +614,37 @@ async function loadAgents(){
       const active=seenMs&&(now-seenMs)<300000;
       const seenLabel=p.last_seen?p.last_seen.slice(0,16):'never';
       const projs=(agentProjects[p.agent_id]||[]).map(n=>`<span class="pill project">${esc(n)}</span>`).join(' ');
+      const isSelf=p.agent_id===window._aid;
       return `<div class="ac${active?' active':''}">
-        <div class="ac-name"><span class="dot"></span>${esc(p.agent_id)}${p.agent_id===window._aid?' <span style="color:#555;font-size:11px">(you)</span>':''}</div>
+        <div class="ac-name"><span class="dot"></span>${esc(p.agent_id)}${isSelf?' <span style="color:#555;font-size:11px">(you)</span>':''}</div>
         <div class="ac-meta">
           <span>last seen: ${seenLabel}</span>
           ${projs?`<span style="margin-top:4px">${projs}</span>`:''}
         </div>
+        <div class="card-actions" style="margin-top:8px">
+          <button onclick="renameAgent('${esc(p.agent_id)}')">rename</button>
+          <button class="danger" onclick="deleteAgent('${esc(p.agent_id)}')">delete</button>
+        </div>
       </div>`;
     }).join('')+'</div>';
   }catch(e){$('alist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
+}
+
+async function deleteAgent(id){
+  if(!confirm(`Delete agent "${id}"? This cannot be undone.`))return;
+  try{
+    await adminReq('DELETE',`/agents/${id}`);
+    await loadAgents();await loadAgentsGlobal();
+  }catch(e){alert('Failed: '+e.message);}
+}
+
+async function renameAgent(id){
+  const newId=prompt(`Rename "${id}" to:`);
+  if(!newId||newId===id)return;
+  try{
+    await adminReq('PATCH',`/agents/${id}`,{new_id:newId});
+    await loadAgents();await loadAgentsGlobal();
+  }catch(e){alert('Failed: '+e.message);}
 }
 
 // ── PROJECTS ─────────────────────────────────────────────
