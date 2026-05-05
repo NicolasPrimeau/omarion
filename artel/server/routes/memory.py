@@ -246,6 +246,9 @@ async def patch_memory(
         updates["confidence"] = body.confidence
     if body.type is not None:
         updates["type"] = body.type
+    if body.project is not None:
+        check_project(agent_id, body.project)
+        updates["project"] = body.project
 
     if updates:
         set_parts = [f"{k}=?" for k in updates]

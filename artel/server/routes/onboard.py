@@ -80,7 +80,16 @@ if _valid(aid, akey):
     refreshed = True
 else:
     if aid:
-        print('  stale credentials for {{}} — re-registering'.format(aid))
+        print('  stale credentials for {{}} — cleaning up and re-registering'.format(aid))
+        try:
+            req = urllib.request.Request(
+                url + '/agents/me',
+                headers={{'x-agent-id': aid, 'x-api-key': akey}},
+                method='DELETE',
+            )
+            urllib.request.urlopen(req)
+        except Exception:
+            pass
     data = _register(base_id)
     aid, akey = data['agent_id'], data['api_key']
     creds.parent.mkdir(parents=True, exist_ok=True)

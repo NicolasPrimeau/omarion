@@ -30,6 +30,7 @@ class MemoryPatch(BaseModel):
     tags: list[str] | None = None
     scope: Scope | None = None
     type: EntryType | None = None
+    project: str | None = None
 
 
 class MemoryEntry(BaseModel):
@@ -70,6 +71,12 @@ class TaskEntry(BaseModel):
     updated_at: str
 
 
+class TaskUpdate(BaseModel):
+    description: str | None = None
+    title: str | None = None
+    priority: Priority | None = None
+
+
 class MessageSend(BaseModel):
     to: str
     subject: str = ""
@@ -102,6 +109,8 @@ class EventEntry(BaseModel):
 class Participant(BaseModel):
     agent_id: str
     last_seen: str | None
+    project: str | None = None
+    active_task_id: str | None = None
 
 
 class AgentRegister(BaseModel):

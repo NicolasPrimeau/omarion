@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...store.db import get_db
 from ..auth import check_project, project_filter, require_agent
-from ..models import TaskCreate, TaskEntry, new_id
+from ..models import TaskCreate, TaskEntry, TaskUpdate, new_id
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -136,6 +136,33 @@ async def complete_task(task_id: str, agent_id: str = Depends(require_agent)):
         (new_id(), "task.completed", agent_id, json.dumps({"task_id": task_id})),
     )
     db.commit()
+    row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+    return _row_to_task(row)
+
+
+@router.patch("/{task_id}", response_model=TaskEntry)
+async def update_task(task_id: str, body: TaskUpdate, agent_id: str = Depends(require_agent)):
+    db = get_db()
+    row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="not found")
+    check_project(agent_id, row["project"])
+    updates: dict = {}
+    if body.description is not None:
+        updates["description"] = body.description
+    if body.title is not None:
+        updates["title"] = body.title
+    if body.priority is not None:
+        updates["priority"] = body.priority
+    if updates:
+        set_parts = [f"{k}=?" for k in updates] + [
+            "updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')"
+        ]
+        db.execute(
+            f"UPDATE tasks SET {', '.join(set_parts)} WHERE id=?",
+            [*updates.values(), task_id],
+        )
+        db.commit()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     return _row_to_task(row)
 

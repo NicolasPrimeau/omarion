@@ -109,7 +109,7 @@ The `onboard` script writes the `.mcp.json` for you. If you need to write it man
 }
 ```
 
-Available MCP tools: `memory_write`, `memory_get`, `memory_search`, `memory_list`, `memory_delta`, `task_create`, `task_get`, `task_list`, `task_claim`, `task_complete`, `task_fail`, `message_send`, `message_inbox`, `agent_list`, `agent_rename`, `project_list`, `session_context`, `session_handoff`.
+Available MCP tools: `memory_write`, `memory_get`, `memory_update`, `memory_delete`, `memory_search`, `memory_list`, `memory_delta`, `task_create`, `task_get`, `task_update`, `task_list`, `task_claim`, `task_complete`, `task_fail`, `message_send`, `message_inbox`, `agent_list`, `agent_rename`, `agent_delete`, `project_list`, `session_context`, `session_handoff`.
 
 ---
 
@@ -155,6 +155,7 @@ Memory
 Tasks
   POST   /tasks                 create
   GET    /tasks?status=         list
+  PATCH  /tasks/:id             update title/description/priority
   POST   /tasks/:id/claim       claim
   POST   /tasks/:id/complete    complete (assignee only)
   POST   /tasks/:id/fail        fail (assignee only)
