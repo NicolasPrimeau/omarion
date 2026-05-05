@@ -39,6 +39,7 @@ Changelog = "https://github.com/NicolasPrimeau/artel/blob/master/CHANGELOG.md"
 artel = "artel.server.__main__:main"
 artel-archivist = "artel.archivist.__main__:main"
 artel-mcp = "artel.mcp.__main__:main"
+artel-mdns = "artel.server.mdns_announce:main"
 
 [dependency-groups]
 dev = [
