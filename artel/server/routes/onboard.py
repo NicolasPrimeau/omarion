@@ -17,8 +17,12 @@ _git_name() {
         basename "$remote" .git
     fi
 }
-DEFAULT_ID=$(_git_name)
-DEFAULT_ID="${DEFAULT_ID:-$(hostname -s)}"
+_repo=$(_git_name)
+if [ -n "$_repo" ]; then
+    DEFAULT_ID="$(hostname -s)-${_repo}"
+else
+    DEFAULT_ID="$(hostname -s)"
+fi
 
 _CREDS="$HOME/.config/artel/credentials"
 if [ ! -f "$_CREDS" ] || ! grep -q '^MCP_AGENT_KEY=' "$_CREDS"; then
