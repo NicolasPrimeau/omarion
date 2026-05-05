@@ -125,7 +125,9 @@ async def ui(request: Request):
         return RedirectResponse("/ui/login")
     aid = settings.ui_agent_id
     akey = settings.ui_agent_key()
+    regkey = settings.registration_key
     html = _UI.read_text().replace(
-        "/*CREDS*/", f"window._aid={json.dumps(aid)};window._akey={json.dumps(akey)};"
+        "/*CREDS*/",
+        f"window._aid={json.dumps(aid)};window._akey={json.dumps(akey)};window._regkey={json.dumps(regkey)};",
     )
     return HTMLResponse(html)
