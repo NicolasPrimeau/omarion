@@ -4,7 +4,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException
 
 from ...store.db import get_db
-from ..auth import require_agent
+from ..auth import project_filter, require_agent
 from ..models import HandoffPost, HandoffResponse, MemoryEntry, new_id
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -78,13 +78,16 @@ async def get_handoff(
         }
         since = row["created_at"]
 
-    delta_rows = db.execute(
-        """SELECT * FROM memory
-           WHERE updated_at > ? AND deleted_at IS NULL
-             AND (scope != 'private' OR agent_id = ?)
-           ORDER BY updated_at""",
-        (since, target_agent_id),
-    ).fetchall()
+    pf_clause, pf_params = project_filter(target_agent_id)
+    delta_sql = """SELECT * FROM memory
+                   WHERE updated_at > ? AND deleted_at IS NULL
+                     AND (scope != 'private' OR agent_id = ?)"""
+    delta_params: list = [since, target_agent_id]
+    if pf_clause:
+        delta_sql += f" AND {pf_clause}"
+        delta_params.extend(pf_params)
+    delta_sql += " ORDER BY updated_at"
+    delta_rows = db.execute(delta_sql, delta_params).fetchall()
 
     return HandoffResponse(
         last_handoff=last_handoff,

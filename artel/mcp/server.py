@@ -135,6 +135,9 @@ def _http() -> httpx.AsyncClient:
     return httpx.AsyncClient(base_url=settings.artel_url, headers=headers, timeout=30.0)
 
 
+_HTTPX_ERRORS = (httpx.HTTPStatusError, httpx.TransportError)
+
+
 def _err(e: Exception) -> str:
     if isinstance(e, httpx.HTTPStatusError):
         try:
@@ -180,12 +183,7 @@ async def session_context(agent_id: str | None = None) -> str:
         try:
             r = await c.get(f"/sessions/handoff/{target}")
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         data = r.json()
 
@@ -237,12 +235,7 @@ async def session_handoff(
                 },
             )
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         return f"handoff saved [{r.json()['id']}]"
 
@@ -302,12 +295,7 @@ async def memory_write(
                 },
             )
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         entry = r.json()
     snippet = entry["content"][:80].replace("\n", " ")
@@ -343,12 +331,7 @@ async def memory_search(
                 params["tag"] = tag
             r = await c.get("/memory/search", params=params)
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         entries = r.json()
     if not entries:
@@ -393,12 +376,7 @@ async def memory_list(
                 params["confidence_min"] = confidence_min
             r = await c.get("/memory", params=params)
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         entries = r.json()
     if not entries:
@@ -417,12 +395,7 @@ async def memory_get(entry_id: str) -> str:
         try:
             r = await c.get(f"/memory/{entry_id}")
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         e = r.json()
     return _fmt_memory(e, full_content=True)
@@ -435,6 +408,7 @@ async def memory_update(
     confidence: float | None = None,
     tags: list[str] | None = None,
     type: str | None = None,
+    scope: str | None = None,
     project: str | None = None,
 ) -> str:
     """Update a memory entry you own.
@@ -445,6 +419,7 @@ async def memory_update(
         confidence: New confidence score (0.0–1.0). Omit to leave unchanged.
         tags: Replace tags list. Omit to leave unchanged.
         type: New type (memory, doc, scratch, reference). Omit to leave unchanged.
+        scope: New scope (private, shared, global). Omit to leave unchanged.
         project: Move entry to a different project. Omit to leave unchanged.
     """
     patch: dict = {}
@@ -456,18 +431,15 @@ async def memory_update(
         patch["tags"] = tags
     if type is not None:
         patch["type"] = type
+    if scope is not None:
+        patch["scope"] = scope
     if project is not None:
         patch["project"] = project
     async with _http() as c:
         try:
             r = await c.patch(f"/memory/{entry_id}", json=patch)
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         e = r.json()
     return _fmt_memory(e, full_content=False)
@@ -475,7 +447,10 @@ async def memory_update(
 
 @mcp.tool()
 async def memory_delete(entry_id: str) -> str:
-    """Soft-delete a memory entry. Only the entry's owner can delete it.
+    """Delete a memory entry. Only the entry's owner can delete it.
+
+    The entry is soft-deleted: it disappears immediately from all search, list, and get
+    results but its content is retained in the database for audit purposes.
 
     Args:
         entry_id: The UUID of the entry to delete.
@@ -484,12 +459,7 @@ async def memory_delete(entry_id: str) -> str:
         try:
             r = await c.delete(f"/memory/{entry_id}")
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
     return f"deleted [{entry_id}]"
 
@@ -509,12 +479,7 @@ async def memory_delta(since: str) -> str:
         try:
             r = await c.get("/memory/delta", params={"since": since})
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         entries = r.json()
     if not entries:
@@ -537,12 +502,7 @@ async def project_list() -> str:
         try:
             r = await c.get("/projects")
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         projects = r.json()
     if not projects:
@@ -569,12 +529,7 @@ async def agent_list() -> str:
         try:
             r = await c.get("/participants")
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         participants = r.json()
     if not participants:
@@ -605,12 +560,7 @@ async def agent_delete() -> str:
         try:
             r = await c.delete("/agents/me")
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
     return (
         f"agent {_agent_id.get(settings.mcp_agent_id)!r} deregistered. "
@@ -632,12 +582,7 @@ async def agent_rename(new_id: str) -> str:
         try:
             r = await c.patch("/agents/me", json={"new_id": new_id})
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         a = r.json()
     return f"renamed to {a['agent_id']}"
@@ -657,12 +602,7 @@ async def message_inbox() -> str:
         try:
             r = await c.get("/messages/inbox")
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         messages = r.json()
         for m in messages:
@@ -695,12 +635,7 @@ async def message_send(to: str, body: str, subject: str = "") -> str:
         try:
             r = await c.post("/messages", json={"to": to, "subject": subject, "body": body})
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         m = r.json()
     return f"sent to {m['to_agent']} [{m['id']}]"
@@ -729,12 +664,7 @@ async def task_list(status: str | None = None, project: str | None = None) -> st
                 params["project"] = project
             r = await c.get("/tasks", params=params)
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         tasks = r.json()
     if not tasks:
@@ -777,12 +707,7 @@ async def task_create(
                 },
             )
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         t = r.json()
     return f"created [{t['id']}] [{t['priority']}] {t['title']}"
@@ -802,12 +727,7 @@ async def task_claim(task_id: str) -> str:
         try:
             r = await c.post(f"/tasks/{task_id}/claim")
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         t = r.json()
     return f"claimed [{t['id']}] {t['title']}"
@@ -824,12 +744,7 @@ async def task_complete(task_id: str) -> str:
         try:
             r = await c.post(f"/tasks/{task_id}/complete")
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         t = r.json()
     return f"completed [{t['id']}] {t['title']}"
@@ -849,12 +764,7 @@ async def task_fail(task_id: str) -> str:
         try:
             r = await c.post(f"/tasks/{task_id}/fail")
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         t = r.json()
     return f"failed [{t['id']}] {t['title']}"
@@ -871,12 +781,7 @@ async def task_get(task_id: str) -> str:
         try:
             r = await c.get(f"/tasks/{task_id}")
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         t = r.json()
     assigned = t["assigned_to"] or "unassigned"
@@ -911,37 +816,19 @@ async def task_update(
         title: New title. Omit to leave unchanged.
         priority: low, normal, or high. Omit to leave unchanged.
     """
+    patch: dict = {}
+    if description is not None:
+        patch["description"] = description
+        patch["append"] = append
+    if title is not None:
+        patch["title"] = title
+    if priority is not None:
+        patch["priority"] = priority
     async with _http() as c:
-        if append and description is not None:
-            try:
-                r = await c.get(f"/tasks/{task_id}")
-                r.raise_for_status()
-                existing = r.json().get("description", "")
-            except (
-                httpx.HTTPStatusError,
-                httpx.ConnectError,
-                httpx.ReadTimeout,
-                httpx.TransportError,
-            ) as e:
-                return _err(e)
-            description = f"{existing}\n\n---\n{description}" if existing else description
-
-        patch: dict = {}
-        if description is not None:
-            patch["description"] = description
-        if title is not None:
-            patch["title"] = title
-        if priority is not None:
-            patch["priority"] = priority
         try:
             r = await c.patch(f"/tasks/{task_id}", json=patch)
             r.raise_for_status()
-        except (
-            httpx.HTTPStatusError,
-            httpx.ConnectError,
-            httpx.ReadTimeout,
-            httpx.TransportError,
-        ) as e:
+        except _HTTPX_ERRORS as e:
             return _err(e)
         t = r.json()
     return f"updated [{t['id']}] {t['title']}"
