@@ -62,8 +62,10 @@ def _valid(aid, akey):
     try:
         with urllib.request.urlopen(req) as r:
             return r.status == 200
-    except Exception:
+    except urllib.error.HTTPError:
         return False
+    except Exception:
+        return None
 
 def _register(agent_id):
     req = urllib.request.Request(
@@ -107,7 +109,10 @@ def _write_mcp(aid, akey):
 aid, akey = _load_creds()
 refreshed = False
 
-if _valid(aid, akey):
+valid = _valid(aid, akey)
+if valid is None:
+    print('error: cannot reach {{}} — is the server running?'.format(url)); sys.exit(1)
+elif valid:
     _write_mcp(aid, akey)
     print('  agent    : ' + aid + '  (credentials valid, refreshed .mcp.json)')
     refreshed = True
@@ -123,6 +128,7 @@ else:
             urllib.request.urlopen(req)
         except Exception:
             pass
+        base_id = aid
     data = _register(base_id)
     aid, akey = data['agent_id'], data['api_key']
     creds.parent.mkdir(parents=True, exist_ok=True)
