@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     db_path: str = "artel.db"
     host: str = "0.0.0.0"
     port: int = 8000
+    reload: bool = False
     agent_keys: str = ""
     registration_key: str = ""
     ui_password: str = ""
