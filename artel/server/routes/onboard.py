@@ -11,7 +11,16 @@ set -e
 ARTEL_URL="{artel_url}"
 PROJECT="{project}"
 
-AGENT_ID=$(hostname -s)
+DEFAULT_ID=$(hostname -s)
+
+_CREDS="$HOME/.config/artel/credentials"
+if [ ! -f "$_CREDS" ] || ! grep -q '^MCP_AGENT_KEY=' "$_CREDS"; then
+    printf "Agent name [%s]: " "$DEFAULT_ID"
+    read AGENT_ID < /dev/tty
+    AGENT_ID="${AGENT_ID:-$DEFAULT_ID}"
+else
+    AGENT_ID="$DEFAULT_ID"
+fi
 
 ARTEL_URL="$ARTEL_URL" BASE_ID="$AGENT_ID" PROJECT="$PROJECT" python3 -c "
 import os, json, urllib.request, urllib.error, sys, pathlib
