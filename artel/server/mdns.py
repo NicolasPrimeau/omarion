@@ -31,7 +31,7 @@ class MDNSService:
 
     async def start(self):
         self._zc = AsyncZeroconf()
-        await self._zc.async_register_service(self._info)
+        await self._zc.async_register_service(self._info, allow_name_change=True)
 
     async def stop(self):
         if self._zc:
