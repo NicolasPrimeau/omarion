@@ -24,13 +24,20 @@ else
     DEFAULT_ID="$(hostname -s)"
 fi
 
-_CREDS="$HOME/.config/artel/credentials"
-if [ ! -f "$_CREDS" ] || ! grep -q '^MCP_AGENT_KEY=' "$_CREDS"; then
+_CREDS_DIR="$HOME/.config/artel"
+_MCP=".mcp.json"
+
+# derive existing agent-id from .mcp.json if present, else prompt
+if [ -f "$_MCP" ] && command -v python3 >/dev/null 2>&1; then
+    _EXISTING_ID=$(python3 -c "import json,sys; d=json.load(open('$_MCP')); print(d['mcpServers']['artel']['headers']['x-agent-id'])" 2>/dev/null || true)
+fi
+
+if [ -n "$_EXISTING_ID" ]; then
+    AGENT_ID="$_EXISTING_ID"
+else
     printf "Agent name [%s]: " "$DEFAULT_ID"
     read AGENT_ID < /dev/tty
     AGENT_ID="${{AGENT_ID:-$DEFAULT_ID}}"
-else
-    AGENT_ID="$DEFAULT_ID"
 fi
 
 ARTEL_URL="$ARTEL_URL" BASE_ID="$AGENT_ID" PROJECT="$PROJECT" python3 -c "
@@ -40,12 +47,24 @@ url     = os.environ['ARTEL_URL']
 base_id = os.environ['BASE_ID']
 project = os.environ.get('PROJECT') or None
 
-creds = pathlib.Path.home() / '.config' / 'artel' / 'credentials'
+creds_dir = pathlib.Path.home() / '.config' / 'artel'
+
+def _creds_path(aid):
+    return creds_dir / aid
 
 def _load_creds():
-    if not creds.exists():
-        return None, None
-    text = creds.read_text()
+    # load from per-agent file if agent-id known, else scan for any valid file
+    candidate = _creds_path(base_id)
+    if candidate.exists():
+        return _parse_creds(candidate)
+    # legacy: check old single-file location
+    legacy = creds_dir / 'credentials'
+    if legacy.exists():
+        return _parse_creds(legacy)
+    return None, None
+
+def _parse_creds(path):
+    text = path.read_text()
     aid = akey = None
     for line in text.splitlines():
         if line.startswith('MCP_AGENT_ID='): aid  = line.split('=', 1)[1].strip()
@@ -131,19 +150,34 @@ else:
         base_id = aid
     data = _register(base_id)
     aid, akey = data['agent_id'], data['api_key']
-    creds.parent.mkdir(parents=True, exist_ok=True)
-    creds.write_text('MCP_AGENT_ID={{}}\nMCP_AGENT_KEY={{}}\n'.format(aid, akey))
+    creds_dir.mkdir(parents=True, exist_ok=True)
+    _creds_path(aid).write_text('MCP_AGENT_ID={{}}\nMCP_AGENT_KEY={{}}\n'.format(aid, akey))
     _write_mcp(aid, akey)
     print('  agent    : ' + aid)
     if project:
         print('  project  : ' + project)
-    print('  creds    : ~/.config/artel/credentials')
+    print('  creds    : ~/.config/artel/' + aid)
 
 bashrc = pathlib.Path.home() / '.bashrc'
-marker = '~/.config/artel/credentials'
+marker = '_artel_load()'
 if bashrc.exists() and marker not in bashrc.read_text():
     with open(bashrc, 'a') as f:
-        f.write('\n[ -f ~/.config/artel/credentials ] && {{ set -a; source ~/.config/artel/credentials; set +a; }}\n')
+        f.write(
+            '\n_artel_load() {{\n'
+            '    local mcp=".mcp.json" aid creds\n'
+            '    if [ -f "$mcp" ]; then\n'
+            '        aid=$(python3 -c "import json; print(json.load(open(\\'.mcp.json\\'))[\\'mcpServers\\'][\\'artel\\'][\\'headers\\'][\\'x-agent-id\\'])" 2>/dev/null)\n'
+            '    fi\n'
+            '    if [ -n "$aid" ]; then creds="$HOME/.config/artel/$aid"\n'
+            '    else creds="$HOME/.config/artel/credentials"; fi\n'
+            '    [ -f "$creds" ] && {{ set -a; source "$creds"; set +a; }}\n'
+            '}}\n'
+            'if [ -n "$PROMPT_COMMAND" ]; then\n'
+            '    export PROMPT_COMMAND="_artel_load;$PROMPT_COMMAND"\n'
+            'else\n'
+            '    export PROMPT_COMMAND="_artel_load"\n'
+            'fi\n'
+        )
 
 if not refreshed:
     print('  .mcp.json written, ~/.bashrc updated')
