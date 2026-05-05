@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 
 from ..store.db import get_db
 from .config import settings
+from .mdns import MDNSService
 from .routes.agents import router as agents_router
 from .routes.events import router as events_router
 from .routes.memory import router as memory_router
@@ -57,7 +58,10 @@ button:hover{background:#0a1a2a}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     get_db(settings.db_path)
+    mdns = MDNSService(settings.port)
+    await mdns.start()
     yield
+    await mdns.stop()
 
 
 app = FastAPI(title="Artel", version="0.1.0", lifespan=lifespan)
