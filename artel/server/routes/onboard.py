@@ -11,7 +11,14 @@ set -e
 ARTEL_URL="{artel_url}"
 PROJECT="{project}"
 
-DEFAULT_ID=$(hostname -s)
+_git_name() {
+    remote=$(git remote get-url origin 2>/dev/null) || true
+    if [ -n "$remote" ]; then
+        basename "$remote" .git
+    fi
+}
+DEFAULT_ID=$(_git_name)
+DEFAULT_ID="${DEFAULT_ID:-$(hostname -s)}"
 
 _CREDS="$HOME/.config/artel/credentials"
 if [ ! -f "$_CREDS" ] || ! grep -q '^MCP_AGENT_KEY=' "$_CREDS"; then
@@ -67,12 +74,25 @@ def _register(agent_id):
     except urllib.error.URLError as e:
         print('error: could not reach {{}} — {{}}'.format(url, e.reason)); sys.exit(1)
 
+def _mdns_url(fallback):
+    try:
+        import socket
+        socket.setdefaulttimeout(1)
+        addr = socket.gethostbyname('artel.local')
+        host = fallback.split('//')[1].split(':')[0]
+        if addr == host or addr:
+            return 'http://artel.local'
+    except Exception:
+        pass
+    return fallback
+
 def _write_mcp(aid, akey):
+    mcp_url = _mdns_url(url)
     mcp_config = {{
         'mcpServers': {{
             'artel': {{
                 'type': 'http',
-                'url': url.replace(':8000', ':8001') + '/mcp',
+                'url': mcp_url.replace(':8000', ':8001') + '/mcp',
                 'headers': {{'x-agent-id': aid, 'x-api-key': akey}},
             }}
         }}
