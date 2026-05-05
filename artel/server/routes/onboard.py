@@ -78,25 +78,25 @@ def _register(agent_id):
     except urllib.error.URLError as e:
         print('error: could not reach {{}} — {{}}'.format(url, e.reason)); sys.exit(1)
 
-def _mdns_url(fallback):
+def _mcp_base(api_url):
+    import urllib.parse
+    parsed = urllib.parse.urlparse(api_url)
+    port = parsed.port or 8000
     try:
         import socket
         socket.setdefaulttimeout(1)
-        addr = socket.gethostbyname('artel.local')
-        host = fallback.split('//')[1].split(':')[0]
-        if addr == host or addr:
-            return 'http://artel.local'
+        socket.gethostbyname('artel.local')
+        return 'http://artel.local:{{}}'.format(port + 1)
     except Exception:
         pass
-    return fallback
+    return '{{}}://{{}}:{{}}'.format(parsed.scheme, parsed.hostname, port + 1)
 
 def _write_mcp(aid, akey):
-    mcp_url = _mdns_url(url)
     mcp_config = {{
         'mcpServers': {{
             'artel': {{
                 'type': 'http',
-                'url': mcp_url.replace(':8000', ':8001') + '/mcp',
+                'url': _mcp_base(url) + '/mcp',
                 'headers': {{'x-agent-id': aid, 'x-api-key': akey}},
             }}
         }}
