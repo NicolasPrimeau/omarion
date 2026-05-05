@@ -195,7 +195,6 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.6 'JetBrains Mono',mo
 <div id="panel-agents" class="panel">
   <div class="toolbar">
     <button onclick="loadAgents()">refresh</button>
-    <button onclick="clearRegKey()" style="margin-left:auto;font-size:12px;color:#444;border-color:#222">clear admin key</button>
   </div>
   <div id="alist"></div>
 </div>
@@ -238,20 +237,10 @@ const hdrs=()=>({'content-type':'application/json','x-agent-id':window._aid,'x-a
 let _sseAbort=null;
 let _agents=[];
 let _projects=[];
-let _regKey=sessionStorage.getItem('artel-regkey')||'';
-
-function clearRegKey(){_regKey='';sessionStorage.removeItem('artel-regkey');}
-async function adminKey(){
-  if(_regKey)return _regKey;
-  const k=prompt('Registration key:');
-  if(!k)return null;
-  _regKey=k;sessionStorage.setItem('artel-regkey',k);
-  return k;
-}
 async function adminReq(method,path,body){
-  const k=await adminKey();if(!k)return;
+  const k=window._regkey;
   const r=await fetch(path,{method,headers:{'content-type':'application/json','x-registration-key':k},body:body?JSON.stringify(body):undefined});
-  if(!r.ok){const t=await r.text();if(r.status===403||r.status===401){_regKey='';sessionStorage.removeItem('artel-regkey');}throw new Error(t);}
+  if(!r.ok)throw new Error(await r.text());
   return method==='DELETE'?null:r.json();
 }
 
