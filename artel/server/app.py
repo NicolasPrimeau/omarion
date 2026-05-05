@@ -59,9 +59,15 @@ button:hover{background:#0a1a2a}
 async def lifespan(app: FastAPI):
     get_db(settings.db_path)
     mdns = MDNSService(settings.port)
-    await mdns.start()
+    try:
+        await mdns.start()
+    except Exception:
+        pass
     yield
-    await mdns.stop()
+    try:
+        await mdns.stop()
+    except Exception:
+        pass
 
 
 app = FastAPI(title="Artel", version="0.1.0", lifespan=lifespan)

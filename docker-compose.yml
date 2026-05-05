@@ -47,5 +47,17 @@ services:
       artel:
         condition: service_healthy
 
+  mdns:
+    build: .
+    restart: unless-stopped
+    network_mode: host
+    command: ["python", "-m", "artel.server.mdns_announce"]
+    volumes:
+      - ./artel:/app/artel
+    env_file: .env
+    depends_on:
+      artel:
+        condition: service_healthy
+
 volumes:
   artel-data:
