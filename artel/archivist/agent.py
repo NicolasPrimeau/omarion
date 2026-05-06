@@ -42,7 +42,7 @@ async def _scheduler(client: ArtelClient) -> None:
         ):
             try:
                 await asyncio.wait_for(fn(client), timeout=300.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 log.error("%s timed out after 300s", name)
             except asyncio.CancelledError:
                 raise
