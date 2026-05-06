@@ -92,6 +92,7 @@ async def health():
         return {"status": "ok"}
     except Exception as e:
         from fastapi.responses import JSONResponse
+
         return JSONResponse({"status": "error", "detail": str(e)}, status_code=503)
 
 

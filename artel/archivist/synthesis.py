@@ -50,7 +50,7 @@ async def run_synthesis(client: ArtelClient) -> None:
             if attempt == 2:
                 log.error("synthesis LLM call failed after 3 attempts: %s", e)
                 return
-            await asyncio.sleep(2.0 ** attempt)
+            await asyncio.sleep(2.0**attempt)
 
     if text:
         tags = list({e.get("project") for e in entries if e.get("project")} | {"synthesis"})

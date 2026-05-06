@@ -36,7 +36,12 @@ async def send_message(body: MessageSend, agent_id: str = Depends(require_agent)
         )
         db.execute(
             "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-            (event_id, "message.received", agent_id, json.dumps({"message_id": msg_id, "to": body.to})),
+            (
+                event_id,
+                "message.received",
+                agent_id,
+                json.dumps({"message_id": msg_id, "to": body.to}),
+            ),
         )
 
     broadcast(
