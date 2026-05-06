@@ -7,98 +7,485 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font:15px/1.6 Inter,system-ui,sans-serif;background:#0d0d0d;color:#c8c8c8}
-header{display:flex;gap:10px;padding:9px 18px;background:#111;border-bottom:1px solid #1e1e1e;align-items:center}
-header b{color:#4af;font-size:17px;letter-spacing:.5px}
-.h-sep{color:#222;padding:0 2px}
-#h-agent{color:#888;font-size:13px;font-family:'JetBrains Mono',monospace}
-.spacer{flex:1}
-a.out{color:#444;font-size:13px;text-decoration:none}
-a.out:hover{color:#c8c8c8}
-input,select,textarea,button{background:#161616;color:#c8c8c8;border:1px solid #2a2a2a;padding:6px 11px;font:15px Inter,sans-serif;border-radius:3px}
-input:focus,textarea:focus,select:focus{outline:none;border-color:#4af}
-button{cursor:pointer}
-button:hover{background:#1e1e1e}
-button.p{color:#4af;border-color:#4af}
-button.p:hover{background:#0a1520}
-button.danger{color:#f55;border-color:#333}
-button.danger:hover{background:#180000;border-color:#f55}
-select#h-project{background:#0d0d0d;border-color:#1e1e1e;color:#c8c8c8;font-size:13px;padding:4px 8px}
-nav{display:flex;background:#111;border-bottom:1px solid #1e1e1e;overflow-x:auto}
-nav button{border:none;border-bottom:2px solid transparent;padding:9px 16px;border-radius:0;background:none;font:500 13px Inter,sans-serif;letter-spacing:.3px;color:#555;white-space:nowrap;position:relative}
-nav button.on{border-bottom-color:#4af;color:#4af}
-nav button:hover{color:#c8c8c8;background:none}
-.badge{position:absolute;top:6px;right:7px;background:#4af;color:#000;font-size:10px;font-weight:700;border-radius:10px;padding:0 5px;line-height:15px}
-.panel{display:none;padding:18px 20px;max-width:1040px}
-.panel.on{display:block}
-.toolbar{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
-.toolbar input,.toolbar select{min-width:0}
-.write-box{background:#111;border:1px solid #1e1e1e;border-radius:4px;padding:14px;margin-bottom:16px}
-.write-box textarea{width:100%;margin-bottom:8px;resize:vertical}
-.write-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.write-row input,.write-row select{min-width:0}
-.card{padding:12px 14px;border:1px solid #1e1e1e;margin-bottom:7px;background:#111;border-radius:3px}
-.card:hover{border-color:#2a2a2a}
-.meta{color:#444;font-size:12px;margin-bottom:6px;font-family:'JetBrains Mono',monospace;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.meta-id{color:#2a2a2a}
-.meta-agent{color:#4af;font-weight:500}
-.meta-time{color:#2a2a2a}
-.tag{background:#0e1e0e;color:#3a7;padding:1px 6px;border-radius:2px;font-size:11px;font-family:'JetBrains Mono',monospace}
-.pill{padding:1px 6px;border-radius:2px;font-size:11px;font-family:'JetBrains Mono',monospace;font-weight:500}
-.pill.memory{color:#6af;background:#001828}
-.pill.doc{color:#a8f;background:#100820}
-.pill.scratch{color:#888;background:#141414}
-.pill.reference{color:#fa4;background:#1a0e00}
-.pill.private{color:#f55;background:#180000}
-.pill.project{color:#4af;background:#001420;border:1px solid #1a2a3a}
-.conf{color:#3a3a3a;font-size:11px}
-.conf span{color:#3a7}
-pre{white-space:pre-wrap;word-break:break-word;font:13px/1.6 'JetBrains Mono',monospace;color:#c8c8c8}
-.card-actions{display:flex;gap:6px;margin-top:8px}
-.s{padding:1px 6px;border-radius:2px;font-size:12px;font-family:'JetBrains Mono',monospace;font-weight:500}
-.s.open{color:#fa4;background:#1a1200}
-.s.claimed{color:#4af;background:#001422}
-.s.completed{color:#4a8;background:#001408}
-.s.failed{color:#f55;background:#180000}
-.pri.high{color:#f75;font-size:11px;font-family:'JetBrains Mono',monospace}
-.pri.low{color:#555;font-size:11px;font-family:'JetBrains Mono',monospace}
-#ev-log{height:360px;overflow-y:auto;font:13px/1.6 'JetBrains Mono',monospace;border:1px solid #1e1e1e;border-radius:3px;padding:8px}
-.el{padding:2px 0;border-bottom:1px solid #141414;display:flex;gap:8px}
-.el-time{color:#2a2a2a;min-width:65px}
-.el-type{color:#4af;min-width:180px}
-.el-agent{color:#666;min-width:100px}
-.el-payload{color:#444;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sse-status{font-size:12px;font-family:'JetBrains Mono',monospace;padding:3px 8px;border-radius:3px}
-.sse-status.on{color:#4a8;background:#001408}
-.sse-status.off{color:#444;background:#141414}
-.empty{color:#333;padding:20px 0;font-size:14px}
-.agent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;margin-top:4px}
-.ac{padding:12px 14px;border:1px solid #1e1e1e;border-radius:3px;background:#111}
-.ac-name{color:#c8c8c8;font-weight:500;margin-bottom:4px;display:flex;align-items:center;gap:8px}
-.ac-name .dot{width:7px;height:7px;border-radius:50%;background:#2a2a2a;flex-shrink:0}
-.ac.active .ac-name .dot{background:#4a8}
-.ac.active .ac-name{color:#e8e8e8}
-.ac-meta{color:#444;font-size:12px;font-family:'JetBrains Mono',monospace;display:flex;flex-direction:column;gap:2px}
-.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px;margin-top:4px}
-.pj{padding:14px 16px;border:1px solid #1e1e1e;border-radius:3px;background:#111;cursor:pointer}
-.pj:hover{border-color:#2a2a2a}
-.pj.mine{border-color:#1a2a3a}
-.pj-name{color:#4af;font-weight:500;font-size:15px;margin-bottom:6px}
-.pj-agents{color:#888;font-size:12px;font-family:'JetBrains Mono',monospace;margin-bottom:4px}
-.pj-stats{color:#333;font-size:12px;font-family:'JetBrains Mono',monospace;display:flex;gap:12px}
-.pj-stat-val{color:#555}
-.flash{color:#4a8;font-size:13px;margin-left:6px;opacity:0;transition:opacity .3s}
-.flash.show{opacity:1}
-.section-label{color:#333;font-size:11px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+/* ── Reset & custom properties ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0d0d0d;
+  --bg-2:      #111;
+  --bg-3:      #161616;
+  --border:    #1e1e1e;
+  --border-2:  #2a2a2a;
+  --text:      #c8c8c8;
+  --text-dim:  #888;
+  --text-faint:#444;
+  --text-ghost:#2a2a2a;
+  --accent:    #4af;
+  --green:     #4a8;
+  --red:       #f55;
+  --orange:    #fa4;
+  --radius:    6px;
+  --radius-sm: 3px;
+  --font-ui:   'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* ── Base ───────────────────────────────────────────────────────────── */
+html { height: 100%; }
+body {
+  font: 15px/1.6 var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+header {
+  display: flex;
+  gap: 10px;
+  padding: 10px 18px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+header b {
+  color: var(--accent);
+  font-size: 17px;
+  letter-spacing: .5px;
+  flex-shrink: 0;
+}
+
+.h-sep {
+  color: var(--border-2);
+  padding: 0 2px;
+  flex-shrink: 0;
+}
+
+#h-agent-sel {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--accent);
+  font-size: 13px;
+  padding: 5px 8px;
+  font-family: var(--font-mono);
+  min-width: 0;
+  max-width: 160px;
+}
+
+select#h-project {
+  background: var(--bg);
+  border-color: var(--border);
+  color: var(--text);
+  font-size: 13px;
+  padding: 5px 8px;
+  min-width: 0;
+  max-width: 160px;
+}
+
+.spacer { flex: 1; }
+
+a.out {
+  color: var(--text-faint);
+  font-size: 13px;
+  text-decoration: none;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+a.out:hover { color: var(--text); }
+
+/* ── Nav ────────────────────────────────────────────────────────────── */
+nav {
+  display: flex;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  flex-shrink: 0;
+  position: sticky;
+  top: 53px;
+  z-index: 99;
+  scrollbar-width: none;
+}
+nav::-webkit-scrollbar { display: none; }
+
+.nav-btn {
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 11px 18px;
+  border-radius: 0;
+  background: none;
+  font: 500 13px var(--font-ui);
+  letter-spacing: .3px;
+  color: #555;
+  white-space: nowrap;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+  min-height: 44px;
+  transition: color .15s;
+}
+.nav-btn.on {
+  border-bottom-color: var(--accent);
+  color: var(--accent);
+}
+.nav-btn:hover { color: var(--text); background: none; }
+
+.badge {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  background: var(--accent);
+  color: #000;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 10px;
+  padding: 0 5px;
+  line-height: 15px;
+  font-family: var(--font-ui);
+}
+
+/* ── Forms ──────────────────────────────────────────────────────────── */
+input, select, textarea, button {
+  background: var(--bg-3);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  font: 16px var(--font-ui);
+  border-radius: var(--radius-sm);
+}
+
+@media (min-width: 600px) {
+  input, select, textarea, button { font-size: 14px; }
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+button {
+  cursor: pointer;
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+button:hover { background: var(--border-2); }
+button:active { opacity: .8; }
+
+button.p {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+button.p:hover { background: #0a1520; }
+
+button.danger {
+  color: var(--red);
+  border-color: var(--border);
+}
+button.danger:hover { background: #180000; border-color: var(--red); }
+
+/* ── Panels ─────────────────────────────────────────────────────────── */
+.panel {
+  display: none;
+  padding: 20px 18px;
+  max-width: 1040px;
+  width: 100%;
+  flex: 1;
+}
+.panel.on { display: block; }
+
+/* ── Toolbar ────────────────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.toolbar input, .toolbar select { min-width: 0; }
+
+/* ── Write box ──────────────────────────────────────────────────────── */
+.write-box {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 18px;
+}
+.write-box textarea {
+  width: 100%;
+  margin-bottom: 10px;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.write-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.write-row input, .write-row select { min-width: 0; }
+
+@media (max-width: 599px) {
+  .write-row { flex-direction: column; align-items: stretch; }
+  .write-row .spacer { display: none; }
+  .write-row button { width: 100%; justify-content: center; }
+  .write-row input, .write-row select { width: 100%; }
+}
+
+/* ── Cards ──────────────────────────────────────────────────────────── */
+.card {
+  padding: 13px 15px;
+  border: 1px solid var(--border);
+  margin-bottom: 8px;
+  background: var(--bg-2);
+  border-radius: var(--radius);
+}
+.card:hover { border-color: var(--border-2); }
+
+.meta {
+  color: var(--text-faint);
+  font-size: 12px;
+  margin-bottom: 7px;
+  font-family: var(--font-mono);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.meta-id    { color: var(--text-ghost); }
+.meta-agent { color: var(--accent); font-weight: 500; }
+.meta-time  { color: var(--text-ghost); }
+
+.tag {
+  background: #0e1e0e;
+  color: #3a7;
+  padding: 1px 6px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+.pill {
+  padding: 1px 6px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+.pill.memory    { color: #6af; background: #001828; }
+.pill.doc       { color: #a8f; background: #100820; }
+.pill.private   { color: var(--red); background: #180000; }
+.pill.project   { color: var(--accent); background: #001420; border: 1px solid #1a2a3a; }
+
+.conf { color: #3a3a3a; font-size: 11px; }
+.conf span { color: var(--green); }
+
+pre {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 13px/1.6 var(--font-mono);
+  color: var(--text);
+}
+
+.card-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.card-actions button { min-height: 36px; font-size: 12px; }
+
+/* ── Status pills ───────────────────────────────────────────────────── */
+.s {
+  padding: 1px 6px;
+  border-radius: 2px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+.s.open      { color: var(--orange); background: #1a1200; }
+.s.claimed   { color: var(--accent); background: #001422; }
+.s.completed { color: var(--green);  background: #001408; }
+.s.failed    { color: var(--red);    background: #180000; }
+
+.pri.high { color: #f75; font-size: 11px; font-family: var(--font-mono); }
+.pri.low  { color: #555; font-size: 11px; font-family: var(--font-mono); }
+
+/* ── Event log ──────────────────────────────────────────────────────── */
+#ev-log {
+  height: 400px;
+  overflow-y: auto;
+  font: 12px/1.5 var(--font-mono);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
+}
+
+.el {
+  padding: 3px 0;
+  border-bottom: 1px solid #141414;
+  display: grid;
+  gap: 6px;
+  align-items: baseline;
+  /* mobile: hide agent column — 3 cols */
+  grid-template-columns: 68px 1fr auto;
+  grid-template-areas: "time type payload";
+}
+.el-time    { color: var(--text-ghost); grid-area: time; }
+.el-type    { color: var(--accent); grid-area: type; }
+.el-agent   { color: #666; display: none; }
+.el-payload { color: var(--text-faint); grid-area: payload; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+
+@media (min-width: 700px) {
+  .el {
+    grid-template-columns: 68px 180px 110px 1fr;
+    grid-template-areas: "time type agent payload";
+  }
+  .el-agent { display: block; }
+}
+
+/* ── SSE status ─────────────────────────────────────────────────────── */
+.sse-status {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+}
+.sse-status.on  { color: var(--green); background: #001408; }
+.sse-status.off { color: var(--text-faint); background: #141414; }
+
+/* ── Agent grid ─────────────────────────────────────────────────────── */
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+.ac {
+  padding: 13px 15px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+}
+.ac-name {
+  color: var(--text);
+  font-weight: 500;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.ac-name .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border-2);
+  flex-shrink: 0;
+}
+.ac.active .ac-name .dot { background: var(--green); }
+.ac.active .ac-name { color: #e8e8e8; }
+.ac-meta {
+  color: var(--text-faint);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ── Project grid ───────────────────────────────────────────────────── */
+.proj-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+.pj {
+  padding: 15px 17px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.pj:hover { border-color: var(--border-2); }
+.pj.mine { border-color: #1a2a3a; }
+.pj-name  { color: var(--accent); font-weight: 500; font-size: 15px; margin-bottom: 7px; }
+.pj-agents { color: var(--text-dim); font-size: 12px; font-family: var(--font-mono); margin-bottom: 5px; }
+.pj-stats  {
+  color: #333;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.pj-stat-val { color: #555; }
+
+/* ── Flash ──────────────────────────────────────────────────────────── */
+.flash {
+  color: var(--green);
+  font-size: 13px;
+  margin-left: 6px;
+  opacity: 0;
+  transition: opacity .3s;
+  white-space: nowrap;
+}
+.flash.show { opacity: 1; }
+
+/* ── Section label ──────────────────────────────────────────────────── */
+.section-label {
+  color: #333;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  margin-bottom: 8px;
+}
+
+/* ── Empty state ────────────────────────────────────────────────────── */
+.empty {
+  color: #333;
+  padding: 24px 0;
+  font-size: 14px;
+  text-align: center;
+}
+
+/* ── Mobile adjustments ─────────────────────────────────────────────── */
+@media (max-width: 599px) {
+  header { padding: 10px 14px; gap: 8px; }
+  header b { font-size: 15px; }
+  #h-agent-sel, select#h-project { max-width: 120px; font-size: 12px; padding: 4px 6px; }
+  .h-sep { display: none; }
+  .nav-btn { padding: 11px 14px; font-size: 12px; }
+  .panel { padding: 16px 14px; }
+  .write-box { padding: 14px 12px; }
+  .toolbar { gap: 6px; }
+  .toolbar input, .toolbar select { font-size: 16px; flex: 1; min-width: 0; }
+  .agent-grid { grid-template-columns: 1fr; }
+  .proj-grid  { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
 <script>/*CREDS*/</script>
+
+<!-- ── Header ─────────────────────────────────────────────────────── -->
 <header>
   <b>artel</b>
   <span class="h-sep">|</span>
-  <select id="h-agent-sel" onchange="onAgentChange()" title="active agent" style="background:#0d0d0d;border-color:#1e1e1e;color:#4af;font-size:13px;padding:4px 8px;font-family:'JetBrains Mono',monospace">
+  <select id="h-agent-sel" onchange="onAgentChange()" title="active agent">
     <option value="">all agents</option>
   </select>
   <select id="h-project" onchange="onProjectChange()" title="active project">
@@ -107,24 +494,27 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.6 'JetBrains Mono',mo
   <div class="spacer"></div>
   <a class="out" href="/ui/logout">logout</a>
 </header>
+
+<!-- ── Nav ────────────────────────────────────────────────────────── -->
 <nav>
-  <button class="on" onclick="tab('memory',this)">memory</button>
-  <button onclick="tab('tasks',this)">tasks</button>
-  <button onclick="tab('messages',this)" id="btn-messages">messages</button>
-  <button onclick="tab('events',this)">events</button>
-  <button onclick="tab('agents',this)">agents</button>
-  <button onclick="tab('projects',this)">projects</button>
-  <button onclick="tab('sessions',this)">sessions</button>
+  <button class="nav-btn on" onclick="tab('memory',this)">memory</button>
+  <button class="nav-btn" onclick="tab('tasks',this)">tasks</button>
+  <button class="nav-btn" onclick="tab('messages',this)" id="btn-messages">messages</button>
+  <button class="nav-btn" onclick="tab('events',this)">events</button>
+  <button class="nav-btn" onclick="tab('agents',this)">agents</button>
+  <button class="nav-btn" onclick="tab('projects',this)">projects</button>
+  <button class="nav-btn" onclick="tab('sessions',this)">sessions</button>
 </nav>
 
-<!-- MEMORY -->
+<!-- ── MEMORY ─────────────────────────────────────────────────────── -->
 <div id="panel-memory" class="panel on">
   <div class="toolbar">
-    <input id="q" placeholder="search…" style="flex:1;min-width:140px" onkeydown="if(event.key==='Enter')search()">
+    <input id="q" placeholder="search…" style="flex:1;min-width:120px" onkeydown="if(event.key==='Enter')search()">
     <select id="q-agent" style="width:130px"><option value="">all agents</option></select>
     <select id="q-type" style="width:110px" onchange="search()">
       <option value="">all types</option>
-      <option>memory</option><option>doc</option><option>scratch</option><option>reference</option>
+      <option>memory</option>
+      <option>doc</option>
     </select>
     <button onclick="search()">search</button>
     <button onclick="loadMem()">all</button>
@@ -133,7 +523,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.6 'JetBrains Mono',mo
     <textarea id="mc" placeholder="write memory…" rows="3"></textarea>
     <div class="write-row">
       <input id="mtags" placeholder="tags (comma-separated)" style="flex:1">
-      <select id="mtype"><option>memory</option><option>scratch</option><option>doc</option><option>reference</option></select>
+      <select id="mtype"><option>memory</option><option>doc</option></select>
       <select id="mscope"><option value="shared">shared</option><option value="private">private</option><option value="global">global</option></select>
       <button class="p" onclick="writeMem()">write</button>
       <span class="flash" id="mem-flash">saved</span>
@@ -142,11 +532,15 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.6 'JetBrains Mono',mo
   <div id="mlist"></div>
 </div>
 
-<!-- TASKS -->
+<!-- ── TASKS ──────────────────────────────────────────────────────── -->
 <div id="panel-tasks" class="panel">
   <div class="toolbar">
     <select id="tf" onchange="loadTasks()">
-      <option value="">all</option><option>open</option><option>claimed</option><option>completed</option><option>failed</option>
+      <option value="">all</option>
+      <option>open</option>
+      <option>claimed</option>
+      <option>completed</option>
+      <option>failed</option>
     </select>
     <button onclick="loadTasks()">refresh</button>
   </div>
@@ -161,16 +555,16 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.6 'JetBrains Mono',mo
   <div id="tlist"></div>
 </div>
 
-<!-- MESSAGES -->
+<!-- ── MESSAGES ───────────────────────────────────────────────────── -->
 <div id="panel-messages" class="panel">
   <div class="write-box">
-    <div class="write-row" style="margin-bottom:8px">
+    <div class="write-row" style="margin-bottom:10px">
       <input id="mto" placeholder="to…" style="flex:1" list="agent-list-dl">
       <datalist id="agent-list-dl"></datalist>
       <input id="msub" placeholder="subject (optional)" style="flex:1">
     </div>
     <textarea id="mbody" placeholder="message…" rows="3"></textarea>
-    <div class="write-row" style="margin-top:8px">
+    <div class="write-row" style="margin-top:10px">
       <div class="spacer"></div>
       <button class="p" onclick="sendMsg()">send</button>
       <span class="flash" id="msg-flash">sent</span>
@@ -180,7 +574,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.6 'JetBrains Mono',mo
   <div id="msglist"></div>
 </div>
 
-<!-- EVENTS -->
+<!-- ── EVENTS ─────────────────────────────────────────────────────── -->
 <div id="panel-events" class="panel">
   <div class="toolbar">
     <button class="p" onclick="startSSE()">connect</button>
@@ -191,7 +585,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.6 'JetBrains Mono',mo
   <div id="ev-log"><div class="empty">connect to stream live events</div></div>
 </div>
 
-<!-- AGENTS -->
+<!-- ── AGENTS ─────────────────────────────────────────────────────── -->
 <div id="panel-agents" class="panel">
   <div class="toolbar">
     <button onclick="loadAgents()">refresh</button>
@@ -199,7 +593,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.6 'JetBrains Mono',mo
   <div id="alist"></div>
 </div>
 
-<!-- PROJECTS -->
+<!-- ── PROJECTS ───────────────────────────────────────────────────── -->
 <div id="panel-projects" class="panel">
   <div class="toolbar">
     <button onclick="loadProjects()">refresh</button>
@@ -207,23 +601,23 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.6 'JetBrains Mono',mo
   <div id="pjlist"></div>
 </div>
 
-<!-- SESSIONS -->
+<!-- ── SESSIONS ───────────────────────────────────────────────────── -->
 <div id="panel-sessions" class="panel">
   <div class="toolbar">
-    <select id="sess-agent" onchange="loadSession()" style="width:180px">
+    <select id="sess-agent" onchange="loadSession()" style="width:200px">
       <option value="">select agent…</option>
     </select>
     <button class="p" onclick="loadSession()">load</button>
     <div class="spacer"></div>
     <span class="flash" id="session-flash">saved</span>
   </div>
-  <div id="session-context" style="margin-bottom:16px"></div>
+  <div id="session-context" style="margin-bottom:18px"></div>
   <div class="write-box" id="handoff-box" style="display:none">
-    <div class="section-label" style="margin-bottom:10px">save handoff</div>
-    <textarea id="hs-summary" placeholder="what did you accomplish this session?" rows="3" style="width:100%;margin-bottom:8px"></textarea>
-    <textarea id="hs-next" placeholder="next steps (one per line)" rows="2" style="width:100%;margin-bottom:8px"></textarea>
-    <textarea id="hs-inprogress" placeholder="task IDs in progress (one per line)" rows="2" style="width:100%;margin-bottom:8px"></textarea>
-    <div class="write-row" style="margin-top:4px">
+    <div class="section-label" style="margin-bottom:12px">save handoff</div>
+    <textarea id="hs-summary" placeholder="what did you accomplish this session?" rows="3" style="width:100%;margin-bottom:10px"></textarea>
+    <textarea id="hs-next" placeholder="next steps (one per line)" rows="2" style="width:100%;margin-bottom:10px"></textarea>
+    <textarea id="hs-inprogress" placeholder="task IDs in progress (one per line)" rows="2" style="width:100%;margin-bottom:10px"></textarea>
+    <div class="write-row" style="margin-top:6px">
       <div class="spacer"></div>
       <button class="p" onclick="saveHandoff()">save handoff</button>
     </div>
@@ -389,7 +783,7 @@ function renderMem(es){
       </div>
       <pre id="mpre-${e.id}">${esc(e.content)}</pre>
       <div id="medit-${e.id}" style="display:none">
-        <textarea id="mta-${e.id}" rows="4" style="width:100%;margin-bottom:6px">${esc(e.content)}</textarea>
+        <textarea id="mta-${e.id}" rows="4" style="width:100%;margin-bottom:8px">${esc(e.content)}</textarea>
         <div class="write-row">
           <button class="p" onclick="saveMem('${e.id}')">save</button>
           <button onclick="cancelEditMem('${e.id}')">cancel</button>
@@ -688,13 +1082,13 @@ async function loadSession(){
         </div>
         <pre>${esc(h.summary)}</pre>`;
       if(h.next_steps?.length){
-        html+=`<div style="margin-top:8px"><div class="section-label" style="margin-bottom:4px">next steps</div>`;
-        html+=h.next_steps.map(s=>`<div style="padding:2px 0;color:#888;font-size:13px">→ ${esc(s)}</div>`).join('');
+        html+=`<div style="margin-top:10px"><div class="section-label" style="margin-bottom:4px">next steps</div>`;
+        html+=h.next_steps.map(s=>`<div style="padding:3px 0;color:#888;font-size:13px">→ ${esc(s)}</div>`).join('');
         html+='</div>';
       }
       if(h.in_progress?.length){
-        html+=`<div style="margin-top:8px"><div class="section-label" style="margin-bottom:4px">in progress</div>`;
-        html+=h.in_progress.map(s=>`<div style="padding:2px 0"><span class="pill memory">${esc(s)}</span></div>`).join('');
+        html+=`<div style="margin-top:10px"><div class="section-label" style="margin-bottom:4px">in progress</div>`;
+        html+=h.in_progress.map(s=>`<div style="padding:3px 0"><span class="pill memory">${esc(s)}</span></div>`).join('');
         html+='</div>';
       }
       html+='</div>';
@@ -702,7 +1096,7 @@ async function loadSession(){
       html='<div class="empty">no previous session for '+esc(agent)+'</div>';
     }
     if(d.memory_delta?.length){
-      html+=`<div class="section-label" style="margin:14px 0 8px">memory since last session (${d.memory_delta.length})</div>`;
+      html+=`<div class="section-label" style="margin:16px 0 8px">memory since last session (${d.memory_delta.length})</div>`;
       html+=d.memory_delta.map(e=>`<div class="card">
         <div class="meta">
           <span class="meta-agent">${esc(e.agent_id)}</span>
