@@ -1,8 +1,12 @@
+import logging
 import socket
+import time
 
 import httpx
 import uvicorn
 from starlette.types import ASGIApp, Receive, Scope, Send
+
+log = logging.getLogger(__name__)
 
 from .config import _creds_file, settings
 from .server import _agent_id, _api_key, mcp
@@ -11,15 +15,26 @@ from .server import _agent_id, _api_key, mcp
 def _auto_register() -> tuple[str, str]:
     _creds_file.parent.mkdir(parents=True, exist_ok=True)
     suggested = socket.gethostname().split(".")[0]
-    resp = httpx.post(
-        f"{settings.artel_url}/agents/self-register",
-        json={"agent_id": suggested, "project": settings.mcp_project or None},
-        timeout=5,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    _creds_file.write_text(f"MCP_AGENT_ID={data['agent_id']}\nMCP_AGENT_KEY={data['api_key']}\n")
-    return data["agent_id"], data["api_key"]
+    last_exc: Exception = RuntimeError("no attempts made")
+    for attempt in range(5):
+        try:
+            resp = httpx.post(
+                f"{settings.artel_url}/agents/self-register",
+                json={"agent_id": suggested, "project": settings.mcp_project or None},
+                timeout=10,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            _creds_file.write_text(
+                f"MCP_AGENT_ID={data['agent_id']}\nMCP_AGENT_KEY={data['api_key']}\n"
+            )
+            return data["agent_id"], data["api_key"]
+        except Exception as e:
+            last_exc = e
+            delay = 2.0 ** attempt
+            log.warning("registration attempt %d failed: %s, retrying in %.0fs", attempt + 1, e, delay)
+            time.sleep(delay)
+    raise RuntimeError(f"failed to register after 5 attempts: {last_exc}")
 
 
 class AgentAuthMiddleware:
@@ -54,10 +69,11 @@ def _credentials_valid() -> bool:
         resp = httpx.get(
             f"{settings.artel_url}/agents/me",
             headers={"x-agent-id": settings.mcp_agent_id, "x-api-key": settings.mcp_agent_key},
-            timeout=3,
+            timeout=5,
         )
         return resp.status_code != 401
-    except Exception:
+    except Exception as e:
+        log.warning("credentials check failed: %s", e)
         return False
 
 

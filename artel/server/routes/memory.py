@@ -41,31 +41,31 @@ async def write_memory(
     entry_id = new_id()
     vec = embed(body.content)
 
-    db.execute(
-        """INSERT INTO memory (id, type, agent_id, project, scope, content,
-           confidence, parents, tags) VALUES (?,?,?,?,?,?,?,?,?)""",
-        (
-            entry_id,
-            body.type,
-            agent_id,
-            body.project,
-            body.scope,
-            body.content,
-            body.confidence,
-            json.dumps(body.parents),
-            json.dumps(body.tags),
-        ),
-    )
-    db.execute(
-        "INSERT INTO memory_vec (id, embedding) VALUES (?, ?)",
-        (entry_id, json.dumps(vec)),
-    )
     event_id = new_id()
-    db.execute(
-        "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-        (event_id, "memory.written", agent_id, json.dumps({"memory_id": entry_id})),
-    )
-    db.commit()
+    with db:
+        db.execute(
+            """INSERT INTO memory (id, type, agent_id, project, scope, content,
+               confidence, parents, tags) VALUES (?,?,?,?,?,?,?,?,?)""",
+            (
+                entry_id,
+                body.type,
+                agent_id,
+                body.project,
+                body.scope,
+                body.content,
+                body.confidence,
+                json.dumps(body.parents),
+                json.dumps(body.tags),
+            ),
+        )
+        db.execute(
+            "INSERT INTO memory_vec (id, embedding) VALUES (?, ?)",
+            (entry_id, json.dumps(vec)),
+        )
+        db.execute(
+            "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
+            (event_id, "memory.written", agent_id, json.dumps({"memory_id": entry_id})),
+        )
 
     broadcast(
         EventEntry(
@@ -230,14 +230,10 @@ async def patch_memory(
         raise HTTPException(status_code=403, detail="forbidden")
 
     updates: dict = {}
+    vec = None
     if body.content is not None:
         updates["content"] = body.content
         vec = embed(body.content)
-        db.execute("DELETE FROM memory_vec WHERE id=?", (entry_id,))
-        db.execute(
-            "INSERT INTO memory_vec (id, embedding) VALUES (?,?)",
-            (entry_id, json.dumps(vec)),
-        )
     if body.tags is not None:
         updates["tags"] = json.dumps(body.tags)
     if body.scope is not None:
@@ -256,11 +252,17 @@ async def patch_memory(
             "updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')",
             f"version={row['version'] + 1}",
         ]
-        db.execute(
-            f"UPDATE memory SET {', '.join(set_parts)} WHERE id=?",
-            [*updates.values(), entry_id],
-        )
-        db.commit()
+        with db:
+            if body.content is not None:
+                db.execute("DELETE FROM memory_vec WHERE id=?", (entry_id,))
+                db.execute(
+                    "INSERT INTO memory_vec (id, embedding) VALUES (?,?)",
+                    (entry_id, json.dumps(vec)),
+                )
+            db.execute(
+                f"UPDATE memory SET {', '.join(set_parts)} WHERE id=?",
+                [*updates.values(), entry_id],
+            )
 
     row = db.execute("SELECT * FROM memory WHERE id=?", (entry_id,)).fetchone()
     return _row_to_entry(row)

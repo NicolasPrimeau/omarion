@@ -1,5 +1,6 @@
 import json
 import secrets
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -20,7 +21,8 @@ from .routes.sessions import router as sessions_router
 from .routes.tasks import router as tasks_router
 
 _UI = Path(__file__).parent / "static" / "index.html"
-_sessions: set[str] = set()
+_sessions: dict[str, float] = {}
+_SESSION_TTL = 86400.0
 
 _LOGIN = """\
 <!DOCTYPE html>
@@ -85,13 +87,25 @@ app.include_router(projects_router)
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    try:
+        get_db().execute("SELECT 1").fetchone()
+        return {"status": "ok"}
+    except Exception as e:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"status": "error", "detail": str(e)}, status_code=503)
 
 
 def _authed(request: Request) -> bool:
     if not settings.ui_password:
         return True
-    return request.cookies.get("session", "") in _sessions
+    token = request.cookies.get("session", "")
+    ts = _sessions.get(token)
+    if ts is None:
+        return False
+    if time.time() - ts > _SESSION_TTL:
+        _sessions.pop(token, None)
+        return False
+    return True
 
 
 @app.get("/ui/login", response_class=HTMLResponse, include_in_schema=False)
@@ -104,7 +118,7 @@ async def login_page(error: str = ""):
 async def login(password: str = Form(...)):
     if password == settings.ui_password:
         token = secrets.token_urlsafe(32)
-        _sessions.add(token)
+        _sessions[token] = time.time()
         r = RedirectResponse("/ui", status_code=303)
         r.set_cookie("session", token, httponly=True, samesite="lax")
         return r
@@ -113,7 +127,7 @@ async def login(password: str = Form(...)):
 
 @app.get("/ui/logout", include_in_schema=False)
 async def logout(request: Request):
-    _sessions.discard(request.cookies.get("session", ""))
+    _sessions.pop(request.cookies.get("session", ""), None)
     r = RedirectResponse("/ui/login", status_code=303)
     r.delete_cookie("session")
     return r

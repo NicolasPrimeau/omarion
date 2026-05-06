@@ -48,6 +48,7 @@ async def _sse_watcher():
         "x-agent-id": settings.mcp_agent_id,
         "x-api-key": settings.mcp_agent_key,
     }
+    delay = 1.0
     while True:
         try:
             async with httpx.AsyncClient(
@@ -59,6 +60,7 @@ async def _sse_watcher():
                     "GET", "/events/stream", params={"type": "message.received"}
                 ) as resp:
                     async for line in resp.aiter_lines():
+                        delay = 1.0
                         if not line.startswith("data: "):
                             continue
                         try:
@@ -75,7 +77,8 @@ async def _sse_watcher():
         except asyncio.CancelledError:
             raise
         except Exception:
-            await asyncio.sleep(5)
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, 60.0)
 
 
 async def _notification_sender():
@@ -84,16 +87,16 @@ async def _notification_sender():
             await asyncio.sleep(0.1)
             continue
         to_agent, msg = await _notification_queue.get()
-        targets = (
-            list(_sessions.values())
-            if to_agent == "broadcast"
-            else ([s] if (s := _sessions.get(to_agent)) else [])
-        )
-        for session in targets:
+        if to_agent == "broadcast":
+            targets = list(_sessions.items())
+        else:
+            s = _sessions.get(to_agent)
+            targets = [(to_agent, s)] if s else []
+        for aid, session in targets:
             try:
                 await session.send_log_message("warning", msg)
             except Exception:
-                _sessions.pop(to_agent, None)
+                _sessions.pop(aid, None)
 
 
 mcp = ArtelMCP(
