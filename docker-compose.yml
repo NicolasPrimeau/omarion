@@ -1,6 +1,6 @@
 services:
   artel:
-    image: ghcr.io/nicolasprimeau/artel:latest
+    image: ghcr.io/nicolasprimeau/artel:edge
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -17,7 +17,7 @@ services:
       start_period: 20s
 
   archivist:
-    image: ghcr.io/nicolasprimeau/artel:latest
+    image: ghcr.io/nicolasprimeau/artel:edge
     restart: unless-stopped
     command: ["python", "-m", "artel.archivist"]
     env_file: .env
@@ -34,7 +34,7 @@ services:
       start_period: 60s
 
   mcp:
-    image: ghcr.io/nicolasprimeau/artel:latest
+    image: ghcr.io/nicolasprimeau/artel:edge
     restart: unless-stopped
     command: ["python", "-m", "artel.mcp"]
     ports:
@@ -55,7 +55,7 @@ services:
       start_period: 20s
 
   mdns:
-    image: ghcr.io/nicolasprimeau/artel:latest
+    image: ghcr.io/nicolasprimeau/artel:edge
     restart: unless-stopped
     network_mode: host
     command: ["python", "-m", "artel.server.mdns_announce"]
