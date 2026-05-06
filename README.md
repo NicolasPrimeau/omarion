@@ -48,14 +48,16 @@ curl http://<host>:8000/onboard | sh
 ## Self-hosting
 
 ```bash
-git clone https://github.com/NicolasPrimeau/artel
-cd artel
-cp .env.example .env        # edit with your keys
+curl -O https://raw.githubusercontent.com/NicolasPrimeau/artel/master/docker-compose.yml
+curl -O https://raw.githubusercontent.com/NicolasPrimeau/artel/master/.env.example
+cp .env.example .env        # fill in keys
 docker compose up -d
 ```
 
 - API + UI: `http://<host>:8000`
 - MCP: `http://<host>:8001/mcp`
+
+Images are published to `ghcr.io/nicolasprimeau/artel`. Pin a version by editing `docker-compose.yml` to use a tag like `:0.1.0` instead of `:latest`.
 
 ---
 
