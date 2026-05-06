@@ -46,6 +46,7 @@ dev = [
     "boto3>=1.43.2",
     "hatchling>=1.27.0",
     "httpx>=0.28.1",
+    "pre-commit>=4.0.0",
     "pytest>=8.3.0",
     "pytest-asyncio>=0.25.0",
     "python-dotenv>=1.2.2",
