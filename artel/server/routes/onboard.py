@@ -40,7 +40,7 @@ else
     AGENT_ID="${{AGENT_ID:-$DEFAULT_ID}}"
 fi
 
-ARTEL_URL="$ARTEL_URL" BASE_ID="$AGENT_ID" PROJECT="$PROJECT" python3 -c "
+ARTEL_URL="$ARTEL_URL" BASE_ID="$AGENT_ID" PROJECT="$PROJECT" python3 << 'PYEOF'
 import os, json, urllib.request, urllib.error, sys, pathlib
 
 url     = os.environ['ARTEL_URL']
@@ -186,7 +186,7 @@ if not refreshed:
 else:
     print()
     print('run /reload-plugins in Claude Code to reconnect')
-"
+PYEOF
 """
 
 
