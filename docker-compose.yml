@@ -64,5 +64,12 @@ services:
       artel:
         condition: service_healthy
 
+  watchtower:
+    image: containrrr/watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --interval 300 --cleanup artel-artel-1 artel-archivist-1 artel-mcp-1 artel-mdns-1
+
 volumes:
   artel-data:
