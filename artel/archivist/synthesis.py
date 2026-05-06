@@ -76,20 +76,6 @@ async def decay_confidence(client: ArtelClient) -> None:
 
 
 async def run_promotion(client: ArtelClient) -> None:
-    scratch_cutoff = (
-        datetime.now(UTC) - timedelta(hours=settings.promotion_scratch_age_hours)
-    ).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-
-    scratch_entries = await client.list_entries(type="scratch", created_before=scratch_cutoff)
-    for entry in scratch_entries:
-        if entry["agent_id"] == settings.archivist_id:
-            continue
-        if entry["confidence"] >= 0.5:
-            try:
-                await client.patch_memory(entry["id"], type="memory")
-            except Exception as e:
-                log.warning("scratch promotion failed for %s: %s", entry["id"], e)
-
     memory_entries = await client.list_entries(
         type="memory", min_version=settings.promotion_memory_min_version
     )

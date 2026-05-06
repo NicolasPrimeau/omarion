@@ -8,7 +8,7 @@ def new_id() -> str:
     return str(uuid.uuid4())
 
 
-EntryType = Literal["memory", "doc", "task", "reference", "scratch"]
+EntryType = Literal["memory", "doc"]
 Scope = Literal["private", "shared", "global"]
 TaskStatus = Literal["open", "claimed", "completed", "failed"]
 Priority = Literal["low", "normal", "high"]
