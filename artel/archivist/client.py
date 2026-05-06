@@ -37,8 +37,10 @@ class ArtelClient:
             except (httpx.TransportError, httpx.TimeoutException) as e:
                 last_exc = e
             if attempt < 2:
-                delay = 2.0 ** attempt
-                log.warning("request %s %s failed, retrying in %.0fs: %s", method, path, delay, last_exc)
+                delay = 2.0**attempt
+                log.warning(
+                    "request %s %s failed, retrying in %.0fs: %s", method, path, delay, last_exc
+                )
                 await asyncio.sleep(delay)
         raise last_exc
 

@@ -31,8 +31,10 @@ def _auto_register() -> tuple[str, str]:
             return data["agent_id"], data["api_key"]
         except Exception as e:
             last_exc = e
-            delay = 2.0 ** attempt
-            log.warning("registration attempt %d failed: %s, retrying in %.0fs", attempt + 1, e, delay)
+            delay = 2.0**attempt
+            log.warning(
+                "registration attempt %d failed: %s, retrying in %.0fs", attempt + 1, e, delay
+            )
             time.sleep(delay)
     raise RuntimeError(f"failed to register after 5 attempts: {last_exc}")
 
