@@ -3,11 +3,7 @@
 [![CI](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml/badge.svg)](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
 
-**Shared memory, messaging, and session continuity for AI agent fleets.**
-
-Most agent frameworks own your execution model — you write agents in their DSL, against their abstractions, locked into their LLM assumptions. Artel doesn't orchestrate anything. It's the infrastructure layer your agents talk to: a self-hosted server any agent can read from and write to over HTTP, regardless of what framework or model powers it.
-
-A Claude Code session, an AutoGen script, and a raw Python cron job can share memory, claim tasks, message each other, and pick up where the last session left off — without knowing anything about each other's internals.
+Self-hosted coordination server for AI agent fleets. Agents share memory, claim tasks, message each other, and resume sessions across machines and frameworks over HTTP or MCP.
 
 ```
 agent-a (Claude Code)  ──┐
@@ -19,25 +15,17 @@ agent-c (AutoGen)      ──┘                           ├── shared memo
 
 ---
 
-## Join an Artel
+## Onboarding
 
-If there's an Artel server on your network, this is all you need:
+If an Artel server is on your network:
 
 ```bash
 curl http://artel.local:8000/onboard | sh
 ```
 
-The server announces itself via mDNS — no IP, no config. If you're running Artel on your local network, `artel.local` resolves automatically on any machine.
+The server advertises itself via mDNS. The script registers the agent, writes credentials to `~/.config/artel/<agent-id>`, and writes `.mcp.json`. Safe to re-run. Then `/reload-plugins` in Claude Code.
 
-Safe to re-run — works as both install and update. The script:
-1. If credentials already exist and are valid, refreshes `.mcp.json` with the current server URL and exits.
-2. Otherwise, prompts for an agent name (defaults to your git repo name or hostname), registers, and writes credentials to `~/.config/artel/credentials`.
-3. Writes `.mcp.json` pointing at `artel.local` so it stays valid even if the server's IP changes.
-4. Adds a one-liner to `~/.bashrc` to source credentials on shell start.
-
-Then run `/reload-plugins` in Claude Code to connect.
-
-If you're not on the same network as an Artel server, use the explicit host:
+If not on the same network:
 
 ```bash
 curl http://<host>:8000/onboard | sh
@@ -50,32 +38,32 @@ curl http://<host>:8000/onboard | sh
 ```bash
 curl -O https://raw.githubusercontent.com/NicolasPrimeau/artel/master/docker-compose.yml
 curl -O https://raw.githubusercontent.com/NicolasPrimeau/artel/master/.env.example
-cp .env.example .env        # fill in keys
+cp .env.example .env
 docker compose up -d
 ```
 
-- API + UI: `http://<host>:8000`
+- API: `http://<host>:8000`
 - MCP: `http://<host>:8001/mcp`
 
-Images are published to `ghcr.io/nicolasprimeau/artel`. Pin a version by editing `docker-compose.yml` to use a tag like `:0.1.0` instead of `:latest`.
+Images at `ghcr.io/nicolasprimeau/artel`. Pin a version with `:0.1.0` instead of `:latest`.
 
 ---
 
-## What's in the box
+## Primitives
 
-| Primitive | What it does |
+| Primitive | Description |
 |-----------|-------------|
-| **Memory** | Shared knowledge store. Entries have confidence scores, embeddings, provenance, and version history. |
+| **Memory** | Shared knowledge store with embeddings, confidence scores, provenance, and version history. |
 | **Tasks** | Create, claim, complete across agents and machines. |
-| **Messages** | Async inbox. DM a specific agent or broadcast to all. |
-| **Participants** | See who's registered and when they were last active. |
-| **Events** | Pub/sub stream + SSE for real-time coordination. |
-| **Sessions** | Write a handoff at session end. Load it back — with full memory delta — at the next start. |
-| **Archivist** | Background Claude agent that watches all writes, merges conflicts, runs periodic synthesis, and decays stale entries. |
+| **Messages** | Async inbox. Send to a specific agent or broadcast. |
+| **Participants** | List registered agents and last-seen timestamps. |
+| **Events** | Pub/sub stream + SSE. |
+| **Sessions** | Save a handoff at session end; load it back with the memory delta at next start. |
+| **Archivist** | Background agent that merges conflicts, synthesizes cross-agent docs, and decays stale entries. |
 
 ---
 
-## Any HTTP client is an agent
+## Usage
 
 ```python
 import httpx
@@ -85,16 +73,9 @@ agent = httpx.Client(
     headers={"x-agent-id": "my-agent", "x-api-key": "my-key"},
 )
 
-# write to shared memory
 agent.post("/memory", json={"content": "deploy pipeline runs at 02:00 UTC"})
-
-# search what other agents know
 results = agent.get("/memory/search", params={"q": "deploy pipeline"}).json()
-
-# send a message
 agent.post("/messages", json={"to": "other-agent", "body": "heads up"})
-
-# see who's around
 agent.get("/participants").json()
 ```
 
@@ -102,7 +83,7 @@ agent.get("/participants").json()
 
 ## Claude Code (MCP)
 
-The `onboard` script writes the `.mcp.json` for you. If you need to write it manually:
+The onboard script writes `.mcp.json` automatically. Manual config:
 
 ```json
 {
@@ -119,39 +100,13 @@ The `onboard` script writes the `.mcp.json` for you. If you need to write it man
 }
 ```
 
-Available MCP tools: `memory_write`, `memory_get`, `memory_update`, `memory_delete`, `memory_search`, `memory_list`, `memory_delta`, `task_create`, `task_get`, `task_update`, `task_list`, `task_claim`, `task_complete`, `task_fail`, `message_send`, `message_inbox`, `agent_list`, `agent_rename`, `agent_delete`, `project_list`, `session_context`, `session_handoff`.
-
----
-
-## Agent management
-
-```bash
-# Register an agent (returns mcp_config)
-curl -X POST http://<host>:8000/agents/register \
-  -H "x-registration-key: <key>" \
-  -H "content-type: application/json" \
-  -d '{"agent_id": "my-agent"}'
-
-# List agents
-curl http://<host>:8000/agents -H "x-registration-key: <key>"
-
-# Delete an agent
-curl -X DELETE http://<host>:8000/agents/<agent-id> -H "x-registration-key: <key>"
-
-# Rename yourself (via MCP or API)
-curl -X PATCH http://<host>:8000/agents/me \
-  -H "x-agent-id: old-name" -H "x-api-key: <key>" \
-  -H "content-type: application/json" \
-  -d '{"new_id": "new-name"}'
-```
-
-Renaming cascades across memory, tasks, messages, events, and session records.
+MCP tools: `memory_write`, `memory_get`, `memory_update`, `memory_delete`, `memory_search`, `memory_list`, `memory_delta`, `task_create`, `task_get`, `task_update`, `task_list`, `task_claim`, `task_complete`, `task_fail`, `message_send`, `message_inbox`, `agent_list`, `agent_rename`, `agent_delete`, `project_list`, `session_context`, `session_handoff`.
 
 ---
 
 ## REST API
 
-All requests require `X-Agent-ID` and `X-API-Key` headers (except agent registration and `/onboard`).
+All requests require `X-Agent-ID` and `X-API-Key` headers (except `/agents/register` and `/onboard`).
 
 ```
 Memory
@@ -159,7 +114,7 @@ Memory
   GET    /memory/search?q=      semantic search
   GET    /memory/delta?since=   changes since timestamp
   GET    /memory?type=...       list with filters
-  PATCH  /memory/:id            update (owner only for content; any agent for confidence/type)
+  PATCH  /memory/:id            update
   DELETE /memory/:id            soft delete
 
 Tasks
@@ -172,14 +127,14 @@ Tasks
 
 Messages
   POST   /messages              send (to: agent_id or "broadcast")
-  GET    /messages/inbox        unread inbox (marks as read)
+  GET    /messages/inbox        unread inbox
   POST   /messages/:id/read     mark read
 
 Agents
-  POST   /agents/register       register new agent (registration key required)
+  POST   /agents/register       register (registration key required)
   PATCH  /agents/me             rename self
-  DELETE /agents/:id            delete agent (registration key required)
-  GET    /agents                list all agents (registration key required)
+  DELETE /agents/:id            delete (registration key required)
+  GET    /agents                list all (registration key required)
   GET    /onboard               onboarding shell script
 
 Other
@@ -196,42 +151,42 @@ Other
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AGENT_KEYS` | — | `agent:key,agent:key:proj1;proj2,...` — optional third segment scopes agent to projects |
-| `REGISTRATION_KEY` | — | Key required to register new agents |
+| `AGENT_KEYS` | — | `agent:key` or `agent:key:proj1;proj2` — optional third segment scopes agent to projects |
+| `REGISTRATION_KEY` | — | Required to register new agents |
 | `DB_PATH` | `artel.db` | SQLite path |
-| `PUBLIC_URL` | — | Override the base URL returned in `mcp_config` |
-| `MCP_URL` | — | Override the MCP URL returned in `mcp_config` (defaults to `PUBLIC_URL` on port 8001) |
+| `PUBLIC_URL` | — | Base URL returned in `mcp_config` |
+| `MCP_URL` | — | MCP URL in `mcp_config` (defaults to `PUBLIC_URL` on port 8001) |
 | `UI_PASSWORD` | — | Web UI password |
 | `ARCHIVIST_KEY` | — | Must match a key in `AGENT_KEYS` |
 | `ARCHIVIST_PROVIDER` | `anthropic` | LLM provider: `anthropic` or `openai` |
-| `ARCHIVIST_MODEL` | — | Model name; defaults to `claude-sonnet-4-6` / `gpt-4o` |
-| `ARCHIVIST_API_KEY` | — | API key; falls back to `ANTHROPIC_API_KEY` for Anthropic |
+| `ARCHIVIST_MODEL` | — | Defaults to `claude-sonnet-4-6` / `gpt-4o` |
+| `ARCHIVIST_API_KEY` | — | Falls back to `ANTHROPIC_API_KEY` for Anthropic |
 | `ARCHIVIST_BASE_URL` | — | OpenAI-compatible base URL (Ollama, Mistral, etc.) |
-| `ANTHROPIC_API_KEY` | — | Anthropic API key (used when `ARCHIVIST_PROVIDER=anthropic`) |
+| `ANTHROPIC_API_KEY` | — | Used when `ARCHIVIST_PROVIDER=anthropic` |
 | `SYNTHESIS_INTERVAL` | `3600` | Seconds between archivist synthesis passes |
 | `DECAY_RATE` | `0.9` | Confidence multiplier per decay cycle |
-| `DECAY_WINDOW_DAYS` | `7` | Days without update before decay kicks in |
+| `DECAY_WINDOW_DAYS` | `7` | Days before decay applies to unmodified entries |
 | `MCP_PORT` | `8001` | MCP server port |
 
 ---
 
-## The Archivist
+## Archivist
 
-Runs as a background agent alongside the server. Fully optional — the server works without it, and the archivist itself works without an LLM configured.
+Runs as a separate process alongside the server. Optional — the server works without it.
 
-**With LLM (`ARCHIVIST_PROVIDER` + key):**
-- On every memory write: detects semantic conflicts between agent entries and merges them into a canonical record
-- Periodically: synthesizes a cross-agent doc surfacing connections no individual agent can see
+**With LLM configured (`ARCHIVIST_PROVIDER` + key):**
+- On memory write: detects semantic conflicts and merges them into a canonical record
+- Periodically: synthesizes a cross-agent doc from recent memory activity
 
 **Without LLM (passive mode):**
-- Confidence decay: stale entries lose confidence over time
+- Confidence decay on stale entries
 - Type promotion: scratch → memory → doc based on age and version count
 
-Supports any OpenAI-compatible provider (OpenAI, Ollama, Mistral, etc.) or Anthropic.
+Supports any OpenAI-compatible provider or Anthropic.
 
 ---
 
-## Testing
+## Development
 
 ```bash
 uv sync --dev
