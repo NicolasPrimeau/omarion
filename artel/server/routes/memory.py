@@ -31,7 +31,7 @@ def _row_to_entry(row: sqlite3.Row) -> MemoryEntry:
     )
 
 
-@router.post("", response_model=MemoryEntry, status_code=201)
+@router.post("", response_model=MemoryEntry, status_code=201, summary="Write a memory entry")
 async def write_memory(
     body: MemoryWrite,
     agent_id: str = Depends(require_agent),
@@ -81,7 +81,7 @@ async def write_memory(
     return _row_to_entry(row)
 
 
-@router.get("/search", response_model=list[MemoryEntry])
+@router.get("/search", response_model=list[MemoryEntry], summary="Semantic search over memory")
 async def search_memory(
     q: str = Query(...),
     limit: int = Query(default=10, le=50),
@@ -121,7 +121,7 @@ async def search_memory(
     return [_row_to_entry(r) for r in results]
 
 
-@router.get("", response_model=list[MemoryEntry])
+@router.get("", response_model=list[MemoryEntry], summary="List memory with optional filters")
 async def list_memory(
     type: str | None = Query(default=None),
     tag: str | None = Query(default=None),
@@ -169,7 +169,9 @@ async def list_memory(
     return [_row_to_entry(r) for r in rows]
 
 
-@router.get("/delta", response_model=list[MemoryEntry])
+@router.get(
+    "/delta", response_model=list[MemoryEntry], summary="Memory entries updated since a timestamp"
+)
 async def memory_delta(
     since: str = Query(...),
     agent: str | None = Query(default=None),
@@ -196,7 +198,7 @@ async def memory_delta(
     return [_row_to_entry(r) for r in rows]
 
 
-@router.get("/{entry_id}", response_model=MemoryEntry)
+@router.get("/{entry_id}", response_model=MemoryEntry, summary="Get a memory entry by ID")
 async def get_memory(
     entry_id: str,
     agent_id: str = Depends(require_agent),
@@ -213,7 +215,9 @@ async def get_memory(
     return _row_to_entry(row)
 
 
-@router.patch("/{entry_id}", response_model=MemoryEntry)
+@router.patch(
+    "/{entry_id}", response_model=MemoryEntry, summary="Update a memory entry (owner only)"
+)
 async def patch_memory(
     entry_id: str,
     body: MemoryPatch,
@@ -268,7 +272,7 @@ async def patch_memory(
     return _row_to_entry(row)
 
 
-@router.delete("/{entry_id}", status_code=204)
+@router.delete("/{entry_id}", status_code=204, summary="Soft-delete a memory entry (owner only)")
 async def delete_memory(
     entry_id: str,
     agent_id: str = Depends(require_agent),

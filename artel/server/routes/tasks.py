@@ -26,7 +26,7 @@ def _row_to_task(row: sqlite3.Row) -> TaskEntry:
     )
 
 
-@router.get("/{task_id}", response_model=TaskEntry)
+@router.get("/{task_id}", response_model=TaskEntry, summary="Get a task by ID")
 async def get_task(task_id: str, agent_id: str = Depends(require_agent)):
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
@@ -36,7 +36,7 @@ async def get_task(task_id: str, agent_id: str = Depends(require_agent)):
     return _row_to_task(row)
 
 
-@router.post("", response_model=TaskEntry, status_code=201)
+@router.post("", response_model=TaskEntry, status_code=201, summary="Create a task")
 async def create_task(body: TaskCreate, agent_id: str = Depends(require_agent)):
     check_project(agent_id, body.project)
     db = get_db()
@@ -64,7 +64,7 @@ async def create_task(body: TaskCreate, agent_id: str = Depends(require_agent)):
     return _row_to_task(row)
 
 
-@router.get("", response_model=list[TaskEntry])
+@router.get("", response_model=list[TaskEntry], summary="List tasks with optional filters")
 async def list_tasks(
     status: str | None = Query(default=None),
     agent: str | None = Query(default=None),
@@ -92,7 +92,7 @@ async def list_tasks(
     return [_row_to_task(r) for r in rows]
 
 
-@router.post("/{task_id}/claim", response_model=TaskEntry)
+@router.post("/{task_id}/claim", response_model=TaskEntry, summary="Claim an open task")
 async def claim_task(task_id: str, agent_id: str = Depends(require_agent)):
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
@@ -115,7 +115,11 @@ async def claim_task(task_id: str, agent_id: str = Depends(require_agent)):
     return _row_to_task(row)
 
 
-@router.post("/{task_id}/complete", response_model=TaskEntry)
+@router.post(
+    "/{task_id}/complete",
+    response_model=TaskEntry,
+    summary="Complete a claimed task (assignee only)",
+)
 async def complete_task(task_id: str, agent_id: str = Depends(require_agent)):
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
@@ -140,7 +144,9 @@ async def complete_task(task_id: str, agent_id: str = Depends(require_agent)):
     return _row_to_task(row)
 
 
-@router.patch("/{task_id}", response_model=TaskEntry)
+@router.patch(
+    "/{task_id}", response_model=TaskEntry, summary="Update task title, description, or priority"
+)
 async def update_task(task_id: str, body: TaskUpdate, agent_id: str = Depends(require_agent)):
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
@@ -178,7 +184,9 @@ async def update_task(task_id: str, body: TaskUpdate, agent_id: str = Depends(re
     return _row_to_task(row)
 
 
-@router.post("/{task_id}/fail", response_model=TaskEntry)
+@router.post(
+    "/{task_id}/fail", response_model=TaskEntry, summary="Fail a claimed task (assignee only)"
+)
 async def fail_task(task_id: str, agent_id: str = Depends(require_agent)):
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()

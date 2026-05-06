@@ -23,7 +23,7 @@ def _row_to_event(row: sqlite3.Row) -> EventEntry:
     )
 
 
-@router.post("", response_model=EventEntry, status_code=201)
+@router.post("", response_model=EventEntry, status_code=201, summary="Emit a custom event")
 async def emit_event(body: EventEmit, agent_id: str = Depends(require_agent)):
     db = get_db()
     event_id = new_id()
@@ -38,7 +38,7 @@ async def emit_event(body: EventEmit, agent_id: str = Depends(require_agent)):
     return event
 
 
-@router.get("")
+@router.get("", summary="Poll events since a timestamp")
 async def poll_events(
     since: str = Query(...),
     type: str | None = Query(default=None),
@@ -59,7 +59,7 @@ async def poll_events(
     return [_row_to_event(r) for r in rows]
 
 
-@router.get("/stream")
+@router.get("/stream", summary="SSE stream of real-time events")
 async def event_stream(
     type: str | None = Query(default=None),
     agent: str | None = Query(default=None),

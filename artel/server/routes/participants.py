@@ -8,7 +8,11 @@ from ..models import Participant
 router = APIRouter(prefix="/participants", tags=["participants"])
 
 
-@router.get("", response_model=list[Participant])
+@router.get(
+    "",
+    response_model=list[Participant],
+    summary="List all registered agents and last-seen timestamps",
+)
 async def list_participants(agent_id: str = Depends(require_agent)):
     db = get_db()
     last_seen: dict[str, str | None] = {aid: None for aid in settings.api_keys().values()}

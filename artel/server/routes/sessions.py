@@ -27,7 +27,7 @@ def _row_to_entry(row: sqlite3.Row) -> MemoryEntry:
     )
 
 
-@router.post("/handoff", status_code=201)
+@router.post("/handoff", status_code=201, summary="Save session end state")
 async def post_handoff(body: HandoffPost, agent_id: str = Depends(require_agent)):
     db = get_db()
     handoff_id = new_id()
@@ -49,7 +49,11 @@ async def post_handoff(body: HandoffPost, agent_id: str = Depends(require_agent)
     return {"id": handoff_id}
 
 
-@router.get("/handoff/{target_agent_id}", response_model=HandoffResponse)
+@router.get(
+    "/handoff/{target_agent_id}",
+    response_model=HandoffResponse,
+    summary="Load last handoff and memory delta since then",
+)
 async def get_handoff(
     target_agent_id: str,
     agent_id: str = Depends(require_agent),
