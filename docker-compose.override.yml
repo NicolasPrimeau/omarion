@@ -1,0 +1,21 @@
+services:
+  artel:
+    build: .
+    volumes:
+      - artel-data:/data
+      - ./artel:/app/artel
+
+  archivist:
+    build: .
+    volumes:
+      - ./artel:/app/artel
+
+  mcp:
+    build: .
+    volumes:
+      - ./artel:/app/artel
+
+  mdns:
+    build: .
+    volumes:
+      - ./artel:/app/artel
