@@ -166,7 +166,7 @@ if bashrc.exists() and marker not in bashrc.read_text():
             '\n_artel_load() {{\n'
             '    local mcp=".mcp.json" aid creds\n'
             '    if [ -f "$mcp" ]; then\n'
-            '        aid=$(python3 -c "import json; print(json.load(open(\\'.mcp.json\\'))[\\'mcpServers\\'][\\'artel\\'][\\'headers\\'][\\'x-agent-id\\'])" 2>/dev/null)\n'
+            '        aid=$(python3 -c "import json; print(json.load(open(\'.mcp.json\'))[\'mcpServers\'][\'artel\'][\'headers\'][\'x-agent-id\'])" 2>/dev/null)\n'
             '    fi\n'
             '    if [ -n "$aid" ]; then creds="$HOME/.config/artel/$aid"\n'
             '    else creds="$HOME/.config/artel/credentials"; fi\n'
