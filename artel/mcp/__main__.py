@@ -6,10 +6,10 @@ import httpx
 import uvicorn
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-log = logging.getLogger(__name__)
-
 from .config import _creds_file, settings
 from .server import _agent_id, _api_key, mcp
+
+log = logging.getLogger(__name__)
 
 
 def _auto_register() -> tuple[str, str]:
