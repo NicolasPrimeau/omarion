@@ -41,25 +41,25 @@ async def create_task(body: TaskCreate, agent_id: str = Depends(require_agent)):
     check_project(agent_id, body.project)
     db = get_db()
     task_id = new_id()
-    db.execute(
-        """INSERT INTO tasks (id, title, description, created_by, project,
-           priority, assigned_to, due_at) VALUES (?,?,?,?,?,?,?,?)""",
-        (
-            task_id,
-            body.title,
-            body.description,
-            agent_id,
-            body.project,
-            body.priority,
-            body.assigned_to,
-            body.due_at,
-        ),
-    )
-    db.execute(
-        "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-        (new_id(), "task.created", agent_id, json.dumps({"task_id": task_id})),
-    )
-    db.commit()
+    with db:
+        db.execute(
+            """INSERT INTO tasks (id, title, description, created_by, project,
+               priority, assigned_to, due_at) VALUES (?,?,?,?,?,?,?,?)""",
+            (
+                task_id,
+                body.title,
+                body.description,
+                agent_id,
+                body.project,
+                body.priority,
+                body.assigned_to,
+                body.due_at,
+            ),
+        )
+        db.execute(
+            "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
+            (new_id(), "task.created", agent_id, json.dumps({"task_id": task_id})),
+        )
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     return _row_to_task(row)
 
@@ -101,16 +101,16 @@ async def claim_task(task_id: str, agent_id: str = Depends(require_agent)):
     check_project(agent_id, row["project"])
     if row["status"] != "open":
         raise HTTPException(status_code=409, detail="task not open")
-    db.execute(
-        """UPDATE tasks SET status='claimed', assigned_to=?,
-           updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",
-        (agent_id, task_id),
-    )
-    db.execute(
-        "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-        (new_id(), "task.claimed", agent_id, json.dumps({"task_id": task_id})),
-    )
-    db.commit()
+    with db:
+        db.execute(
+            """UPDATE tasks SET status='claimed', assigned_to=?,
+               updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",
+            (agent_id, task_id),
+        )
+        db.execute(
+            "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
+            (new_id(), "task.claimed", agent_id, json.dumps({"task_id": task_id})),
+        )
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     return _row_to_task(row)
 
@@ -126,16 +126,16 @@ async def complete_task(task_id: str, agent_id: str = Depends(require_agent)):
         raise HTTPException(status_code=409, detail="task not claimed")
     if row["assigned_to"] != agent_id:
         raise HTTPException(status_code=403, detail="forbidden")
-    db.execute(
-        """UPDATE tasks SET status='completed',
-           updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",
-        (task_id,),
-    )
-    db.execute(
-        "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-        (new_id(), "task.completed", agent_id, json.dumps({"task_id": task_id})),
-    )
-    db.commit()
+    with db:
+        db.execute(
+            """UPDATE tasks SET status='completed',
+               updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",
+            (task_id,),
+        )
+        db.execute(
+            "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
+            (new_id(), "task.completed", agent_id, json.dumps({"task_id": task_id})),
+        )
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     return _row_to_task(row)
 
@@ -168,12 +168,12 @@ async def update_task(task_id: str, body: TaskUpdate, agent_id: str = Depends(re
     if set_parts:
         set_parts.append("updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')")
         params.append(task_id)
-        db.execute(f"UPDATE tasks SET {', '.join(set_parts)} WHERE id=?", params)
-        db.execute(
-            "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-            (new_id(), "task.updated", agent_id, json.dumps({"task_id": task_id})),
-        )
-        db.commit()
+        with db:
+            db.execute(f"UPDATE tasks SET {', '.join(set_parts)} WHERE id=?", params)
+            db.execute(
+                "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
+                (new_id(), "task.updated", agent_id, json.dumps({"task_id": task_id})),
+            )
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     return _row_to_task(row)
 
@@ -189,15 +189,15 @@ async def fail_task(task_id: str, agent_id: str = Depends(require_agent)):
         raise HTTPException(status_code=409, detail="task not claimed")
     if row["assigned_to"] != agent_id:
         raise HTTPException(status_code=403, detail="forbidden")
-    db.execute(
-        """UPDATE tasks SET status='failed',
-           updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",
-        (task_id,),
-    )
-    db.execute(
-        "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-        (new_id(), "task.failed", agent_id, json.dumps({"task_id": task_id})),
-    )
-    db.commit()
+    with db:
+        db.execute(
+            """UPDATE tasks SET status='failed',
+               updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",
+            (task_id,),
+        )
+        db.execute(
+            "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
+            (new_id(), "task.failed", agent_id, json.dumps({"task_id": task_id})),
+        )
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     return _row_to_task(row)

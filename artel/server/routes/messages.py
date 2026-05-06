@@ -28,16 +28,16 @@ def _row_to_msg(row: sqlite3.Row) -> MessageEntry:
 async def send_message(body: MessageSend, agent_id: str = Depends(require_agent)):
     db = get_db()
     msg_id = new_id()
-    db.execute(
-        "INSERT INTO messages (id, from_agent, to_agent, subject, body) VALUES (?,?,?,?,?)",
-        (msg_id, agent_id, body.to, body.subject, body.body),
-    )
     event_id = new_id()
-    db.execute(
-        "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-        (event_id, "message.received", agent_id, json.dumps({"message_id": msg_id, "to": body.to})),
-    )
-    db.commit()
+    with db:
+        db.execute(
+            "INSERT INTO messages (id, from_agent, to_agent, subject, body) VALUES (?,?,?,?,?)",
+            (msg_id, agent_id, body.to, body.subject, body.body),
+        )
+        db.execute(
+            "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
+            (event_id, "message.received", agent_id, json.dumps({"message_id": msg_id, "to": body.to})),
+        )
 
     broadcast(
         EventEntry(

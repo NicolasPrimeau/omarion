@@ -1,8 +1,12 @@
+import asyncio
 import json
+import logging
 
 import httpx
 
 from .config import settings
+
+log = logging.getLogger(__name__)
 
 
 class ArtelClient:
@@ -19,9 +23,27 @@ class ArtelClient:
     async def aclose(self):
         await self._http.aclose()
 
+    async def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
+        last_exc: Exception = RuntimeError("no attempts made")
+        for attempt in range(3):
+            try:
+                r = await self._http.request(method, path, **kwargs)
+                r.raise_for_status()
+                return r
+            except httpx.HTTPStatusError as e:
+                if e.response.status_code < 500:
+                    raise
+                last_exc = e
+            except (httpx.TransportError, httpx.TimeoutException) as e:
+                last_exc = e
+            if attempt < 2:
+                delay = 2.0 ** attempt
+                log.warning("request %s %s failed, retrying in %.0fs: %s", method, path, delay, last_exc)
+                await asyncio.sleep(delay)
+        raise last_exc
+
     async def get_memory(self, entry_id: str) -> dict:
-        r = await self._http.get(f"/memory/{entry_id}")
-        r.raise_for_status()
+        r = await self._request("GET", f"/memory/{entry_id}")
         return r.json()
 
     async def search_memory(
@@ -30,8 +52,7 @@ class ArtelClient:
         params: dict = {"q": q, "limit": limit}
         if max_distance is not None:
             params["max_distance"] = max_distance
-        r = await self._http.get("/memory/search", params=params)
-        r.raise_for_status()
+        r = await self._request("GET", "/memory/search", params=params)
         return r.json()
 
     async def write_memory(
@@ -43,7 +64,8 @@ class ArtelClient:
         confidence: float = 1.0,
         project: str | None = None,
     ) -> dict:
-        r = await self._http.post(
+        r = await self._request(
+            "POST",
             "/memory",
             json={
                 "content": content,
@@ -55,17 +77,14 @@ class ArtelClient:
                 "project": project,
             },
         )
-        r.raise_for_status()
         return r.json()
 
     async def patch_memory(self, entry_id: str, **fields) -> dict:
-        r = await self._http.patch(f"/memory/{entry_id}", json=fields)
-        r.raise_for_status()
+        r = await self._request("PATCH", f"/memory/{entry_id}", json=fields)
         return r.json()
 
     async def delete_memory(self, entry_id: str) -> None:
-        r = await self._http.delete(f"/memory/{entry_id}")
-        r.raise_for_status()
+        await self._request("DELETE", f"/memory/{entry_id}")
 
     async def list_entries(
         self,
@@ -84,13 +103,11 @@ class ArtelClient:
             params["created_before"] = created_before
         if min_version is not None:
             params["min_version"] = min_version
-        r = await self._http.get("/memory", params=params)
-        r.raise_for_status()
+        r = await self._request("GET", "/memory", params=params)
         return r.json()
 
     async def get_delta(self, since: str) -> list[dict]:
-        r = await self._http.get("/memory/delta", params={"since": since})
-        r.raise_for_status()
+        r = await self._request("GET", "/memory/delta", params={"since": since})
         return r.json()
 
     async def stream_events(self, event_type: str | None = None):
