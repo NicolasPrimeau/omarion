@@ -1,12 +1,11 @@
 services:
   artel:
-    build: .
+    image: ghcr.io/nicolasprimeau/artel:latest
     restart: unless-stopped
     ports:
       - "8000:8000"
     volumes:
       - artel-data:/data
-      - ./artel:/app/artel
     env_file: .env
     environment:
       - DB_PATH=/data/artel.db
@@ -18,10 +17,8 @@ services:
       start_period: 20s
 
   archivist:
-    build: .
+    image: ghcr.io/nicolasprimeau/artel:latest
     restart: unless-stopped
-    volumes:
-      - ./artel:/app/artel
     command: ["python", "-m", "artel.archivist"]
     env_file: .env
     environment:
@@ -37,10 +34,8 @@ services:
       start_period: 60s
 
   mcp:
-    build: .
+    image: ghcr.io/nicolasprimeau/artel:latest
     restart: unless-stopped
-    volumes:
-      - ./artel:/app/artel
     command: ["python", "-m", "artel.mcp"]
     ports:
       - "8001:8001"
@@ -60,12 +55,10 @@ services:
       start_period: 20s
 
   mdns:
-    build: .
+    image: ghcr.io/nicolasprimeau/artel:latest
     restart: unless-stopped
     network_mode: host
     command: ["python", "-m", "artel.server.mdns_announce"]
-    volumes:
-      - ./artel:/app/artel
     env_file: .env
     depends_on:
       artel:
