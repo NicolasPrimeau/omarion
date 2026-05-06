@@ -114,7 +114,7 @@ SESSION LIFECYCLE (do these every session, no exceptions):
 MEMORY (write often, read before you act):
 - Call memory_search() before starting any non-trivial work — another agent may have already done it.
 - Call memory_write() whenever you learn something worth keeping: decisions, facts, findings, plans, bugs.
-- Use type="scratch" for working notes, type="doc" for stable reference, type="memory" for facts and decisions.
+- type="memory" is the default and right for almost everything. The archivist promotes stable entries to type="doc" automatically.
 - Use tags to make things findable. Use scope="private" only for things no other agent should see.
 - If MCP_PROJECT is set, all memory calls default to that project automatically.
 
@@ -265,10 +265,8 @@ async def memory_write(
     - Anything another agent (or future you) would want to know
 
     Types:
-    - memory: default — facts, decisions, findings (persistent)
-    - doc: stable reference material (architecture, runbooks)
-    - scratch: working notes — disposable, will be promoted or decayed by archivist
-    - reference: pointers to external resources (URLs, file paths, credentials)
+    - memory: default — use this for everything
+    - doc: stable reference material; normally written by the archivist, not agents
 
     Scopes:
     - shared: visible to all agents in this project (default)
@@ -354,10 +352,10 @@ async def memory_list(
     """Browse memory entries by filter. Use when you want to survey a topic area.
 
     Complements memory_search: search is for "find something relevant", list is for
-    "show me everything tagged X" or "what has agent Y written" or "all scratch notes".
+    "show me everything tagged X" or "what has agent Y written".
 
     Args:
-        type: memory, doc, scratch, or reference.
+        type: memory or doc.
         project: Filter by project. Omit to see all accessible projects.
         tag: Only entries with this tag.
         agent: Only entries written by this agent.
@@ -421,7 +419,7 @@ async def memory_update(
         content: New content. Omit to leave unchanged.
         confidence: New confidence score (0.0–1.0). Omit to leave unchanged.
         tags: Replace tags list. Omit to leave unchanged.
-        type: New type (memory, doc, scratch, reference). Omit to leave unchanged.
+        type: New type (memory or doc). Omit to leave unchanged.
         scope: New scope (private, shared, global). Omit to leave unchanged.
         project: Move entry to a different project. Omit to leave unchanged.
     """

@@ -139,8 +139,8 @@ async def test_list_memory_by_type(client):
     await client.post(
         "/memory",
         json={
-            "content": "scratch note",
-            "type": "scratch",
+            "content": "doc entry",
+            "type": "doc",
             "scope": "shared",
             "tags": [],
             "parents": [],
@@ -151,7 +151,7 @@ async def test_list_memory_by_type(client):
     await client.post(
         "/memory",
         json={
-            "content": "real memory",
+            "content": "memory entry",
             "type": "memory",
             "scope": "shared",
             "tags": [],
@@ -161,10 +161,10 @@ async def test_list_memory_by_type(client):
         headers=HEADERS,
     )
 
-    r = await client.get("/memory", params={"type": "scratch"}, headers=HEADERS)
+    r = await client.get("/memory", params={"type": "doc"}, headers=HEADERS)
     assert r.status_code == 200
     results = r.json()
-    assert all(e["type"] == "scratch" for e in results)
+    assert all(e["type"] == "doc" for e in results)
     assert len(results) == 1
 
 

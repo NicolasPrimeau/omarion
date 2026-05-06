@@ -17,7 +17,6 @@ class ArchivistSettings(BaseSettings):
     decay_rate: float = 0.9
     decay_floor: float = 0.05
     decay_window_days: int = 7
-    promotion_scratch_age_hours: int = 48
     promotion_memory_min_version: int = 3
 
 

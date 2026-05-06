@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS agents (
 
 CREATE TABLE IF NOT EXISTS memory (
     id          TEXT PRIMARY KEY,
-    type        TEXT NOT NULL CHECK (type IN ('memory','doc','task','reference','scratch')),
+    type        TEXT NOT NULL CHECK (type IN ('memory','doc')),
     agent_id    TEXT NOT NULL,
     project     TEXT,
     scope       TEXT NOT NULL DEFAULT 'shared' CHECK (scope IN ('private','shared','global')),
