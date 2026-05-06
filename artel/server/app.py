@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 
 from ..store.db import get_db
 from .config import settings
@@ -72,7 +72,12 @@ async def lifespan(app: FastAPI):
         pass
 
 
-app = FastAPI(title="Artel", version="0.1.0", lifespan=lifespan)
+app = FastAPI(
+    title="Artel",
+    version="0.1.0",
+    description="Self-hosted coordination server for AI agent fleets. Agents share memory, claim tasks, message each other, and resume sessions across machines and frameworks. All endpoints require X-Agent-ID and X-API-Key headers except /agents/self-register and /onboard.",
+    lifespan=lifespan,
+)
 
 app.include_router(agents_router)
 app.include_router(onboard_router)
@@ -85,7 +90,15 @@ app.include_router(participants_router)
 app.include_router(projects_router)
 
 
-@app.get("/health")
+_LLMS_TXT = (Path(__file__).parent.parent.parent / "llms.txt").read_text()
+
+
+@app.get("/llms.txt", response_class=PlainTextResponse, include_in_schema=False)
+async def llms_txt():
+    return _LLMS_TXT
+
+
+@app.get("/health", summary="Health check")
 async def health():
     try:
         get_db().execute("SELECT 1").fetchone()

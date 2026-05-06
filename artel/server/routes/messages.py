@@ -24,7 +24,12 @@ def _row_to_msg(row: sqlite3.Row) -> MessageEntry:
     )
 
 
-@router.post("", response_model=MessageEntry, status_code=201)
+@router.post(
+    "",
+    response_model=MessageEntry,
+    status_code=201,
+    summary="Send a message to an agent or broadcast",
+)
 async def send_message(body: MessageSend, agent_id: str = Depends(require_agent)):
     db = get_db()
     msg_id = new_id()
@@ -58,7 +63,7 @@ async def send_message(body: MessageSend, agent_id: str = Depends(require_agent)
     return _row_to_msg(row)
 
 
-@router.get("/inbox", response_model=list[MessageEntry])
+@router.get("/inbox", response_model=list[MessageEntry], summary="Fetch unread messages")
 async def inbox(
     agent: str | None = Query(default=None),
     agent_id: str = Depends(require_agent),
@@ -73,7 +78,7 @@ async def inbox(
     return [_row_to_msg(r) for r in rows]
 
 
-@router.post("/{msg_id}/read", response_model=MessageEntry)
+@router.post("/{msg_id}/read", response_model=MessageEntry, summary="Mark a message as read")
 async def mark_read(msg_id: str, agent_id: str = Depends(require_agent)):
     db = get_db()
     row = db.execute("SELECT * FROM messages WHERE id=?", (msg_id,)).fetchone()

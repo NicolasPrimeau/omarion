@@ -38,6 +38,7 @@ def _row_to_agent(row) -> AgentCreated:
     "/register",
     response_model=AgentCreated,
     status_code=201,
+    summary="Register a new agent (registration key required)",
     dependencies=[Depends(require_registration_key)],
 )
 async def register_agent(body: AgentRegister, request: Request):
@@ -67,7 +68,12 @@ async def register_agent(body: AgentRegister, request: Request):
     )
 
 
-@router.post("/self-register", response_model=AgentCreated, status_code=201)
+@router.post(
+    "/self-register",
+    response_model=AgentCreated,
+    status_code=201,
+    summary="Register without a key; agent_id is auto-deduplicated",
+)
 async def self_register(body: AgentSelfRegister):
     base = (body.agent_id or "agent").strip()
     if not base.replace("-", "").replace("_", "").isalnum():
@@ -93,7 +99,7 @@ async def self_register(body: AgentSelfRegister):
     )
 
 
-@router.get("/me", response_model=AgentCreated)
+@router.get("/me", response_model=AgentCreated, summary="Get your own agent record")
 async def get_self(agent_id: str = AgentDep):
     db = get_db()
     row = db.execute("SELECT * FROM agents WHERE id=?", (agent_id,)).fetchone()
@@ -103,7 +109,9 @@ async def get_self(agent_id: str = AgentDep):
     return AgentCreated(agent_id=agent_id, api_key=key or "", created_at="static")
 
 
-@router.patch("/me", response_model=AgentCreated)
+@router.patch(
+    "/me", response_model=AgentCreated, summary="Rename yourself; cascades across all records"
+)
 async def rename_self(body: AgentRename, agent_id: str = AgentDep):
     new_id = body.new_id.strip()
     if not new_id or not new_id.replace("-", "").replace("_", "").isalnum():
@@ -136,7 +144,7 @@ async def rename_self(body: AgentRename, agent_id: str = AgentDep):
     return _row_to_agent(updated)
 
 
-@router.delete("/me", status_code=204)
+@router.delete("/me", status_code=204, summary="Delete your own agent record")
 async def delete_self(agent_id: str = AgentDep):
     if agent_id in settings.api_keys().values():
         raise HTTPException(
@@ -152,7 +160,10 @@ async def delete_self(agent_id: str = AgentDep):
 
 
 @router.patch(
-    "/{agent_id}", response_model=AgentCreated, dependencies=[Depends(require_registration_key)]
+    "/{agent_id}",
+    response_model=AgentCreated,
+    summary="Rename any agent (registration key required)",
+    dependencies=[Depends(require_registration_key)],
 )
 async def rename_agent(agent_id: str, body: AgentRename):
     new_id = body.new_id.strip()
@@ -183,7 +194,12 @@ async def rename_agent(agent_id: str, body: AgentRename):
     return _row_to_agent(updated)
 
 
-@router.delete("/{agent_id}", status_code=204, dependencies=[Depends(require_registration_key)])
+@router.delete(
+    "/{agent_id}",
+    status_code=204,
+    summary="Delete any agent (registration key required)",
+    dependencies=[Depends(require_registration_key)],
+)
 async def delete_agent(agent_id: str):
     if agent_id in settings.api_keys().values():
         raise HTTPException(
@@ -199,7 +215,12 @@ async def delete_agent(agent_id: str):
     _last_seen.pop(agent_id, None)
 
 
-@router.get("", response_model=list[AgentCreated], dependencies=[Depends(require_registration_key)])
+@router.get(
+    "",
+    response_model=list[AgentCreated],
+    summary="List all agents (registration key required)",
+    dependencies=[Depends(require_registration_key)],
+)
 async def list_agents():
     db = get_db()
     rows = db.execute("SELECT * FROM agents ORDER BY created_at").fetchall()
