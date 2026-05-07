@@ -10,7 +10,7 @@ set -e
 
 ARTEL_URL="{artel_url}"
 PROJECT="{project}"
-REG_KEY="{reg_key}"
+REG_KEY="${{ARTEL_REG_KEY:-}}"
 
 _git_name() {{
     remote=$(git remote get-url origin 2>/dev/null) || true
@@ -97,7 +97,13 @@ def _register(agent_id):
             detail = json.loads(body).get('detail', body)
         except Exception:
             detail = body
-        print('error: registration failed ({{}}) — {{}}'.format(e.code, detail)); sys.exit(1)
+        if e.code == 401:
+            print('error: registration requires a key.')
+            print('action: add this line to ~/.bashrc and re-run:')
+            print('  export ARTEL_REG_KEY=<your-registration-key>')
+        else:
+            print('error: registration failed ({{}}) — {{}}'.format(e.code, detail))
+        sys.exit(1)
     except urllib.error.URLError as e:
         print('error: could not reach {{}} — {{}}'.format(url, e.reason)); sys.exit(1)
 
@@ -219,7 +225,6 @@ PYEOF
 async def onboard(
     request: Request,
     project: str | None = Query(default=None),
-    key: str | None = Query(default=None),
 ):
     artel_url = settings.public_url or str(request.base_url).rstrip("/")
-    return _SCRIPT.format(artel_url=artel_url, project=project or "", reg_key=key or "")
+    return _SCRIPT.format(artel_url=artel_url, project=project or "")
