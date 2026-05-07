@@ -181,6 +181,28 @@ if bashrc.exists() and marker not in bashrc.read_text():
 
 if not refreshed:
     print('  .mcp.json written, ~/.bashrc updated')
+
+    # offer project join
+    try:
+        import sys
+        sys.stdout.write('  join project [blank to skip]: ')
+        sys.stdout.flush()
+        proj_input = input().strip()
+    except Exception:
+        proj_input = ''
+    if proj_input:
+        join_req = urllib.request.Request(
+            url + '/projects/' + proj_input + '/join',
+            data=b'',
+            headers={{'x-agent-id': aid, 'x-api-key': akey}},
+            method='POST',
+        )
+        try:
+            urllib.request.urlopen(join_req)
+            print('  joined project: ' + proj_input)
+        except Exception as e:
+            print('  could not join project: ' + str(e))
+
     print()
     print('source ~/.bashrc, then run /reload-plugins in Claude Code to connect')
 else:
