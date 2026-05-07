@@ -4,7 +4,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...store.db import get_db
-from ..auth import check_project, project_filter, require_agent
+from ..auth import project_filter, require_agent
 from ..models import TaskCreate, TaskEntry, TaskUpdate, new_id
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -32,13 +32,11 @@ async def get_task(task_id: str, agent_id: str = Depends(require_agent)):
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
-    check_project(agent_id, row["project"])
     return _row_to_task(row)
 
 
 @router.post("", response_model=TaskEntry, status_code=201, summary="Create a task")
 async def create_task(body: TaskCreate, agent_id: str = Depends(require_agent)):
-    check_project(agent_id, body.project)
     db = get_db()
     task_id = new_id()
     with db:
@@ -74,19 +72,20 @@ async def list_tasks(
     db = get_db()
     sql = "SELECT * FROM tasks WHERE 1=1"
     params: list = []
-    pf_clause, pf_params = project_filter(agent_id)
-    if pf_clause:
-        sql += f" AND {pf_clause}"
-        params.extend(pf_params)
+    if project:
+        sql += " AND project=?"
+        params.append(project)
+    else:
+        pf_clause, pf_params = project_filter(agent_id)
+        if pf_clause:
+            sql += f" AND {pf_clause}"
+            params.extend(pf_params)
     if status:
         sql += " AND status=?"
         params.append(status)
     if agent:
         sql += " AND (created_by=? OR assigned_to=?)"
         params.extend([agent, agent])
-    if project:
-        sql += " AND project=?"
-        params.append(project)
     sql += " ORDER BY created_at DESC"
     rows = db.execute(sql, params).fetchall()
     return [_row_to_task(r) for r in rows]
@@ -98,7 +97,6 @@ async def claim_task(task_id: str, agent_id: str = Depends(require_agent)):
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
-    check_project(agent_id, row["project"])
     if row["status"] != "open":
         raise HTTPException(status_code=409, detail="task not open")
     with db:
@@ -125,7 +123,6 @@ async def complete_task(task_id: str, agent_id: str = Depends(require_agent)):
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
-    check_project(agent_id, row["project"])
     if row["status"] != "claimed":
         raise HTTPException(status_code=409, detail="task not claimed")
     if row["assigned_to"] != agent_id:
@@ -152,7 +149,6 @@ async def update_task(task_id: str, body: TaskUpdate, agent_id: str = Depends(re
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
-    check_project(agent_id, row["project"])
     set_parts: list[str] = []
     params: list = []
     if body.description is not None:
@@ -192,7 +188,6 @@ async def fail_task(task_id: str, agent_id: str = Depends(require_agent)):
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
-    check_project(agent_id, row["project"])
     if row["status"] != "claimed":
         raise HTTPException(status_code=409, detail="task not claimed")
     if row["assigned_to"] != agent_id:

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...store.db import get_db
 from ...store.embeddings import embed
-from ..auth import _memberships, check_project, project_filter, require_agent
+from ..auth import _memberships, project_filter, require_agent
 from ..broadcast import broadcast
 from ..models import EventEntry, MemoryEntry, MemoryPatch, MemoryWrite, new_id
 
@@ -35,7 +35,6 @@ async def write_memory(
     body: MemoryWrite,
     agent_id: str = Depends(require_agent),
 ):
-    check_project(agent_id, body.project)
     db = get_db()
     entry_id = new_id()
     vec = embed(body.content)
@@ -206,7 +205,6 @@ async def get_memory(
         raise HTTPException(status_code=404, detail="not found")
     if row["scope"] == "agent" and row["agent_id"] != agent_id:
         raise HTTPException(status_code=403, detail="forbidden")
-    check_project(agent_id, row["project"])
     return _row_to_entry(row)
 
 
@@ -224,7 +222,6 @@ async def patch_memory(
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
-    check_project(agent_id, row["project"])
     if row["agent_id"] != agent_id:
         raise HTTPException(status_code=403, detail="forbidden")
 
@@ -242,7 +239,6 @@ async def patch_memory(
     if body.type is not None:
         updates["type"] = body.type
     if body.project is not None:
-        check_project(agent_id, body.project)
         updates["project"] = body.project
 
     if updates:
@@ -280,7 +276,6 @@ async def delete_memory(
         raise HTTPException(status_code=404, detail="not found")
     if row["agent_id"] != agent_id:
         raise HTTPException(status_code=403, detail="forbidden")
-    check_project(agent_id, row["project"])
     db.execute(
         "UPDATE memory SET deleted_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?",
         (entry_id,),

@@ -114,6 +114,10 @@ async def list_projects(agent_id: str = Depends(require_agent)):
             p = _ensure(proj)
             p["agents"].add(agent_id_cfg)
 
+    for row in db.execute("SELECT project_id, agent_id FROM project_members").fetchall():
+        p = _ensure(row["project_id"])
+        p["agents"].add(row["agent_id"])
+
     return [
         ProjectInfo(
             name=name,

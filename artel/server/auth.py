@@ -37,13 +37,14 @@ async def require_registration_key(
 
 
 def _memberships(agent_id: str) -> list[str] | None:
+    is_static = agent_id in settings.api_keys().values()
     static = settings.agent_projects().get(agent_id)
     db = get_db()
     rows = db.execute(
         "SELECT project_id FROM project_members WHERE agent_id=?", (agent_id,)
     ).fetchall()
     db_projects = [r["project_id"] for r in rows]
-    if static is None and not db_projects:
+    if is_static and static is None:
         return None
     return list(set((static or []) + db_projects))
 
@@ -63,7 +64,7 @@ def project_filter(agent_id: str) -> tuple[str, list]:
     if allowed is None:
         return "", []
     if not allowed:
-        return "(1=0)", []
+        return "(project IS NULL)", []
     placeholders = ",".join("?" * len(allowed))
     return f"(project IS NULL OR project IN ({placeholders}))", list(allowed)
 
