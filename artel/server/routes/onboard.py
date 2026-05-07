@@ -31,15 +31,7 @@ if [ -f "$_MCP" ] && command -v python3 >/dev/null 2>&1; then
     _EXISTING_ID=$(python3 -c "import json,base64,sys;h=json.load(open('$_MCP'))['mcpServers']['artel']['headers'];x=h.get('x-agent-id','');[print(x) or sys.exit() for _ in [1] if x];a=h.get('Authorization','');[print(json.loads(base64.b64decode(a[7:].split('.')[1]+'==')).get('sub','')) for _ in [1] if a.startswith('Bearer ') and len(a[7:].split('.'))>=2]" 2>/dev/null || true)
 fi
 
-if [ -n "$_EXISTING_ID" ]; then
-    AGENT_ID="$_EXISTING_ID"
-elif [ -t 0 ]; then
-    printf "Agent name [%s]: " "$DEFAULT_ID"
-    read AGENT_ID
-    AGENT_ID="${{AGENT_ID:-$DEFAULT_ID}}"
-else
-    AGENT_ID="$DEFAULT_ID"
-fi
+AGENT_ID="${{AGENT_ID:-${{_EXISTING_ID:-$DEFAULT_ID}}}}"
 
 ARTEL_URL="$ARTEL_URL" BASE_ID="$AGENT_ID" PROJECT="$PROJECT" REG_KEY="$REG_KEY" python3 << 'PYEOF'
 import os, json, urllib.request, urllib.error, sys, pathlib, urllib.parse
@@ -214,26 +206,6 @@ if bashrc.exists() and marker not in bashrc.read_text():
 
 if not refreshed:
     print('  .mcp.json written, ~/.bashrc updated')
-
-    try:
-        sys.stdout.write('  join project [blank to skip]: ')
-        sys.stdout.flush()
-        proj_input = input().strip()
-    except Exception:
-        proj_input = ''
-    if proj_input:
-        join_req = urllib.request.Request(
-            url + '/projects/' + proj_input + '/join',
-            data=b'',
-            headers={{'x-agent-id': aid, 'x-api-key': akey}},
-            method='POST',
-        )
-        try:
-            urllib.request.urlopen(join_req)
-            print('  joined project: ' + proj_input)
-        except Exception as e:
-            print('  could not join project: ' + str(e))
-
     print()
     print('source ~/.bashrc, then run /reload-plugins in Claude Code to connect')
 else:
