@@ -22,9 +22,13 @@ def get_db(path: str = "artel.db") -> sqlite3.Connection:
 
 
 def _migrate(conn: sqlite3.Connection) -> None:
-    cols = {r[1] for r in conn.execute("PRAGMA table_info(agents)").fetchall()}
-    if "project" not in cols:
+    agent_cols = {r[1] for r in conn.execute("PRAGMA table_info(agents)").fetchall()}
+    if "project" not in agent_cols:
         conn.execute("ALTER TABLE agents ADD COLUMN project TEXT")
+        conn.commit()
+    task_cols = {r[1] for r in conn.execute("PRAGMA table_info(tasks)").fetchall()}
+    if "expected_outcome" not in task_cols:
+        conn.execute("ALTER TABLE tasks ADD COLUMN expected_outcome TEXT NOT NULL DEFAULT ''")
         conn.commit()
 
 

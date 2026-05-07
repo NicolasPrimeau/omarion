@@ -51,6 +51,7 @@ class MemoryEntry(BaseModel):
 class TaskCreate(BaseModel):
     title: str
     description: str = ""
+    expected_outcome: str = ""
     project: str | None = None
     priority: Priority = "normal"
     assigned_to: str | None = None
@@ -61,6 +62,7 @@ class TaskEntry(BaseModel):
     id: str
     title: str
     description: str
+    expected_outcome: str
     status: TaskStatus
     created_by: str
     assigned_to: str | None
@@ -76,6 +78,7 @@ class TaskUpdate(BaseModel):
     append: bool = False
     title: str | None = None
     priority: Priority | None = None
+    expected_outcome: str | None = None
 
 
 class MessageSend(BaseModel):

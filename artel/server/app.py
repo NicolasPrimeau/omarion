@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 
 from ..store.db import get_db
 from .config import settings
@@ -104,8 +104,6 @@ async def health():
         get_db().execute("SELECT 1").fetchone()
         return {"status": "ok"}
     except Exception as e:
-        from fastapi.responses import JSONResponse
-
         return JSONResponse({"status": "error", "detail": str(e)}, status_code=503)
 
 
