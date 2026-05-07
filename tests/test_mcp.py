@@ -57,7 +57,7 @@ async def test_memory_write_returns_id(mcp):
 
 
 async def test_memory_write_private_scope(mcp):
-    result = await mcp.memory_write("secret thought", scope="private")
+    result = await mcp.memory_write("secret thought", scope="agent")
     assert result.startswith("written [")
 
 

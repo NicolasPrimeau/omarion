@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS memory (
     type        TEXT NOT NULL CHECK (type IN ('memory','doc')),
     agent_id    TEXT NOT NULL,
     project     TEXT,
-    scope       TEXT NOT NULL DEFAULT 'shared' CHECK (scope IN ('private','shared','global')),
+    scope       TEXT NOT NULL DEFAULT 'project' CHECK (scope IN ('agent','project')),
     content     TEXT NOT NULL,
     confidence  REAL NOT NULL DEFAULT 1.0,
     parents     TEXT NOT NULL DEFAULT '[]',
@@ -68,6 +68,13 @@ CREATE TABLE IF NOT EXISTS session_handoffs (
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
+CREATE TABLE IF NOT EXISTS project_members (
+    project_id  TEXT NOT NULL,
+    agent_id    TEXT NOT NULL,
+    joined_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    PRIMARY KEY (project_id, agent_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_memory_agent     ON memory (agent_id);
 CREATE INDEX IF NOT EXISTS idx_memory_project   ON memory (project);
 CREATE INDEX IF NOT EXISTS idx_memory_updated   ON memory (updated_at);
@@ -77,4 +84,5 @@ CREATE INDEX IF NOT EXISTS idx_tasks_assigned   ON tasks (assigned_to);
 CREATE INDEX IF NOT EXISTS idx_messages_to      ON messages (to_agent, read);
 CREATE INDEX IF NOT EXISTS idx_events_created   ON events (created_at);
 CREATE INDEX IF NOT EXISTS idx_handoff_agent    ON session_handoffs (agent_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_proj_members     ON project_members (agent_id);
 """

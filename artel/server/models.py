@@ -9,7 +9,7 @@ def new_id() -> str:
 
 
 EntryType = Literal["memory", "doc"]
-Scope = Literal["private", "shared", "global"]
+Scope = Literal["agent", "project"]
 TaskStatus = Literal["open", "claimed", "completed", "failed"]
 Priority = Literal["low", "normal", "high"]
 
@@ -17,7 +17,7 @@ Priority = Literal["low", "normal", "high"]
 class MemoryWrite(BaseModel):
     type: EntryType = "memory"
     project: str | None = None
-    scope: Scope = "shared"
+    scope: Scope = "project"
     content: str
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     parents: list[str] = []

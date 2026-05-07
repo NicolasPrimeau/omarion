@@ -72,7 +72,7 @@ class ArtelClient:
             json={
                 "content": content,
                 "type": type,
-                "scope": "shared",
+                "scope": "project",
                 "tags": tags or [],
                 "parents": parents or [],
                 "confidence": confidence,

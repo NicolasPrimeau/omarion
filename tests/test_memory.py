@@ -8,7 +8,7 @@ def mem_payload():
     return {
         "content": "Paris is the capital of France",
         "type": "memory",
-        "scope": "shared",
+        "scope": "project",
         "tags": ["geo"],
         "parents": [],
         "confidence": 1.0,
@@ -80,7 +80,7 @@ async def test_search(client):
         json={
             "content": "alpha entry",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": [],
             "parents": [],
             "confidence": 1.0,
@@ -92,7 +92,7 @@ async def test_search(client):
         json={
             "content": "beta entry",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": [],
             "parents": [],
             "confidence": 1.0,
@@ -122,7 +122,7 @@ async def test_private_scope_hidden_from_others(client):
         json={
             "content": "secret",
             "type": "memory",
-            "scope": "private",
+            "scope": "agent",
             "tags": [],
             "parents": [],
             "confidence": 1.0,
@@ -141,7 +141,7 @@ async def test_list_memory_by_type(client):
         json={
             "content": "doc entry",
             "type": "doc",
-            "scope": "shared",
+            "scope": "project",
             "tags": [],
             "parents": [],
             "confidence": 1.0,
@@ -153,7 +153,7 @@ async def test_list_memory_by_type(client):
         json={
             "content": "memory entry",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": [],
             "parents": [],
             "confidence": 1.0,
@@ -189,7 +189,7 @@ async def test_list_filter_by_tag(client):
         json={
             "content": "tagged entry",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": ["deploy"],
             "parents": [],
             "confidence": 1.0,
@@ -201,7 +201,7 @@ async def test_list_filter_by_tag(client):
         json={
             "content": "other entry",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": ["infra"],
             "parents": [],
             "confidence": 1.0,
@@ -222,7 +222,7 @@ async def test_list_filter_by_agent(client):
         json={
             "content": "from agent1",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": [],
             "parents": [],
             "confidence": 1.0,
@@ -234,7 +234,7 @@ async def test_list_filter_by_agent(client):
         json={
             "content": "from agent2",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": [],
             "parents": [],
             "confidence": 1.0,
@@ -254,7 +254,7 @@ async def test_list_filter_by_confidence_min(client):
         json={
             "content": "high confidence",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": [],
             "parents": [],
             "confidence": 0.9,
@@ -266,7 +266,7 @@ async def test_list_filter_by_confidence_min(client):
         json={
             "content": "low confidence",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": [],
             "parents": [],
             "confidence": 0.3,
@@ -288,7 +288,7 @@ async def test_search_filter_by_tag(client):
         json={
             "content": "deploy pipeline config",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": ["deploy"],
             "parents": [],
             "confidence": 1.0,
@@ -300,7 +300,7 @@ async def test_search_filter_by_tag(client):
         json={
             "content": "deploy pipeline config",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": ["infra"],
             "parents": [],
             "confidence": 1.0,
@@ -314,7 +314,7 @@ async def test_search_filter_by_tag(client):
     assert all("deploy" in e["tags"] for e in results)
 
 
-async def test_global_scope_visible_across_projects(client, monkeypatch):
+async def test_project_scope_no_project_visible_to_all(client, monkeypatch):
     import artel.server.config as cfg_mod
 
     monkeypatch.setattr(cfg_mod.settings, "agent_keys", "restricted-agent:restrictedkey:proj-a")
@@ -332,22 +332,21 @@ async def test_global_scope_visible_across_projects(client, monkeypatch):
     await client.post(
         "/memory",
         json={
-            "content": "global knowledge",
+            "content": "shared with all",
             "type": "memory",
-            "scope": "global",
+            "scope": "project",
             "tags": [],
             "parents": [],
             "confidence": 1.0,
-            "project": "proj-b",
         },
         headers=HEADERS,
     )
     await client.post(
         "/memory",
         json={
-            "content": "shared in proj-b",
+            "content": "only proj-b members",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": [],
             "parents": [],
             "confidence": 1.0,
@@ -359,8 +358,8 @@ async def test_global_scope_visible_across_projects(client, monkeypatch):
     r = await client.get("/memory", headers=restricted_headers)
     assert r.status_code == 200
     contents = [e["content"] for e in r.json()]
-    assert "global knowledge" in contents
-    assert "shared in proj-b" not in contents
+    assert "shared with all" in contents
+    assert "only proj-b members" not in contents
 
 
 async def test_private_scope_hidden_from_list(client):
@@ -369,7 +368,7 @@ async def test_private_scope_hidden_from_list(client):
         json={
             "content": "my secret",
             "type": "memory",
-            "scope": "private",
+            "scope": "agent",
             "tags": [],
             "parents": [],
             "confidence": 1.0,

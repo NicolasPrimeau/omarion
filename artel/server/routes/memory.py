@@ -8,7 +8,6 @@ from ...store.db import get_db
 from ...store.embeddings import embed
 from ..auth import check_project, project_filter, require_agent
 from ..broadcast import broadcast
-from ..config import settings
 from ..models import EventEntry, MemoryEntry, MemoryPatch, MemoryWrite, new_id
 
 router = APIRouter(prefix="/memory", tags=["memory"])
@@ -99,20 +98,18 @@ async def search_memory(
            JOIN memory m ON m.id = mv.id
            WHERE mv.embedding MATCH ? AND k=?
              AND m.deleted_at IS NULL
-             AND (m.scope != 'private' OR m.agent_id = ?)
+             AND (m.scope != 'agent' OR m.agent_id = ?)
            ORDER BY mv.distance""",
         (json.dumps(vec), limit, agent_id),
     ).fetchall()
 
-    allowed = settings.agent_projects().get(agent_id)
+    from ..auth import _memberships
+
+    allowed = _memberships(agent_id)
     if project:
         results = [r for r in results if r["project"] == project]
     elif allowed is not None:
-        results = [
-            r
-            for r in results
-            if r["scope"] == "global" or r["project"] is None or r["project"] in allowed
-        ]
+        results = [r for r in results if r["project"] is None or r["project"] in allowed]
     if max_distance is not None:
         results = [r for r in results if r["distance"] <= max_distance]
     if tag:
@@ -134,7 +131,7 @@ async def list_memory(
     agent_id: str = Depends(require_agent),
 ):
     db = get_db()
-    clauses = ["deleted_at IS NULL", "(scope != 'private' OR agent_id = ?)"]
+    clauses = ["deleted_at IS NULL", "(scope != 'agent' OR agent_id = ?)"]
     params: list = [agent_id]
     pf_clause, pf_params = project_filter(agent_id)
     if pf_clause:
@@ -182,7 +179,7 @@ async def memory_delta(
     pf_clause, pf_params = project_filter(agent_id)
     sql = """SELECT * FROM memory
              WHERE updated_at > ? AND deleted_at IS NULL
-               AND (scope != 'private' OR agent_id = ?)"""
+               AND (scope != 'agent' OR agent_id = ?)"""
     params: list = [since, agent_id]
     if agent:
         sql += " AND agent_id = ?"
@@ -209,7 +206,7 @@ async def get_memory(
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
-    if row["scope"] == "private" and row["agent_id"] != agent_id:
+    if row["scope"] == "agent" and row["agent_id"] != agent_id:
         raise HTTPException(status_code=403, detail="forbidden")
     check_project(agent_id, row["project"])
     return _row_to_entry(row)

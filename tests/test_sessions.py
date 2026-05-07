@@ -50,7 +50,7 @@ async def test_memory_delta_included_in_context(client):
         json={
             "content": "new knowledge since handoff",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": [],
             "parents": [],
             "confidence": 1.0,
