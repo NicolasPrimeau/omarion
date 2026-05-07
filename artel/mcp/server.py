@@ -519,6 +519,62 @@ async def project_list() -> str:
 
 
 @mcp.tool()
+async def project_join(project_id: str) -> str:
+    """Join a project so you can read and write its shared memories and tasks.
+
+    After joining, project-scoped memory for this project becomes visible to you,
+    and memory you write with this project will be visible to other members.
+
+    Args:
+        project_id: The project name to join.
+    """
+    async with _http() as c:
+        try:
+            r = await c.post(f"/projects/{project_id}/join")
+            r.raise_for_status()
+        except _HTTPX_ERRORS as e:
+            return _err(e)
+    return f"joined project {project_id!r}"
+
+
+@mcp.tool()
+async def project_leave(project_id: str) -> str:
+    """Leave a project. You will no longer see its project-scoped memories.
+
+    Args:
+        project_id: The project name to leave.
+    """
+    async with _http() as c:
+        try:
+            r = await c.delete(f"/projects/{project_id}/leave")
+            r.raise_for_status()
+        except _HTTPX_ERRORS as e:
+            return _err(e)
+    return f"left project {project_id!r}"
+
+
+@mcp.tool()
+async def project_members(project_id: str) -> str:
+    """List the agents that are members of a project.
+
+    You must be a member of the project to see its members.
+
+    Args:
+        project_id: The project name to inspect.
+    """
+    async with _http() as c:
+        try:
+            r = await c.get(f"/projects/{project_id}/members")
+            r.raise_for_status()
+        except _HTTPX_ERRORS as e:
+            return _err(e)
+        members = r.json()
+    if not members:
+        return f"no members in {project_id!r}"
+    return "\n".join(f"{m['agent_id']} (joined {m['joined_at'][:10]})" for m in members)
+
+
+@mcp.tool()
 async def agent_list() -> str:
     """List all registered agents and when they were last active.
 
