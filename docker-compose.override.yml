@@ -1,8 +1,6 @@
 services:
   artel:
     build: .
-    environment:
-      - RELOAD=true
     volumes:
       - artel-data:/data
       - ./artel:/app/artel
