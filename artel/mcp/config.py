@@ -15,6 +15,7 @@ class MCPSettings(BaseSettings):
     artel_url: str = "http://localhost:8000"
     mcp_agent_id: str = ""
     mcp_agent_key: str = ""
+    mcp_registration_key: str = ""
     mcp_transport: str = "stdio"
     mcp_host: str = "0.0.0.0"
     mcp_port: int = 8001

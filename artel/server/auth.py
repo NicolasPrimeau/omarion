@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Depends, Header, HTTPException, Request
 
 from ..store.db import get_db
 from .config import settings
@@ -20,9 +20,27 @@ def _verify_agent(agent_id: str, api_key: str) -> bool:
 
 
 async def require_agent(
-    x_agent_id: str = Header(...),
-    x_api_key: str = Header(...),
+    request: Request,
+    x_agent_id: str = Header(default=""),
+    x_api_key: str = Header(default=""),
 ) -> str:
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Bearer "):
+        try:
+            from .jwt_utils import verify_token
+
+            agent_id, api_key = verify_token(auth[7:])
+            if not _verify_agent(agent_id, api_key):
+                raise HTTPException(status_code=401, detail="invalid credentials")
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=401, detail="invalid credentials")
+        _last_seen[agent_id] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        return agent_id
+
+    if not x_agent_id or not x_api_key:
+        raise HTTPException(status_code=401, detail="invalid credentials")
     if not _verify_agent(x_agent_id, x_api_key):
         raise HTTPException(status_code=401, detail="invalid credentials")
     _last_seen[x_agent_id] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z")
@@ -30,7 +48,7 @@ async def require_agent(
 
 
 async def require_registration_key(
-    x_registration_key: str = Header(...),
+    x_registration_key: str = Header(default=""),
 ) -> None:
     if not settings.registration_key or x_registration_key != settings.registration_key:
         raise HTTPException(status_code=401, detail="invalid registration key")

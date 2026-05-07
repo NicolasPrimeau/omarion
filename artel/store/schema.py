@@ -86,4 +86,9 @@ CREATE INDEX IF NOT EXISTS idx_messages_to      ON messages (to_agent, read);
 CREATE INDEX IF NOT EXISTS idx_events_created   ON events (created_at);
 CREATE INDEX IF NOT EXISTS idx_handoff_agent    ON session_handoffs (agent_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_proj_members     ON project_members (agent_id);
+
+CREATE TABLE IF NOT EXISTS kv (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """

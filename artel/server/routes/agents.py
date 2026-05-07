@@ -1,6 +1,6 @@
 import secrets
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from ...store.db import get_db
 from ..auth import AgentDep, _last_seen, require_registration_key
@@ -72,9 +72,11 @@ async def register_agent(body: AgentRegister, request: Request):
     "/self-register",
     response_model=AgentCreated,
     status_code=201,
-    summary="Register without a key; agent_id is auto-deduplicated",
+    summary="Register a new agent; requires registration key when one is configured",
 )
-async def self_register(body: AgentSelfRegister):
+async def self_register(body: AgentSelfRegister, x_registration_key: str = Header(default="")):
+    if settings.registration_key and x_registration_key != settings.registration_key:
+        raise HTTPException(status_code=401, detail="invalid registration key")
     base = (body.agent_id or "agent").strip()
     if not base.replace("-", "").replace("_", "").isalnum():
         raise HTTPException(status_code=422, detail="agent_id must be alphanumeric with - or _")

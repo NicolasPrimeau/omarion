@@ -14,6 +14,7 @@ from .routes.agents import router as agents_router
 from .routes.events import router as events_router
 from .routes.memory import router as memory_router
 from .routes.messages import router as messages_router
+from .routes.oauth import router as oauth_router
 from .routes.onboard import router as onboard_router
 from .routes.participants import router as participants_router
 from .routes.projects import router as projects_router
@@ -80,6 +81,7 @@ app = FastAPI(
 )
 
 app.include_router(agents_router)
+app.include_router(oauth_router)
 app.include_router(onboard_router)
 app.include_router(memory_router)
 app.include_router(tasks_router)
