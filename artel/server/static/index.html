@@ -335,7 +335,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.7 var(--mono);color:v
     <div class="write-row">
       <input id="mtags" placeholder="tags (comma-separated)" style="flex:1">
       <select id="mtype"><option>memory</option><option>doc</option></select>
-      <select id="mscope"><option value="shared">shared</option><option value="private">private</option><option value="global">global</option></select>
+      <select id="mscope"><option value="project">project</option><option value="agent">agent (private)</option></select>
       <button class="p" onclick="writeMem()">write</button>
       <span class="flash" id="mem-flash">saved</span>
     </div>
@@ -403,6 +403,8 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.7 var(--mono);color:v
 <!-- PROJECTS -->
 <div id="panel-projects" class="panel">
   <div class="toolbar">
+    <input id="new-proj" placeholder="join a project…" style="flex:1;max-width:220px">
+    <button class="p" onclick="joinProjectByInput()">join</button>
     <button onclick="loadProjects()">refresh</button>
   </div>
   <div id="pjlist"></div>
@@ -438,6 +440,7 @@ const hdrs=()=>({'content-type':'application/json','x-agent-id':window._aid,'x-a
 let _sseAbort=null;
 let _agents=[];
 let _projects=[];
+let _myProjects=new Set();
 async function adminReq(method,path,body){
   const k=window._regkey;
   const r=await fetch(path,{method,headers:{'content-type':'application/json','x-registration-key':k},body:body?JSON.stringify(body):undefined});
@@ -505,11 +508,17 @@ async function init(){
 
 async function loadProjectsHeader(){
   try{
-    _projects=await req('GET','/projects');
+    const [all,mine]=await Promise.all([
+      req('GET','/projects'),
+      req('GET','/projects/mine').catch(()=>[]),
+    ]);
+    _projects=all;
+    _myProjects=new Set(mine.map(p=>p.project_id));
     const sel=$('h-project');
-    _projects.forEach(p=>{
+    sel.innerHTML='<option value="">all projects</option>';
+    all.forEach(p=>{
       const o=document.createElement('option');
-      o.value=p.name;o.textContent=p.name;
+      o.value=p.name;o.textContent=p.name+(_myProjects.has(p.name)?' ✓':'');
       sel.appendChild(o);
     });
   }catch(_){}
@@ -573,7 +582,7 @@ function renderMem(es){
   if(!es.length){$('mlist').innerHTML='<div class="empty">no entries</div>';return;}
   $('mlist').innerHTML=es.map(e=>{
     const conf=e.confidence<1?`<span class="conf">conf <span>${(e.confidence*100).toFixed(0)}%</span></span>`:'';
-    const scope=e.scope==='private'?`<span class="pill private">private</span>`:e.scope==='global'?`<span class="pill global">global</span>`:'';
+    const scope=e.scope==='agent'?`<span class="pill private">agent</span>`:'';
     const tags=e.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join(' ');
     const proj=e.project?`<span class="pill project">${esc(e.project)}</span>`:'';
     return `<div class="card" id="mc-${e.id}">
@@ -816,18 +825,41 @@ async function renameAgent(id){
 
 async function loadProjects(){
   try{
-    const ps=await req('GET','/projects');
-    if(!ps.length){$('pjlist').innerHTML='<div class="empty">no projects</div>';return;}
-    $('pjlist').innerHTML='<div class="proj-grid">'+ps.map(p=>{
-      const mine=p.name===$('h-project').value;
-      const last=p.last_activity?p.last_activity.slice(0,16):'never';
-      return `<div class="pj${mine?' mine':''}" onclick="selectProject('${esc(p.name)}')">
-        <div class="pj-name">${esc(p.name)}${mine?` <span style="color:var(--green);font-size:11px;font-weight:400">● active</span>`:''}</div>
-        <div class="pj-agents">${p.agents.join(', ')||'no agents'}</div>
+    const [ps,mine]=await Promise.all([
+      req('GET','/projects'),
+      req('GET','/projects/mine').catch(()=>[]),
+    ]);
+    _myProjects=new Set(mine.map(p=>p.project_id));
+    if(!ps.length&&!mine.length){
+      $('pjlist').innerHTML='<div class="empty">no projects yet — type a name above and click join</div>';
+      return;
+    }
+    const allNames=new Set([...ps.map(p=>p.name),...mine.map(p=>p.project_id)]);
+    const byName=Object.fromEntries(ps.map(p=>[p.name,p]));
+    const rows=[...(mine.map(p=>p.project_id)),...ps.map(p=>p.name).filter(n=>!_myProjects.has(n))];
+    const unique=[...new Set(rows)];
+    $('pjlist').innerHTML='<div class="proj-grid">'+unique.map(name=>{
+      const p=byName[name];
+      const isMine=_myProjects.has(name);
+      const last=p?.last_activity?p.last_activity.slice(0,16):'never';
+      const agents=p?.agents||[];
+      return `<div class="pj${isMine?' mine':''}">
+        <div class="pj-name">
+          ${esc(name)}
+          ${isMine?`<span style="color:var(--green);font-size:11px;font-weight:400">● member</span>`:''}
+        </div>
+        <div class="pj-agents">${agents.join(', ')||'no members yet'}</div>
         <div class="pj-stats">
-          <span><span class="pj-stat-val">${p.memory_count}</span> mem</span>
-          <span><span class="pj-stat-val">${p.task_count}</span> tasks</span>
+          <span><span class="pj-stat-val">${p?.memory_count??0}</span> mem</span>
+          <span><span class="pj-stat-val">${p?.task_count??0}</span> tasks</span>
           <span>last: <span class="pj-stat-val">${last}</span></span>
+        </div>
+        <div class="card-actions" style="margin-top:12px">
+          <button onclick="selectProject('${esc(name)}')">set active</button>
+          ${isMine
+            ?`<button class="danger" onclick="leaveProject('${esc(name)}')">leave</button>`
+            :`<button class="p" onclick="joinProject('${esc(name)}')">join</button>`
+          }
         </div>
       </div>`;
     }).join('')+'</div>';
@@ -836,6 +868,24 @@ async function loadProjects(){
 function selectProject(name){
   $('h-project').value=name;
   onProjectChange();
+}
+async function joinProject(name){
+  if(!name)return;
+  await req('POST',`/projects/${name}/join`);
+  await loadProjectsHeader();
+  loadProjects();
+}
+async function leaveProject(name){
+  if(!confirm(`Leave project "${name}"?`))return;
+  await req('DELETE',`/projects/${name}/leave`);
+  await loadProjectsHeader();
+  loadProjects();
+}
+async function joinProjectByInput(){
+  const name=$('new-proj').value.trim();
+  if(!name)return;
+  await joinProject(name);
+  $('new-proj').value='';
 }
 
 function populateSessionAgents(){

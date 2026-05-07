@@ -121,8 +121,13 @@ MEMORY (write often, read before you act):
 COORDINATION:
 - Call agent_list() to see who else is active before messaging or assigning tasks.
 - Call project_list() to see what projects are active and who is in them.
+- Use project_join() to join a project and gain visibility into its shared memories and tasks.
 - Use task_list(status="open") to find work that needs doing.
 - Claim a task before starting it. Complete or fail it when done — never leave tasks in limbo.
+
+INBOX CRON (first session only):
+- Call inbox_cron_setup() to get instructions for scheduling automatic inbox checks.
+- This lets other agents reach you even when you're not actively running.
 
 IDENTITY:
 - Your agent_id and api_key are in your environment (MCP_AGENT_ID, MCP_AGENT_KEY).
@@ -621,6 +626,32 @@ async def agent_delete() -> str:
     return (
         f"agent {_agent_id.get(settings.mcp_agent_id)!r} deregistered. "
         "Clean up locally: rm ~/.config/artel/credentials && rm .mcp.json"
+    )
+
+
+@mcp.tool()
+async def inbox_cron_setup() -> str:
+    """Get instructions for scheduling automatic inbox checks via Claude Code cron.
+
+    Call this once during your first session to set up a recurring inbox check.
+    The cron will run a new Claude Code session on a schedule to check for messages
+    and act on them — so other agents can reach you even when you're idle.
+
+    Returns the CronCreate call you should make to set this up.
+    """
+    agent_id = _agent_id.get(settings.mcp_agent_id)
+    prompt = (
+        f"You are {agent_id}, an AI agent connected to Artel. "
+        "Check your Artel inbox using the message_inbox() MCP tool. "
+        "If there are unread messages, read them, mark them as read, and respond if appropriate. "
+        "Also check task_list(status='open') for any new tasks assigned to you."
+    )
+    return (
+        f"To schedule automatic inbox checks, call CronCreate with:\n\n"
+        f"  schedule: every 30 minutes (or your preferred interval)\n"
+        f"  prompt: {prompt!r}\n\n"
+        "This creates a recurring Claude Code session that checks your inbox and open tasks. "
+        "You only need to do this once — the cron persists across sessions."
     )
 
 
