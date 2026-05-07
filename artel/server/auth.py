@@ -49,16 +49,6 @@ def _memberships(agent_id: str) -> list[str] | None:
     return list(set((static or []) + db_projects))
 
 
-def check_project(agent_id: str, project: str | None) -> None:
-    allowed = _memberships(agent_id)
-    if allowed is None:
-        return
-    if project is None:
-        return
-    if project not in allowed:
-        raise HTTPException(status_code=403, detail="project access denied")
-
-
 def project_filter(agent_id: str) -> tuple[str, list]:
     allowed = _memberships(agent_id)
     if allowed is None:

@@ -26,17 +26,18 @@ CREATE TABLE IF NOT EXISTS memory (
 );
 
 CREATE TABLE IF NOT EXISTS tasks (
-    id          TEXT PRIMARY KEY,
-    title       TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','claimed','completed','failed')),
-    created_by  TEXT NOT NULL,
-    assigned_to TEXT,
-    project     TEXT,
-    priority    TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('low','normal','high')),
-    due_at      TEXT,
-    created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-    updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    id               TEXT PRIMARY KEY,
+    title            TEXT NOT NULL,
+    description      TEXT NOT NULL DEFAULT '',
+    expected_outcome TEXT NOT NULL DEFAULT '',
+    status           TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','claimed','completed','failed')),
+    created_by       TEXT NOT NULL,
+    assigned_to      TEXT,
+    project          TEXT,
+    priority         TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('low','normal','high')),
+    due_at           TEXT,
+    created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    updated_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 
 CREATE TABLE IF NOT EXISTS messages (

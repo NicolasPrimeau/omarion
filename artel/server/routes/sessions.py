@@ -85,7 +85,7 @@ async def get_handoff(
     pf_clause, pf_params = project_filter(target_agent_id)
     delta_sql = """SELECT * FROM memory
                    WHERE updated_at > ? AND deleted_at IS NULL
-                     AND (scope != 'private' OR agent_id = ?)"""
+                     AND (scope != 'agent' OR agent_id = ?)"""
     delta_params: list = [since, target_agent_id]
     if pf_clause:
         delta_sql += f" AND {pf_clause}"

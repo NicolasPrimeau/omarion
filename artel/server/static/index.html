@@ -352,9 +352,12 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.7 var(--mono);color:v
     <button onclick="loadTasks()">refresh</button>
   </div>
   <div class="write-box">
-    <div class="write-row">
+    <div class="write-row" style="margin-bottom:8px">
       <input id="ttitle" placeholder="title" style="flex:2">
       <input id="tdesc" placeholder="description (optional)" style="flex:3">
+    </div>
+    <div class="write-row">
+      <input id="toutcome" placeholder="expected outcome" style="flex:1">
       <select id="tpri"><option>normal</option><option>low</option><option>high</option></select>
       <button class="p" onclick="createTask()">create</button>
     </div>
@@ -659,6 +662,7 @@ async function loadTasks(){
         </div>
         <div style="font-weight:500">${esc(t.title)}</div>
         ${t.description?`<div style="color:var(--t3);font-size:13px;margin-top:3px">${esc(t.description)}</div>`:''}
+        ${t.expected_outcome?`<div style="color:var(--t4);font-size:12px;margin-top:3px;font-style:italic">→ ${esc(t.expected_outcome)}</div>`:''}
         <div class="card-actions">
           ${t.status==='open'?`<button onclick="taskAction('${t.id}','claim')">claim</button>`:''}
           ${t.status==='claimed'?`<button onclick="taskAction('${t.id}','complete')">complete</button><button class="danger" onclick="taskAction('${t.id}','fail')">fail</button>`:''}
@@ -669,8 +673,8 @@ async function loadTasks(){
 async function createTask(){
   const title=$('ttitle').value.trim();if(!title)return;
   const proj=activeProject();
-  await req('POST','/tasks',{title,description:$('tdesc').value,project:proj,priority:$('tpri').value});
-  $('ttitle').value='';$('tdesc').value='';loadTasks();
+  await req('POST','/tasks',{title,description:$('tdesc').value,expected_outcome:$('toutcome').value,project:proj,priority:$('tpri').value});
+  $('ttitle').value='';$('tdesc').value='';$('toutcome').value='';loadTasks();
 }
 async function taskAction(id,action){
   await req('POST',`/tasks/${id}/${action}`);loadTasks();

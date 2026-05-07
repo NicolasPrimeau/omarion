@@ -767,6 +767,7 @@ async def task_list(status: str | None = None, project: str | None = None) -> st
 async def task_create(
     title: str,
     description: str = "",
+    expected_outcome: str = "",
     project: str | None = None,
     priority: str = "normal",
 ) -> str:
@@ -779,6 +780,7 @@ async def task_create(
     Args:
         title: Short imperative description, e.g. "Fix auth token expiry bug".
         description: Context, acceptance criteria, or relevant links.
+        expected_outcome: What done looks like — specific, observable result.
         project: Project scope. Defaults to MCP_PROJECT if set.
         priority: low, normal (default), or high.
     """
@@ -789,6 +791,7 @@ async def task_create(
                 json={
                     "title": title,
                     "description": description,
+                    "expected_outcome": expected_outcome,
                     "project": project or settings.mcp_project or None,
                     "priority": priority,
                 },
@@ -879,6 +882,8 @@ async def task_get(task_id: str) -> str:
     ]
     if t["description"]:
         lines.append(t["description"])
+    if t.get("expected_outcome"):
+        lines.append(f"expected outcome: {t['expected_outcome']}")
     return "\n".join(lines)
 
 

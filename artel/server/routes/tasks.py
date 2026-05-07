@@ -15,6 +15,7 @@ def _row_to_task(row: sqlite3.Row) -> TaskEntry:
         id=row["id"],
         title=row["title"],
         description=row["description"],
+        expected_outcome=row["expected_outcome"],
         status=row["status"],
         created_by=row["created_by"],
         assigned_to=row["assigned_to"],
@@ -41,12 +42,13 @@ async def create_task(body: TaskCreate, agent_id: str = Depends(require_agent)):
     task_id = new_id()
     with db:
         db.execute(
-            """INSERT INTO tasks (id, title, description, created_by, project,
-               priority, assigned_to, due_at) VALUES (?,?,?,?,?,?,?,?)""",
+            """INSERT INTO tasks (id, title, description, expected_outcome, created_by,
+               project, priority, assigned_to, due_at) VALUES (?,?,?,?,?,?,?,?,?)""",
             (
                 task_id,
                 body.title,
                 body.description,
+                body.expected_outcome,
                 agent_id,
                 body.project,
                 body.priority,
@@ -167,6 +169,9 @@ async def update_task(task_id: str, body: TaskUpdate, agent_id: str = Depends(re
     if body.priority is not None:
         set_parts.append("priority=?")
         params.append(body.priority)
+    if body.expected_outcome is not None:
+        set_parts.append("expected_outcome=?")
+        params.append(body.expected_outcome)
     if set_parts:
         set_parts.append("updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now')")
         params.append(task_id)
