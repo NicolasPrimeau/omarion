@@ -1,6 +1,8 @@
 services:
   artel:
     build: .
+    environment:
+      - RELOAD=true
     volumes:
       - artel-data:/data
       - ./artel:/app/artel
@@ -19,3 +21,7 @@ services:
     build: .
     volumes:
       - ./artel:/app/artel
+
+  watchtower:
+    profiles:
+      - production
