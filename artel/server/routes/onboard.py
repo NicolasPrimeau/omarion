@@ -28,15 +28,17 @@ fi
 _MCP=".mcp.json"
 
 if [ -f "$_MCP" ] && command -v python3 >/dev/null 2>&1; then
-    _EXISTING_ID=$(python3 -c "import json,sys; d=json.load(open('$_MCP')); print(d['mcpServers']['artel']['headers']['x-agent-id'])" 2>/dev/null || true)
+    _EXISTING_ID=$(python3 -c "import json,base64,sys;h=json.load(open('$_MCP'))['mcpServers']['artel']['headers'];x=h.get('x-agent-id','');[print(x) or sys.exit() for _ in [1] if x];a=h.get('Authorization','');[print(json.loads(base64.b64decode(a[7:].split('.')[1]+'==')).get('sub','')) for _ in [1] if a.startswith('Bearer ') and len(a[7:].split('.'))>=2]" 2>/dev/null || true)
 fi
 
 if [ -n "$_EXISTING_ID" ]; then
     AGENT_ID="$_EXISTING_ID"
-else
+elif [ -t 0 ]; then
     printf "Agent name [%s]: " "$DEFAULT_ID"
-    read AGENT_ID < /dev/tty
+    read AGENT_ID
     AGENT_ID="${{AGENT_ID:-$DEFAULT_ID}}"
+else
+    AGENT_ID="$DEFAULT_ID"
 fi
 
 ARTEL_URL="$ARTEL_URL" BASE_ID="$AGENT_ID" PROJECT="$PROJECT" REG_KEY="$REG_KEY" python3 << 'PYEOF'
@@ -197,7 +199,7 @@ if bashrc.exists() and marker not in bashrc.read_text():
             '\n_artel_load() {{\n'
             '    local mcp=".mcp.json" aid creds\n'
             '    if [ -f "$mcp" ]; then\n'
-            '        aid=$(python3 -c "import json; print(json.load(open(\'.mcp.json\'))[\'mcpServers\'][\'artel\'][\'headers\'].get(\'x-agent-id\',\'\'))" 2>/dev/null)\n'
+            '        aid=$(python3 -c "import json,base64,sys;h=json.load(open(\'.mcp.json\'))[\'mcpServers\'][\'artel\'][\'headers\'];x=h.get(\'x-agent-id\',\'\');[print(x) or sys.exit() for _ in [1] if x];a=h.get(\'Authorization\',\'\');[print(json.loads(base64.b64decode(a[7:].split(\'.\')[1]+\'==\')).get(\'sub\',\'\')) for _ in [1] if a.startswith(\'Bearer \') and len(a[7:].split(\'.\'))>=2]" 2>/dev/null)\n'
             '    fi\n'
             '    if [ -n "$aid" ]; then creds="$HOME/.config/artel/$aid"\n'
             '    else creds="$HOME/.config/artel/credentials"; fi\n'
