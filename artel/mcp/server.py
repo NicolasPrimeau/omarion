@@ -115,7 +115,7 @@ MEMORY (write often, read before you act):
 - Call memory_search() before starting any non-trivial work — another agent may have already done it.
 - Call memory_write() whenever you learn something worth keeping: decisions, facts, findings, plans, bugs.
 - type="memory" is the default and right for almost everything. The archivist promotes stable entries to type="doc" automatically.
-- Use tags to make things findable. Use scope="private" only for things no other agent should see.
+- Use tags to make things findable. Use scope="agent" only for things no other agent should see.
 - If MCP_PROJECT is set, all memory calls default to that project automatically.
 
 COORDINATION:
@@ -250,7 +250,7 @@ async def session_handoff(
 async def memory_write(
     content: str,
     type: str = "memory",
-    scope: str = "shared",
+    scope: str = "project",
     project: str | None = None,
     tags: list[str] | None = None,
     confidence: float = 1.0,
@@ -269,14 +269,13 @@ async def memory_write(
     - doc: stable reference material; normally written by the archivist, not agents
 
     Scopes:
-    - shared: visible to all agents in this project (default)
-    - global: visible to all agents, bypasses project restrictions
-    - private: only you can see it
+    - project: visible to all members of this project (default)
+    - agent: only you can see it
 
     Args:
         content: What to store. Markdown is fine.
         type: See types above. Default: memory.
-        scope: See scopes above. Default: shared.
+        scope: See scopes above. Default: project.
         project: Project to scope the entry to. Defaults to MCP_PROJECT if set.
         tags: Tags for filtering and retrieval. Use them — they make memory_list useful.
         confidence: How certain you are (0.0–1.0). Default 1.0. Use lower for guesses.
@@ -420,7 +419,7 @@ async def memory_update(
         confidence: New confidence score (0.0–1.0). Omit to leave unchanged.
         tags: Replace tags list. Omit to leave unchanged.
         type: New type (memory or doc). Omit to leave unchanged.
-        scope: New scope (private, shared, global). Omit to leave unchanged.
+        scope: New scope (agent or project). Omit to leave unchanged.
         project: Move entry to a different project. Omit to leave unchanged.
     """
     patch: dict = {}

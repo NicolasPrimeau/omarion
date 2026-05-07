@@ -36,8 +36,20 @@ async def require_registration_key(
         raise HTTPException(status_code=401, detail="invalid registration key")
 
 
+def _memberships(agent_id: str) -> list[str] | None:
+    static = settings.agent_projects().get(agent_id)
+    db = get_db()
+    rows = db.execute(
+        "SELECT project_id FROM project_members WHERE agent_id=?", (agent_id,)
+    ).fetchall()
+    db_projects = [r["project_id"] for r in rows]
+    if static is None and not db_projects:
+        return None
+    return list(set((static or []) + db_projects))
+
+
 def check_project(agent_id: str, project: str | None) -> None:
-    allowed = settings.agent_projects().get(agent_id)
+    allowed = _memberships(agent_id)
     if allowed is None:
         return
     if project is None:
@@ -47,11 +59,13 @@ def check_project(agent_id: str, project: str | None) -> None:
 
 
 def project_filter(agent_id: str) -> tuple[str, list]:
-    allowed = settings.agent_projects().get(agent_id)
+    allowed = _memberships(agent_id)
     if allowed is None:
         return "", []
+    if not allowed:
+        return "(1=0)", []
     placeholders = ",".join("?" * len(allowed))
-    return f"(scope = 'global' OR project IS NULL OR project IN ({placeholders}))", list(allowed)
+    return f"(project IS NULL OR project IN ({placeholders}))", list(allowed)
 
 
 AgentDep = Depends(require_agent)

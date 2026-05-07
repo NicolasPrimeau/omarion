@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from ...store.db import get_db
 from ..auth import require_agent
@@ -6,6 +7,66 @@ from ..config import settings
 from ..models import ProjectInfo
 
 router = APIRouter(prefix="/projects", tags=["projects"])
+
+
+class ProjectMember(BaseModel):
+    agent_id: str
+    joined_at: str
+
+
+class ProjectSummary(BaseModel):
+    project_id: str
+    joined_at: str
+
+
+@router.post("/{project_id}/join", status_code=204, summary="Join a project")
+async def join_project(project_id: str, agent_id: str = Depends(require_agent)):
+    db = get_db()
+    db.execute(
+        "INSERT OR IGNORE INTO project_members (project_id, agent_id) VALUES (?, ?)",
+        (project_id, agent_id),
+    )
+    db.commit()
+
+
+@router.delete("/{project_id}/leave", status_code=204, summary="Leave a project")
+async def leave_project(project_id: str, agent_id: str = Depends(require_agent)):
+    db = get_db()
+    db.execute(
+        "DELETE FROM project_members WHERE project_id=? AND agent_id=?",
+        (project_id, agent_id),
+    )
+    db.commit()
+
+
+@router.get(
+    "/{project_id}/members",
+    response_model=list[ProjectMember],
+    summary="List members of a project",
+)
+async def list_members(project_id: str, agent_id: str = Depends(require_agent)):
+    db = get_db()
+    row = db.execute(
+        "SELECT 1 FROM project_members WHERE project_id=? AND agent_id=?",
+        (project_id, agent_id),
+    ).fetchone()
+    if not row:
+        raise HTTPException(status_code=403, detail="not a member of this project")
+    rows = db.execute(
+        "SELECT agent_id, joined_at FROM project_members WHERE project_id=? ORDER BY joined_at",
+        (project_id,),
+    ).fetchall()
+    return [ProjectMember(agent_id=r["agent_id"], joined_at=r["joined_at"]) for r in rows]
+
+
+@router.get("/mine", response_model=list[ProjectSummary], summary="List projects you belong to")
+async def list_my_projects(agent_id: str = Depends(require_agent)):
+    db = get_db()
+    rows = db.execute(
+        "SELECT project_id, joined_at FROM project_members WHERE agent_id=? ORDER BY joined_at",
+        (agent_id,),
+    ).fetchall()
+    return [ProjectSummary(project_id=r["project_id"], joined_at=r["joined_at"]) for r in rows]
 
 
 @router.get("", response_model=list[ProjectInfo])

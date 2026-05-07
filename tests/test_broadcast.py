@@ -23,7 +23,7 @@ async def test_memory_write_broadcasts_event(client):
         json={
             "content": "broadcast test",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": [],
             "parents": [],
             "confidence": 1.0,
@@ -73,7 +73,7 @@ async def test_full_queue_subscriber_removed(client):
         json={
             "content": "overflow test",
             "type": "memory",
-            "scope": "shared",
+            "scope": "project",
             "tags": [],
             "parents": [],
             "confidence": 1.0,
