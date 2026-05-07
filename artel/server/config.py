@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     ui_agent_id: str = "nimbus"
     public_url: str = ""
     mcp_url: str = ""
-    jwt_ttl: int = 86400
+    jwt_ttl: int = 2592000
 
     def api_keys(self) -> dict[str, str]:
         pairs: dict[str, str] = {}
