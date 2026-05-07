@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...store.db import get_db
 from ...store.embeddings import embed
-from ..auth import check_project, project_filter, require_agent
+from ..auth import _memberships, check_project, project_filter, require_agent
 from ..broadcast import broadcast
 from ..models import EventEntry, MemoryEntry, MemoryPatch, MemoryWrite, new_id
 
@@ -102,8 +102,6 @@ async def search_memory(
            ORDER BY mv.distance""",
         (json.dumps(vec), limit, agent_id),
     ).fetchall()
-
-    from ..auth import _memberships
 
     allowed = _memberships(agent_id)
     if project:
