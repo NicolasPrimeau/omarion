@@ -1,30 +1,13 @@
 import json
-import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException
 
 from ...store.db import get_db
 from ..auth import project_filter, require_agent
-from ..models import HandoffPost, HandoffResponse, MemoryEntry, new_id
+from ..models import HandoffPost, HandoffResponse, new_id
+from .memory import _row_to_entry
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
-
-
-def _row_to_entry(row: sqlite3.Row) -> MemoryEntry:
-    return MemoryEntry(
-        id=row["id"],
-        type=row["type"],
-        agent_id=row["agent_id"],
-        project=row["project"],
-        scope=row["scope"],
-        content=row["content"],
-        confidence=row["confidence"],
-        parents=json.loads(row["parents"]),
-        tags=json.loads(row["tags"]),
-        created_at=row["created_at"],
-        updated_at=row["updated_at"],
-        version=row["version"],
-    )
 
 
 @router.post("/handoff", status_code=201, summary="Save session end state")

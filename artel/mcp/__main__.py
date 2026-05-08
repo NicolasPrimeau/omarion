@@ -153,6 +153,12 @@ def _credentials_valid() -> bool:
 
 def main():
     if settings.mcp_transport in ("sse", "streamable-http"):
+        if not settings.mcp_agent_id or not settings.mcp_agent_key:
+            log.error(
+                "MCP_AGENT_ID and MCP_AGENT_KEY must be set for HTTP transport. "
+                "Run scripts/seed_keys.py to generate them."
+            )
+            raise SystemExit(1)
         app_fn = (
             mcp.streamable_http_app if settings.mcp_transport == "streamable-http" else mcp.sse_app
         )

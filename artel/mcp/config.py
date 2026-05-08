@@ -21,5 +21,8 @@ class MCPSettings(BaseSettings):
     mcp_port: int = 8001
     mcp_project: str = ""
 
+    def resolve_project(self, override: str | None = None) -> str | None:
+        return override or self.mcp_project or None
+
 
 settings = MCPSettings()

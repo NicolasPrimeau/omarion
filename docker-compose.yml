@@ -1,6 +1,6 @@
 services:
   artel:
-    image: ghcr.io/nicolasprimeau/artel:edge
+    image: ghcr.io/nicolasprimeau/artel:latest
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -9,6 +9,8 @@ services:
     env_file: .env
     environment:
       - DB_PATH=/data/artel.db
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
       interval: 10s
@@ -17,12 +19,14 @@ services:
       start_period: 20s
 
   archivist:
-    image: ghcr.io/nicolasprimeau/artel:edge
+    image: ghcr.io/nicolasprimeau/artel:latest
     restart: unless-stopped
     command: ["python", "-m", "artel.archivist"]
     env_file: .env
     environment:
       - ARTEL_URL=http://artel:8000
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
       artel:
         condition: service_healthy
@@ -34,7 +38,7 @@ services:
       start_period: 60s
 
   mcp:
-    image: ghcr.io/nicolasprimeau/artel:edge
+    image: ghcr.io/nicolasprimeau/artel:latest
     restart: unless-stopped
     command: ["python", "-m", "artel.mcp"]
     ports:
@@ -44,6 +48,8 @@ services:
       - ARTEL_URL=http://artel:8000
       - MCP_TRANSPORT=streamable-http
       - MCP_PORT=8001
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
     depends_on:
       artel:
         condition: service_healthy
@@ -54,8 +60,10 @@ services:
       retries: 5
       start_period: 20s
 
+  # mDNS broadcasts artel.local on the network so agents can onboard without knowing the IP.
+  # Requires network_mode: host — Linux only. Remove this service on Mac/Windows Docker Desktop.
   mdns:
-    image: ghcr.io/nicolasprimeau/artel:edge
+    image: ghcr.io/nicolasprimeau/artel:latest
     restart: unless-stopped
     network_mode: host
     command: ["python", "-m", "artel.server.mdns_announce"]
@@ -69,7 +77,7 @@ services:
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    command: --interval 300 --cleanup artel-artel-1 artel-archivist-1 artel-mcp-1 artel-mdns-1
+    command: --interval 300 --cleanup --label-enable
 
 volumes:
   artel-data:

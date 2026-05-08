@@ -148,6 +148,7 @@ async def test_task_fail_returns_title(mcp):
 
 
 async def test_task_list_project_filter(mcp):
+    await mcp.project_join("proj-a")
     await mcp.task_create("in proj-a", project="proj-a")
     await mcp.task_create("no project")
     result = await mcp.task_list(project="proj-a")

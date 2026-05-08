@@ -18,6 +18,7 @@ class ArchivistSettings(BaseSettings):
     decay_floor: float = 0.05
     decay_window_days: int = 7
     promotion_memory_min_version: int = 3
+    promotion_stability_days: int = 7
 
 
 settings = ArchivistSettings()

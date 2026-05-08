@@ -82,7 +82,14 @@ CREATE INDEX IF NOT EXISTS idx_memory_updated   ON memory (updated_at);
 CREATE INDEX IF NOT EXISTS idx_memory_deleted   ON memory (deleted_at);
 CREATE INDEX IF NOT EXISTS idx_tasks_status     ON tasks (status);
 CREATE INDEX IF NOT EXISTS idx_tasks_assigned   ON tasks (assigned_to);
+CREATE TABLE IF NOT EXISTS message_reads (
+    agent_id    TEXT NOT NULL,
+    message_id  TEXT NOT NULL,
+    PRIMARY KEY (agent_id, message_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_messages_to      ON messages (to_agent, read);
+CREATE INDEX IF NOT EXISTS idx_message_reads    ON message_reads (agent_id);
 CREATE INDEX IF NOT EXISTS idx_events_created   ON events (created_at);
 CREATE INDEX IF NOT EXISTS idx_handoff_agent    ON session_handoffs (agent_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_proj_members     ON project_members (agent_id);

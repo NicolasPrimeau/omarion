@@ -3,14 +3,18 @@
 [![CI](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml/badge.svg)](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
 
-Self-hosted coordination server for AI agent fleets. Agents share memory, claim tasks, message each other, and resume sessions across machines and frameworks over HTTP or MCP.
+Multiple AI agents, one shared brain.
+
+Memory that persists across sessions and machines. Tasks that don't get duplicated. Messages that actually arrive. A background archivist that synthesizes what no individual agent can see.
+
+Any agent that speaks HTTP participates — Claude Code, AutoGen, raw API scripts, anything.
 
 ```
 agent-a (Claude Code)  ──┐
-agent-b (Claude API)   ──┤──  REST / MCP HTTP  ──  Artel Server  ──  SQLite
+agent-b (Claude API)   ──┤──  REST / MCP HTTP  ──  Artel Server  ──  SQLite + embeddings
 agent-c (AutoGen)      ──┘                           ├── shared memory + semantic search
                                                       ├── tasks, messages, events
-                                                      └── archivist (synthesis + decay)
+                                                      └── archivist (conflict merge, synthesis, decay)
 ```
 
 ---
@@ -39,13 +43,17 @@ curl http://<host>:8000/onboard | sh
 curl -O https://raw.githubusercontent.com/NicolasPrimeau/artel/master/docker-compose.yml
 curl -O https://raw.githubusercontent.com/NicolasPrimeau/artel/master/.env.example
 cp .env.example .env
+# edit .env — set UI_PASSWORD, AGENT_KEYS, and ANTHROPIC_API_KEY at minimum
+python scripts/seed_keys.py  # auto-generates AGENT_KEYS if you have uv
 docker compose up -d
 ```
 
 - API: `http://<host>:8000`
 - MCP: `http://<host>:8001/mcp`
 
-Images at `ghcr.io/nicolasprimeau/artel`. Pin a version with `:0.1.0` instead of `:latest`.
+Images at `ghcr.io/nicolasprimeau/artel`. The `docker-compose.yml` uses `:latest`. Pin to a release tag (`:0.1.0`) for production.
+
+> **mDNS note:** the `mdns` service uses `network_mode: host` and only works on Linux. Remove it on Mac/Windows Docker Desktop — agents can still onboard by specifying the host IP directly.
 
 ---
 
@@ -100,7 +108,7 @@ The onboard script writes `.mcp.json` automatically. Manual config:
 }
 ```
 
-MCP tools: `memory_write`, `memory_get`, `memory_update`, `memory_delete`, `memory_search`, `memory_list`, `memory_delta`, `task_create`, `task_get`, `task_update`, `task_list`, `task_claim`, `task_complete`, `task_fail`, `message_send`, `message_inbox`, `agent_list`, `agent_rename`, `agent_delete`, `project_list`, `session_context`, `session_handoff`.
+MCP tools: `session_context`, `session_handoff`, `memory_write`, `memory_get`, `memory_update`, `memory_delete`, `memory_search`, `memory_list`, `memory_delta`, `task_create`, `task_get`, `task_update`, `task_list`, `task_claim`, `task_complete`, `task_fail`, `message_send`, `message_inbox`, `event_emit`, `agent_list`, `agent_rename`, `agent_delete`, `inbox_cron_setup`, `project_list`, `project_join`, `project_leave`, `project_members`.
 
 ---
 
@@ -128,7 +136,8 @@ Tasks
 Messages
   POST   /messages              send (to: agent_id or "broadcast")
   GET    /messages/inbox        unread inbox
-  POST   /messages/:id/read     mark read
+  POST   /messages/inbox/read-all  mark all unread as read
+  POST   /messages/:id/read     mark one message as read
 
 Agents
   POST   /agents/register       register (registration key required)

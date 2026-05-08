@@ -32,6 +32,9 @@ def _row_to_msg(row: sqlite3.Row) -> MessageEntry:
 )
 async def send_message(body: MessageSend, agent_id: str = Depends(require_agent)):
     db = get_db()
+    if body.to != "broadcast":
+        if not db.execute("SELECT id FROM agents WHERE id=?", (body.to,)).fetchone():
+            raise HTTPException(status_code=404, detail="recipient not found")
     msg_id = new_id()
     event_id = new_id()
     with db:
@@ -71,11 +74,29 @@ async def inbox(
     db = get_db()
     target = agent or agent_id
     rows = db.execute(
-        """SELECT * FROM messages WHERE (to_agent=? OR to_agent='broadcast')
-           AND read=0 ORDER BY created_at DESC""",
-        (target,),
+        """SELECT * FROM messages WHERE (
+            (to_agent=? AND read=0) OR
+            (to_agent='broadcast' AND id NOT IN (
+                SELECT message_id FROM message_reads WHERE agent_id=?
+            ))
+        ) ORDER BY created_at DESC""",
+        (target, target),
     ).fetchall()
     return [_row_to_msg(r) for r in rows]
+
+
+@router.post("/inbox/read-all", summary="Mark all unread inbox messages as read")
+async def mark_inbox_read(agent_id: str = Depends(require_agent)):
+    db = get_db()
+    with db:
+        db.execute("UPDATE messages SET read=1 WHERE to_agent=? AND read=0", (agent_id,))
+        db.execute(
+            """INSERT OR IGNORE INTO message_reads (agent_id, message_id)
+               SELECT ?, id FROM messages WHERE to_agent='broadcast'
+               AND id NOT IN (SELECT message_id FROM message_reads WHERE agent_id=?)""",
+            (agent_id, agent_id),
+        )
+    return {"ok": True}
 
 
 @router.post("/{msg_id}/read", response_model=MessageEntry, summary="Mark a message as read")
@@ -86,7 +107,14 @@ async def mark_read(msg_id: str, agent_id: str = Depends(require_agent)):
         raise HTTPException(status_code=404, detail="not found")
     if row["to_agent"] != agent_id and row["to_agent"] != "broadcast":
         raise HTTPException(status_code=403, detail="forbidden")
-    db.execute("UPDATE messages SET read=1 WHERE id=?", (msg_id,))
-    db.commit()
+    if row["to_agent"] == "broadcast":
+        with db:
+            db.execute(
+                "INSERT OR IGNORE INTO message_reads (agent_id, message_id) VALUES (?, ?)",
+                (agent_id, msg_id),
+            )
+    else:
+        with db:
+            db.execute("UPDATE messages SET read=1 WHERE id=?", (msg_id,))
     row = db.execute("SELECT * FROM messages WHERE id=?", (msg_id,)).fetchone()
     return _row_to_msg(row)

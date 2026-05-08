@@ -1,6 +1,7 @@
 import asyncio
 import contextvars
 import json
+import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -11,16 +12,27 @@ from mcp.server.session import ServerSession
 
 from .config import settings
 
+log = logging.getLogger(__name__)
+
 _agent_id: contextvars.ContextVar[str] = contextvars.ContextVar("agent_id")
 _api_key: contextvars.ContextVar[str] = contextvars.ContextVar("api_key")
 
 _sessions: dict[str, ServerSession] = {}
 _notification_queue: asyncio.Queue[tuple[str, str]] | None = None
+_client: httpx.AsyncClient | None = None
 
 
 @asynccontextmanager
 async def _lifespan(app: "ArtelMCP"):
-    global _notification_queue
+    global _notification_queue, _client
+    _client = httpx.AsyncClient(
+        base_url=settings.artel_url,
+        headers={
+            "x-agent-id": settings.mcp_agent_id,
+            "x-api-key": settings.mcp_agent_key,
+        },
+        timeout=30.0,
+    )
     _notification_queue = asyncio.Queue()
     watcher = asyncio.create_task(_sse_watcher())
     sender = asyncio.create_task(_notification_sender())
@@ -30,6 +42,7 @@ async def _lifespan(app: "ArtelMCP"):
         watcher.cancel()
         sender.cancel()
         await asyncio.gather(watcher, sender, return_exceptions=True)
+        await _client.aclose()
 
 
 class ArtelMCP(FastMCP):
@@ -76,7 +89,8 @@ async def _sse_watcher():
                             )
         except asyncio.CancelledError:
             raise
-        except Exception:
+        except Exception as e:
+            log.warning("SSE watcher disconnected, retrying in %.0fs: %s", delay, e)
             await asyncio.sleep(delay)
             delay = min(delay * 2, 60.0)
 
@@ -95,7 +109,8 @@ async def _notification_sender():
         for aid, session in targets:
             try:
                 await session.send_log_message("warning", msg)
-            except Exception:
+            except Exception as e:
+                log.debug("notification failed for %s, dropping session: %s", aid, e)
                 _sessions.pop(aid, None)
 
 
@@ -114,7 +129,7 @@ SESSION LIFECYCLE (do these every session, no exceptions):
 MEMORY (write often, read before you act):
 - Call memory_search() before starting any non-trivial work — another agent may have already done it.
 - Call memory_write() whenever you learn something worth keeping: decisions, facts, findings, plans, bugs.
-- type="memory" is the default and right for almost everything. The archivist promotes stable entries to type="doc" automatically.
+- entry_type="memory" is the default and right for almost everything. The archivist promotes stable entries to entry_type="doc" automatically.
 - Use tags to make things findable. Use scope="agent" only for things no other agent should see.
 - If MCP_PROJECT is set, all memory calls default to that project automatically.
 
@@ -136,11 +151,8 @@ IDENTITY:
 
 
 def _http() -> httpx.AsyncClient:
-    headers = {
-        "x-agent-id": _agent_id.get(settings.mcp_agent_id),
-        "x-api-key": _api_key.get(settings.mcp_agent_key),
-    }
-    return httpx.AsyncClient(base_url=settings.artel_url, headers=headers, timeout=30.0)
+    assert _client is not None, "MCP lifespan not started"
+    return _client
 
 
 _HTTPX_ERRORS = (httpx.HTTPStatusError, httpx.TransportError)
@@ -187,13 +199,13 @@ async def session_context(agent_id: str | None = None) -> str:
         agent_id: Whose context to load. Omit to load your own.
     """
     target = agent_id or _agent_id.get(settings.mcp_agent_id)
-    async with _http() as c:
-        try:
-            r = await c.get(f"/sessions/handoff/{target}")
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        data = r.json()
+    c = _http()
+    try:
+        r = await c.get(f"/sessions/handoff/{target}")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    data = r.json()
 
     parts: list[str] = [f"agent: {target}"]
     h = data.get("last_handoff")
@@ -208,8 +220,13 @@ async def session_context(agent_id: str | None = None) -> str:
 
     delta = data.get("memory_delta", [])
     if delta:
-        parts.append(f"\n## Memory since last session ({len(delta)} entries)")
-        for e in delta[:20]:
+        total = len(delta)
+        shown = delta[:20]
+        label = f"{total} entries" + (
+            ", showing first 20 — call memory_delta() for the rest" if total > 20 else ""
+        )
+        parts.append(f"\n## Memory since last session ({label})")
+        for e in shown:
             parts.append(_fmt_memory(e))
 
     return "\n\n".join(parts)
@@ -232,20 +249,20 @@ async def session_handoff(
         next_steps: What to do in the next session, in order of priority.
         in_progress: Task IDs that are currently claimed and not yet completed.
     """
-    async with _http() as c:
-        try:
-            r = await c.post(
-                "/sessions/handoff",
-                json={
-                    "summary": summary,
-                    "next_steps": next_steps or [],
-                    "in_progress": in_progress or [],
-                },
-            )
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        return f"handoff saved [{r.json()['id']}]"
+    c = _http()
+    try:
+        r = await c.post(
+            "/sessions/handoff",
+            json={
+                "summary": summary,
+                "next_steps": next_steps or [],
+                "in_progress": in_progress or [],
+            },
+        )
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    return f"handoff saved [{r.json()['id']}]"
 
 
 # ── Memory ───────────────────────────────────────────────────────────────────
@@ -254,7 +271,7 @@ async def session_handoff(
 @mcp.tool()
 async def memory_write(
     content: str,
-    type: str = "memory",
+    entry_type: str = "memory",
     scope: str = "project",
     project: str | None = None,
     tags: list[str] | None = None,
@@ -279,30 +296,30 @@ async def memory_write(
 
     Args:
         content: What to store. Markdown is fine.
-        type: See types above. Default: memory.
+        entry_type: See types above. Default: memory.
         scope: See scopes above. Default: project.
         project: Project to scope the entry to. Defaults to MCP_PROJECT if set.
         tags: Tags for filtering and retrieval. Use them — they make memory_list useful.
         confidence: How certain you are (0.0–1.0). Default 1.0. Use lower for guesses.
     """
-    async with _http() as c:
-        try:
-            r = await c.post(
-                "/memory",
-                json={
-                    "content": content,
-                    "type": type,
-                    "project": project or settings.mcp_project or None,
-                    "scope": scope,
-                    "tags": tags or [],
-                    "confidence": confidence,
-                    "parents": [],
-                },
-            )
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        entry = r.json()
+    c = _http()
+    try:
+        r = await c.post(
+            "/memory",
+            json={
+                "content": content,
+                "type": entry_type,
+                "project": settings.resolve_project(project),
+                "scope": scope,
+                "tags": tags or [],
+                "confidence": confidence,
+                "parents": [],
+            },
+        )
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    entry = r.json()
     snippet = entry["content"][:80].replace("\n", " ")
     return f"written [{entry['id']}] ({entry['type']}) {snippet!r}"
 
@@ -326,19 +343,19 @@ async def memory_search(
         tag: Restrict to entries with this tag.
         limit: How many results (default 10, max 50).
     """
-    async with _http() as c:
-        try:
-            params: dict = {"q": q, "limit": min(limit, 50)}
-            effective_project = project or settings.mcp_project or None
-            if effective_project:
-                params["project"] = effective_project
-            if tag:
-                params["tag"] = tag
-            r = await c.get("/memory/search", params=params)
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        entries = r.json()
+    c = _http()
+    try:
+        params: dict = {"q": q, "limit": min(limit, 50)}
+        effective_project = settings.resolve_project(project)
+        if effective_project:
+            params["project"] = effective_project
+        if tag:
+            params["tag"] = tag
+        r = await c.get("/memory/search", params=params)
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    entries = r.json()
     if not entries:
         return "No results."
     return "\n\n".join(_fmt_memory(e) for e in entries)
@@ -346,7 +363,7 @@ async def memory_search(
 
 @mcp.tool()
 async def memory_list(
-    type: str | None = None,
+    entry_type: str | None = None,
     project: str | None = None,
     tag: str | None = None,
     agent: str | None = None,
@@ -359,31 +376,31 @@ async def memory_list(
     "show me everything tagged X" or "what has agent Y written".
 
     Args:
-        type: memory or doc.
+        entry_type: memory or doc.
         project: Filter by project. Omit to see all accessible projects.
         tag: Only entries with this tag.
         agent: Only entries written by this agent.
         confidence_min: Only entries with confidence >= this (e.g. 0.7 to skip decayed entries).
         limit: Max results (default 50, max 500).
     """
-    async with _http() as c:
-        try:
-            params: dict = {"limit": min(limit, 500)}
-            if type:
-                params["type"] = type
-            if project:
-                params["project"] = project
-            if tag:
-                params["tag"] = tag
-            if agent:
-                params["agent"] = agent
-            if confidence_min is not None:
-                params["confidence_min"] = confidence_min
-            r = await c.get("/memory", params=params)
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        entries = r.json()
+    c = _http()
+    try:
+        params: dict = {"limit": min(limit, 500)}
+        if entry_type:
+            params["type"] = entry_type
+        if project:
+            params["project"] = project
+        if tag:
+            params["tag"] = tag
+        if agent:
+            params["agent"] = agent
+        if confidence_min is not None:
+            params["confidence_min"] = confidence_min
+        r = await c.get("/memory", params=params)
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    entries = r.json()
     if not entries:
         return "No entries."
     return "\n\n".join(_fmt_memory(e) for e in entries)
@@ -396,14 +413,13 @@ async def memory_get(entry_id: str) -> str:
     Args:
         entry_id: The UUID of the entry.
     """
-    async with _http() as c:
-        try:
-            r = await c.get(f"/memory/{entry_id}")
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        e = r.json()
-    return _fmt_memory(e, full_content=True)
+    c = _http()
+    try:
+        r = await c.get(f"/memory/{entry_id}")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    return _fmt_memory(r.json(), full_content=True)
 
 
 @mcp.tool()
@@ -412,7 +428,7 @@ async def memory_update(
     content: str | None = None,
     confidence: float | None = None,
     tags: list[str] | None = None,
-    type: str | None = None,
+    entry_type: str | None = None,
     scope: str | None = None,
     project: str | None = None,
 ) -> str:
@@ -423,7 +439,7 @@ async def memory_update(
         content: New content. Omit to leave unchanged.
         confidence: New confidence score (0.0–1.0). Omit to leave unchanged.
         tags: Replace tags list. Omit to leave unchanged.
-        type: New type (memory or doc). Omit to leave unchanged.
+        entry_type: New type (memory or doc). Omit to leave unchanged.
         scope: New scope (agent or project). Omit to leave unchanged.
         project: Move entry to a different project. Omit to leave unchanged.
     """
@@ -434,20 +450,19 @@ async def memory_update(
         patch["confidence"] = confidence
     if tags is not None:
         patch["tags"] = tags
-    if type is not None:
-        patch["type"] = type
+    if entry_type is not None:
+        patch["type"] = entry_type
     if scope is not None:
         patch["scope"] = scope
     if project is not None:
         patch["project"] = project
-    async with _http() as c:
-        try:
-            r = await c.patch(f"/memory/{entry_id}", json=patch)
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        e = r.json()
-    return _fmt_memory(e, full_content=False)
+    c = _http()
+    try:
+        r = await c.patch(f"/memory/{entry_id}", json=patch)
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    return _fmt_memory(r.json(), full_content=False)
 
 
 @mcp.tool()
@@ -460,12 +475,12 @@ async def memory_delete(entry_id: str) -> str:
     Args:
         entry_id: The UUID of the entry to delete.
     """
-    async with _http() as c:
-        try:
-            r = await c.delete(f"/memory/{entry_id}")
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
+    c = _http()
+    try:
+        r = await c.delete(f"/memory/{entry_id}")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
     return f"deleted [{entry_id}]"
 
 
@@ -480,13 +495,13 @@ async def memory_delta(since: str) -> str:
     Args:
         since: ISO 8601 timestamp, e.g. "2026-05-01T12:00:00.000Z".
     """
-    async with _http() as c:
-        try:
-            r = await c.get("/memory/delta", params={"since": since})
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        entries = r.json()
+    c = _http()
+    try:
+        r = await c.get("/memory/delta", params={"since": since})
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    entries = r.json()
     if not entries:
         return "No changes."
     return "\n\n".join(_fmt_memory(e) for e in entries)
@@ -503,13 +518,13 @@ async def project_list() -> str:
     and how much shared context each project has. Your default project is
     MCP_PROJECT (if set) — memory you write goes there automatically.
     """
-    async with _http() as c:
-        try:
-            r = await c.get("/projects")
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        projects = r.json()
+    c = _http()
+    try:
+        r = await c.get("/projects")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    projects = r.json()
     if not projects:
         return "No projects yet."
     lines = []
@@ -533,12 +548,12 @@ async def project_join(project_id: str) -> str:
     Args:
         project_id: The project name to join.
     """
-    async with _http() as c:
-        try:
-            r = await c.post(f"/projects/{project_id}/join")
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
+    c = _http()
+    try:
+        r = await c.post(f"/projects/{project_id}/join")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
     return f"joined project {project_id!r}"
 
 
@@ -549,12 +564,12 @@ async def project_leave(project_id: str) -> str:
     Args:
         project_id: The project name to leave.
     """
-    async with _http() as c:
-        try:
-            r = await c.delete(f"/projects/{project_id}/leave")
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
+    c = _http()
+    try:
+        r = await c.delete(f"/projects/{project_id}/leave")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
     return f"left project {project_id!r}"
 
 
@@ -567,13 +582,13 @@ async def project_members(project_id: str) -> str:
     Args:
         project_id: The project name to inspect.
     """
-    async with _http() as c:
-        try:
-            r = await c.get(f"/projects/{project_id}/members")
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        members = r.json()
+    c = _http()
+    try:
+        r = await c.get(f"/projects/{project_id}/members")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    members = r.json()
     if not members:
         return f"no members in {project_id!r}"
     return "\n".join(f"{m['agent_id']} (joined {m['joined_at'][:10]})" for m in members)
@@ -586,13 +601,13 @@ async def agent_list() -> str:
     Use this to know who's available before sending messages or assigning tasks.
     An agent that was last seen recently is likely still active.
     """
-    async with _http() as c:
-        try:
-            r = await c.get("/participants")
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        participants = r.json()
+    c = _http()
+    try:
+        r = await c.get("/participants")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    participants = r.json()
     if not participants:
         return "No agents."
     lines = []
@@ -617,12 +632,12 @@ async def agent_delete() -> str:
       rm ~/.config/artel/credentials
       rm .mcp.json
     """
-    async with _http() as c:
-        try:
-            r = await c.delete("/agents/me")
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
+    c = _http()
+    try:
+        r = await c.delete("/agents/me")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
     return (
         f"agent {_agent_id.get(settings.mcp_agent_id)!r} deregistered. "
         "Clean up locally: rm ~/.config/artel/credentials && rm .mcp.json"
@@ -630,7 +645,7 @@ async def agent_delete() -> str:
 
 
 @mcp.tool()
-async def inbox_cron_setup() -> str:
+def inbox_cron_setup() -> str:
     """Get instructions for scheduling automatic inbox checks via Claude Code cron.
 
     Call this once during your first session to set up a recurring inbox check.
@@ -665,14 +680,13 @@ async def agent_rename(new_id: str) -> str:
     Args:
         new_id: Your new agent ID. Alphanumeric, hyphens and underscores allowed.
     """
-    async with _http() as c:
-        try:
-            r = await c.patch("/agents/me", json={"new_id": new_id})
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        a = r.json()
-    return f"renamed to {a['agent_id']}"
+    c = _http()
+    try:
+        r = await c.patch("/agents/me", json={"new_id": new_id})
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    return f"renamed to {r.json()['agent_id']}"
 
 
 # ── Messages ─────────────────────────────────────────────────────────────────
@@ -685,17 +699,19 @@ async def message_inbox() -> str:
     Messages are marked read after this call. Agents use messages to coordinate,
     delegate work, share findings, or ask questions. Check it — someone may be waiting.
     """
-    async with _http() as c:
-        try:
-            r = await c.get("/messages/inbox")
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        messages = r.json()
-        for m in messages:
-            await c.post(f"/messages/{m['id']}/read")
+    c = _http()
+    try:
+        r = await c.get("/messages/inbox")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    messages = r.json()
     if not messages:
         return "No unread messages."
+    try:
+        await c.post("/messages/inbox/read-all")
+    except _HTTPX_ERRORS:
+        pass
     lines = []
     for m in messages:
         header = f"[{m['id']}] from {m['from_agent']} · {m['created_at'][:16]}"
@@ -718,13 +734,13 @@ async def message_send(to: str, body: str, subject: str = "") -> str:
         body: Message body.
         subject: Optional subject line (helps the recipient triage).
     """
-    async with _http() as c:
-        try:
-            r = await c.post("/messages", json={"to": to, "subject": subject, "body": body})
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        m = r.json()
+    c = _http()
+    try:
+        r = await c.post("/messages", json={"to": to, "subject": subject, "body": body})
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    m = r.json()
     return f"sent to {m['to_agent']} [{m['id']}]"
 
 
@@ -742,18 +758,18 @@ async def task_list(status: str | None = None, project: str | None = None) -> st
         status: open, claimed, completed, or failed. Omit for all.
         project: Filter by project name.
     """
-    async with _http() as c:
-        try:
-            params: dict = {}
-            if status:
-                params["status"] = status
-            if project:
-                params["project"] = project
-            r = await c.get("/tasks", params=params)
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        tasks = r.json()
+    c = _http()
+    try:
+        params: dict = {}
+        if status:
+            params["status"] = status
+        if project:
+            params["project"] = project
+        r = await c.get("/tasks", params=params)
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    tasks = r.json()
     if not tasks:
         return "No tasks."
     return "\n".join(
@@ -784,22 +800,22 @@ async def task_create(
         project: Project scope. Defaults to MCP_PROJECT if set.
         priority: low, normal (default), or high.
     """
-    async with _http() as c:
-        try:
-            r = await c.post(
-                "/tasks",
-                json={
-                    "title": title,
-                    "description": description,
-                    "expected_outcome": expected_outcome,
-                    "project": project or settings.mcp_project or None,
-                    "priority": priority,
-                },
-            )
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        t = r.json()
+    c = _http()
+    try:
+        r = await c.post(
+            "/tasks",
+            json={
+                "title": title,
+                "description": description,
+                "expected_outcome": expected_outcome,
+                "project": settings.resolve_project(project),
+                "priority": priority,
+            },
+        )
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    t = r.json()
     return f"created [{t['id']}] [{t['priority']}] {t['title']}"
 
 
@@ -813,13 +829,13 @@ async def task_claim(task_id: str) -> str:
     Args:
         task_id: ID from task_list() or task_create().
     """
-    async with _http() as c:
-        try:
-            r = await c.post(f"/tasks/{task_id}/claim")
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        t = r.json()
+    c = _http()
+    try:
+        r = await c.post(f"/tasks/{task_id}/claim")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    t = r.json()
     return f"claimed [{t['id']}] {t['title']}"
 
 
@@ -830,13 +846,13 @@ async def task_complete(task_id: str) -> str:
     Args:
         task_id: ID of a task you have claimed.
     """
-    async with _http() as c:
-        try:
-            r = await c.post(f"/tasks/{task_id}/complete")
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        t = r.json()
+    c = _http()
+    try:
+        r = await c.post(f"/tasks/{task_id}/complete")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    t = r.json()
     return f"completed [{t['id']}] {t['title']}"
 
 
@@ -850,13 +866,13 @@ async def task_fail(task_id: str) -> str:
     Args:
         task_id: ID of a task you have claimed.
     """
-    async with _http() as c:
-        try:
-            r = await c.post(f"/tasks/{task_id}/fail")
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        t = r.json()
+    c = _http()
+    try:
+        r = await c.post(f"/tasks/{task_id}/fail")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    t = r.json()
     return f"failed [{t['id']}] {t['title']}"
 
 
@@ -867,13 +883,13 @@ async def task_get(task_id: str) -> str:
     Args:
         task_id: The UUID of the task.
     """
-    async with _http() as c:
-        try:
-            r = await c.get(f"/tasks/{task_id}")
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        t = r.json()
+    c = _http()
+    try:
+        r = await c.get(f"/tasks/{task_id}")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    t = r.json()
     assigned = t["assigned_to"] or "unassigned"
     project = f" | project: {t['project']}" if t.get("project") else ""
     lines = [
@@ -916,11 +932,36 @@ async def task_update(
         patch["title"] = title
     if priority is not None:
         patch["priority"] = priority
-    async with _http() as c:
-        try:
-            r = await c.patch(f"/tasks/{task_id}", json=patch)
-            r.raise_for_status()
-        except _HTTPX_ERRORS as e:
-            return _err(e)
-        t = r.json()
+    c = _http()
+    try:
+        r = await c.patch(f"/tasks/{task_id}", json=patch)
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    t = r.json()
     return f"updated [{t['id']}] {t['title']}"
+
+
+# ── Events ───────────────────────────────────────────────────────────────────
+
+
+@mcp.tool()
+async def event_emit(event_type: str, payload: dict | None = None) -> str:
+    """Emit a custom event to the Artel event bus.
+
+    Use for pub/sub signaling between agents. Other agents watching the SSE stream
+    will receive this in real time. Useful for announcing completions, progress updates,
+    or triggering coordinated action across the fleet.
+
+    Args:
+        event_type: Dot-separated event type, e.g. "analysis.complete" or "deploy.ready".
+        payload: Arbitrary JSON payload to include with the event.
+    """
+    c = _http()
+    try:
+        r = await c.post("/events", json={"type": event_type, "payload": payload or {}})
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    ev = r.json()
+    return f"emitted [{ev['id']}] {ev['type']}"
