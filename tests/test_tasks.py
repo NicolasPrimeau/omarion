@@ -82,6 +82,7 @@ async def test_get_task_not_found(client):
 
 
 async def test_list_tasks_by_project(client):
+    await client.post("/projects/alpha/join", headers=HEADERS)
     await client.post("/tasks", json={"title": "alpha task", "project": "alpha"}, headers=HEADERS)
     await client.post("/tasks", json={"title": "beta task", "project": "beta"}, headers=HEADERS)
     await client.post("/tasks", json={"title": "no project task"}, headers=HEADERS)

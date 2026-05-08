@@ -21,7 +21,7 @@ dependencies = [
     "openai>=1.0.0",
     "fastapi>=0.136.1",
     "httpx>=0.28.1",
-    "mcp[cli]==1.27.0",
+    "mcp[cli]>=1.27.0",
     "pydantic>=2.13.3",
     "pydantic-settings>=2.14.0",
     "fastembed>=0.4.0",

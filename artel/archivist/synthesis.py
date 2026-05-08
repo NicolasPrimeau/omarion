@@ -76,8 +76,13 @@ async def decay_confidence(client: ArtelClient) -> None:
 
 
 async def run_promotion(client: ArtelClient) -> None:
+    cutoff = (datetime.now(UTC) - timedelta(days=settings.promotion_stability_days)).strftime(
+        "%Y-%m-%dT%H:%M:%S.000Z"
+    )
     memory_entries = await client.list_entries(
-        type="memory", min_version=settings.promotion_memory_min_version
+        type="memory",
+        min_version=settings.promotion_memory_min_version,
+        updated_before=cutoff,
     )
     for entry in memory_entries:
         if entry["agent_id"] == settings.archivist_id:

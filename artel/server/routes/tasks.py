@@ -4,7 +4,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...store.db import get_db
-from ..auth import project_filter, require_agent
+from ..auth import _memberships, project_filter, require_agent
 from ..models import TaskCreate, TaskEntry, TaskUpdate, new_id
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -27,18 +27,33 @@ def _row_to_task(row: sqlite3.Row) -> TaskEntry:
     )
 
 
+def _emit_event(db: sqlite3.Connection, event_type: str, agent_id: str, payload: dict) -> None:
+    db.execute(
+        "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
+        (new_id(), event_type, agent_id, json.dumps(payload)),
+    )
+
+
 @router.get("/{task_id}", response_model=TaskEntry, summary="Get a task by ID")
 async def get_task(task_id: str, agent_id: str = Depends(require_agent)):
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
+    if row["project"]:
+        allowed = _memberships(agent_id)
+        if allowed is not None and row["project"] not in allowed:
+            raise HTTPException(status_code=403, detail="not a member of this project")
     return _row_to_task(row)
 
 
 @router.post("", response_model=TaskEntry, status_code=201, summary="Create a task")
 async def create_task(body: TaskCreate, agent_id: str = Depends(require_agent)):
     db = get_db()
+    if body.project:
+        allowed = _memberships(agent_id)
+        if allowed is not None and body.project not in allowed:
+            raise HTTPException(status_code=403, detail="not a member of this project")
     task_id = new_id()
     with db:
         db.execute(
@@ -56,10 +71,7 @@ async def create_task(body: TaskCreate, agent_id: str = Depends(require_agent)):
                 body.due_at,
             ),
         )
-        db.execute(
-            "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-            (new_id(), "task.created", agent_id, json.dumps({"task_id": task_id})),
-        )
+        _emit_event(db, "task.created", agent_id, {"task_id": task_id})
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     return _row_to_task(row)
 
@@ -75,6 +87,9 @@ async def list_tasks(
     sql = "SELECT * FROM tasks WHERE 1=1"
     params: list = []
     if project:
+        allowed = _memberships(agent_id)
+        if allowed is not None and project not in allowed:
+            return []
         sql += " AND project=?"
         params.append(project)
     else:
@@ -96,21 +111,17 @@ async def list_tasks(
 @router.post("/{task_id}/claim", response_model=TaskEntry, summary="Claim an open task")
 async def claim_task(task_id: str, agent_id: str = Depends(require_agent)):
     db = get_db()
-    row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
-    if not row:
+    if not db.execute("SELECT id FROM tasks WHERE id=?", (task_id,)).fetchone():
         raise HTTPException(status_code=404, detail="not found")
-    if row["status"] != "open":
-        raise HTTPException(status_code=409, detail="task not open")
     with db:
-        db.execute(
+        cursor = db.execute(
             """UPDATE tasks SET status='claimed', assigned_to=?,
-               updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",
+               updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=? AND status='open'""",
             (agent_id, task_id),
         )
-        db.execute(
-            "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-            (new_id(), "task.claimed", agent_id, json.dumps({"task_id": task_id})),
-        )
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=409, detail="task not open")
+        _emit_event(db, "task.claimed", agent_id, {"task_id": task_id})
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     return _row_to_task(row)
 
@@ -135,10 +146,7 @@ async def complete_task(task_id: str, agent_id: str = Depends(require_agent)):
                updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",
             (task_id,),
         )
-        db.execute(
-            "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-            (new_id(), "task.completed", agent_id, json.dumps({"task_id": task_id})),
-        )
+        _emit_event(db, "task.completed", agent_id, {"task_id": task_id})
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     return _row_to_task(row)
 
@@ -151,6 +159,8 @@ async def update_task(task_id: str, body: TaskUpdate, agent_id: str = Depends(re
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
+    if row["status"] in ("completed", "failed"):
+        raise HTTPException(status_code=409, detail="task is terminal and cannot be modified")
     set_parts: list[str] = []
     params: list = []
     if body.description is not None:
@@ -177,10 +187,7 @@ async def update_task(task_id: str, body: TaskUpdate, agent_id: str = Depends(re
         params.append(task_id)
         with db:
             db.execute(f"UPDATE tasks SET {', '.join(set_parts)} WHERE id=?", params)
-            db.execute(
-                "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-                (new_id(), "task.updated", agent_id, json.dumps({"task_id": task_id})),
-            )
+            _emit_event(db, "task.updated", agent_id, {"task_id": task_id})
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     return _row_to_task(row)
 
@@ -203,9 +210,6 @@ async def fail_task(task_id: str, agent_id: str = Depends(require_agent)):
                updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",
             (task_id,),
         )
-        db.execute(
-            "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-            (new_id(), "task.failed", agent_id, json.dumps({"task_id": task_id})),
-        )
+        _emit_event(db, "task.failed", agent_id, {"task_id": task_id})
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     return _row_to_task(row)

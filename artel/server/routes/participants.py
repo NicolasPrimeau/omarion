@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends
 
 from ...store.db import get_db
-from ..auth import _last_seen, require_agent
+from ..auth import require_agent
 from ..config import settings
 from ..models import Participant
+from ..presence import _last_seen
 
 router = APIRouter(prefix="/participants", tags=["participants"])
 

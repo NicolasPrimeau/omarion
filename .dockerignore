@@ -1,0 +1,15 @@
+.venv
+__pycache__
+*.py[oc]
+*.db
+*.db-wal
+*.db-shm
+.env
+.mcp.json
+dist/
+build/
+*.egg-info
+.git
+tests/
+docs/
+scripts/

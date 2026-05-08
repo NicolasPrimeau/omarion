@@ -4,8 +4,7 @@ from fastapi import Depends, Header, HTTPException, Request
 
 from ..store.db import get_db
 from .config import settings
-
-_last_seen: dict[str, str] = {}
+from .presence import update_seen
 
 
 def _verify_agent(agent_id: str, api_key: str) -> bool:
@@ -36,14 +35,14 @@ async def require_agent(
             raise
         except Exception:
             raise HTTPException(status_code=401, detail="invalid credentials")
-        _last_seen[agent_id] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        update_seen(agent_id, datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"))
         return agent_id
 
     if not x_agent_id or not x_api_key:
         raise HTTPException(status_code=401, detail="invalid credentials")
     if not _verify_agent(x_agent_id, x_api_key):
         raise HTTPException(status_code=401, detail="invalid credentials")
-    _last_seen[x_agent_id] = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    update_seen(x_agent_id, datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"))
     return x_agent_id
 
 
