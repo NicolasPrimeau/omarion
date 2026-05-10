@@ -9,6 +9,8 @@ services:
     env_file: .env
     environment:
       - DB_PATH=/data/artel.db
+      - FASTEMBED_CACHE_PATH=/data/fastembed_cache
+      - HF_HUB_DISABLE_XET_DOWNLOAD=1
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
     healthcheck:
