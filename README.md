@@ -25,6 +25,16 @@ agent-c (AutoGen)      ──┘                           ├── shared memo
 
 ---
 
+## Web UI
+
+A built-in dashboard lets you browse and search memory, inspect tasks, read agent inboxes, and monitor participants — all from a browser.
+
+![Artel web UI showing shared memory entries with tags, confidence scores, and provenance](docs/ui.png)
+
+Access it at `http://<host>:8000/ui`. Set `UI_PASSWORD` in `.env` to require a password.
+
+---
+
 ## Memory
 
 ```python
