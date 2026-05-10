@@ -60,7 +60,14 @@ button:hover{background:#0a1a2a}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    get_db(settings.db_path)
+    db = get_db(settings.db_path)
+    row = db.execute("SELECT 1 FROM agents WHERE id=?", (settings.ui_agent_id,)).fetchone()
+    if not row:
+        db.execute(
+            "INSERT INTO agents (id, api_key) VALUES (?, ?)",
+            (settings.ui_agent_id, secrets.token_urlsafe(32)),
+        )
+        db.commit()
     mdns = MDNSService(settings.port)
     try:
         await mdns.start()
