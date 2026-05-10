@@ -9,6 +9,7 @@ _SCRIPT = r"""#!/bin/sh
 set -e
 
 ARTEL_URL="{artel_url}"
+MCP_URL="{mcp_url}"
 PROJECT="{project}"
 REG_KEY="${{ARTEL_REG_KEY:-}}"
 
@@ -28,15 +29,16 @@ fi
 _MCP=".mcp.json"
 
 if [ -f "$_MCP" ] && command -v python3 >/dev/null 2>&1; then
-    _EXISTING_ID=$(python3 -c "import json,base64,sys;h=json.load(open('$_MCP'))['mcpServers']['artel']['headers'];x=h.get('x-agent-id','');[print(x) or sys.exit() for _ in [1] if x];a=h.get('Authorization','');[print(json.loads(base64.b64decode(a[7:].split('.')[1]+'==')).get('sub','')) for _ in [1] if a.startswith('Bearer ') and len(a[7:].split('.'))>=2]" 2>/dev/null || true)
+    _EXISTING_ID=$(python3 -c "import json,sys; h=json.load(open('.mcp.json')).get('mcpServers',{{}}).get('artel',{{}}).get('headers',{{}}); print(h.get('x-agent-id',''))" 2>/dev/null || true)
 fi
 
 AGENT_ID="${{AGENT_ID:-${{_EXISTING_ID:-$DEFAULT_ID}}}}"
 
-ARTEL_URL="$ARTEL_URL" BASE_ID="$AGENT_ID" PROJECT="$PROJECT" REG_KEY="$REG_KEY" python3 << 'PYEOF'
-import os, json, urllib.request, urllib.error, sys, pathlib, urllib.parse
+ARTEL_URL="$ARTEL_URL" MCP_URL="$MCP_URL" BASE_ID="$AGENT_ID" PROJECT="$PROJECT" REG_KEY="$REG_KEY" python3 << 'PYEOF'
+import os, json, urllib.request, urllib.error, sys, pathlib
 
 url     = os.environ['ARTEL_URL']
+mcp_url = os.environ['MCP_URL']
 base_id = os.environ['BASE_ID']
 project = os.environ.get('PROJECT') or None
 reg_key = os.environ.get('REG_KEY') or None
@@ -50,9 +52,6 @@ def _load_creds():
     candidate = _creds_path(base_id)
     if candidate.exists():
         return _parse_creds(candidate)
-    legacy = creds_dir / 'credentials'
-    if legacy.exists():
-        return _parse_creds(legacy)
     return None, None
 
 def _parse_creds(path):
@@ -107,47 +106,13 @@ def _register(agent_id):
     except urllib.error.URLError as e:
         print('error: could not reach {{}} — {{}}'.format(url, e.reason)); sys.exit(1)
 
-def _get_token(aid, akey):
-    data = urllib.parse.urlencode({{
-        'grant_type': 'client_credentials',
-        'client_id': aid,
-        'client_secret': akey,
-    }}).encode()
-    req = urllib.request.Request(
-        url + '/oauth/token',
-        data=data,
-        headers={{'content-type': 'application/x-www-form-urlencoded'}},
-        method='POST',
-    )
-    try:
-        with urllib.request.urlopen(req) as r:
-            return json.loads(r.read())['access_token']
-    except Exception as e:
-        print('warning: could not get token: {{}}'.format(e))
-        return None
-
-def _mcp_base(api_url):
-    parsed = urllib.parse.urlparse(api_url)
-    port = parsed.port or 8000
-    try:
-        import socket
-        socket.setdefaulttimeout(1)
-        socket.gethostbyname('artel.local')
-        return 'http://artel.local:{{}}'.format(port + 1)
-    except Exception:
-        pass
-    return '{{}}://{{}}:{{}}'.format(parsed.scheme, parsed.hostname, port + 1)
-
-def _write_mcp(aid, akey, token):
-    headers = {{'x-agent-id': aid, 'x-api-key': akey}}
-    if token:
-        headers = {{'Authorization': 'Bearer ' + token}}
+def _write_mcp(aid, akey):
     mcp_config = {{
         'mcpServers': {{
             'artel': {{
                 'type': 'http',
-                'url': _mcp_base(url) + '/mcp',
-                'headers': headers,
+                'url': mcp_url + '/mcp',
+                'headers': {{'x-agent-id': aid, 'x-api-key': akey}},
             }}
         }}
     }}
@@ -161,29 +126,15 @@ valid = _valid(aid, akey)
 if valid is None:
     print('error: cannot reach {{}} — is the server running?'.format(url)); sys.exit(1)
 elif valid:
-    token = _get_token(aid, akey)
-    _write_mcp(aid, akey, token)
+    _write_mcp(aid, akey)
     print('  agent    : ' + aid + '  (credentials valid, refreshed .mcp.json)')
     refreshed = True
 else:
-    if aid:
-        print('  stale credentials for {{}} — cleaning up and re-registering'.format(aid))
-        try:
-            req = urllib.request.Request(
-                url + '/agents/me',
-                headers={{'x-agent-id': aid, 'x-api-key': akey}},
-                method='DELETE',
-            )
-            urllib.request.urlopen(req)
-        except Exception:
-            pass
-        base_id = aid
     data = _register(base_id)
     aid, akey = data['agent_id'], data['api_key']
-    token = _get_token(aid, akey)
     creds_dir.mkdir(parents=True, exist_ok=True)
     _creds_path(aid).write_text('MCP_AGENT_ID={{}}\nMCP_AGENT_KEY={{}}\n'.format(aid, akey))
-    _write_mcp(aid, akey, token)
+    _write_mcp(aid, akey)
     print('  agent    : ' + aid)
     if project:
         print('  project  : ' + project)
@@ -195,13 +146,13 @@ if bashrc.exists() and marker not in bashrc.read_text():
     with open(bashrc, 'a') as f:
         f.write(
             '\n_artel_load() {{\n'
-            '    local mcp=".mcp.json" aid creds\n'
-            '    if [ -f "$mcp" ]; then\n'
-            '        aid=$(python3 -c "import json,base64,sys;h=json.load(open(\'.mcp.json\'))[\'mcpServers\'][\'artel\'][\'headers\'];x=h.get(\'x-agent-id\',\'\');[print(x) or sys.exit() for _ in [1] if x];a=h.get(\'Authorization\',\'\');[print(json.loads(base64.b64decode(a[7:].split(\'.\')[1]+\'==\')).get(\'sub\',\'\')) for _ in [1] if a.startswith(\'Bearer \') and len(a[7:].split(\'.\'))>=2]" 2>/dev/null)\n'
+            '    if [ -f ".mcp.json" ]; then\n'
+            '        aid=$(python3 -c "import json; print(json.load(open(\'.mcp.json\'))[\'mcpServers\'][\'artel\'][\'headers\'].get(\'x-agent-id\', \'\'))" 2>/dev/null || true)\n'
+            '        if [ -n "$aid" ]; then\n'
+            '            creds="$HOME/.config/artel/$aid"\n'
+            '            [ -f "$creds" ] && {{ set -a; source "$creds"; set +a; }}\n'
+            '        fi\n'
             '    fi\n'
-            '    if [ -n "$aid" ]; then creds="$HOME/.config/artel/$aid"\n'
-            '    else creds="$HOME/.config/artel/credentials"; fi\n'
-            '    [ -f "$creds" ] && {{ set -a; source "$creds"; set +a; }}\n'
             '}}\n'
             'if [ -n "$PROMPT_COMMAND" ]; then\n'
             '    export PROMPT_COMMAND="_artel_load;$PROMPT_COMMAND"\n'
@@ -211,12 +162,12 @@ if bashrc.exists() and marker not in bashrc.read_text():
         )
 
 if not refreshed:
-    print('  .mcp.json written, ~/.bashrc updated')
+    print('  .mcp.json written')
     print()
-    print('source ~/.bashrc, then run /reload-plugins in Claude Code to connect')
+    print('start a new Claude Code session to connect')
 else:
     print()
-    print('run /reload-plugins in Claude Code to reconnect')
+    print('start a new Claude Code session to reconnect')
 PYEOF
 """
 
@@ -227,4 +178,5 @@ async def onboard(
     project: str | None = Query(default=None),
 ):
     artel_url = settings.public_url or str(request.base_url).rstrip("/")
-    return _SCRIPT.format(artel_url=artel_url, project=project or "")
+    mcp_url = (settings.mcp_url or artel_url.replace(":8000", ":8001")).rstrip("/")
+    return _SCRIPT.format(artel_url=artel_url, project=project or "", mcp_url=mcp_url)

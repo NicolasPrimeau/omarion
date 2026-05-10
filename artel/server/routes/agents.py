@@ -105,6 +105,9 @@ async def self_register(body: AgentSelfRegister, x_registration_key: str = Heade
     if not _valid_agent_id(base):
         raise HTTPException(status_code=422, detail="agent_id must be alphanumeric with - or _")
     db = get_db()
+    existing = db.execute("SELECT * FROM agents WHERE id=?", (base,)).fetchone()
+    if existing:
+        return _row_to_agent(existing)
     candidate, i = base, 1
     while _id_taken(db, candidate):
         candidate = f"{base}-{i}"

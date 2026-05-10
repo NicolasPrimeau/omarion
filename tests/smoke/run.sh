@@ -136,17 +136,18 @@ REG_A2=$(curl -sf -X POST "$API_URL/agents/self-register" \
     -H "content-type: application/json" \
     -d '{"agent_id":"smoke-a"}' 2>/dev/null || true)
 AGENT_A2=$(echo "$REG_A2" | python3 -c "import sys,json; print(json.load(sys.stdin).get('agent_id',''))" 2>/dev/null || true)
+KEY_A2=$(echo   "$REG_A2" | python3 -c "import sys,json; print(json.load(sys.stdin).get('api_key',''))"  2>/dev/null || true)
 
-if [ -n "$AGENT_A2" ] && [ "$AGENT_A2" != "$AGENT_A" ]; then
-    ok "duplicate agent_id resolved to unique ID: $AGENT_A2"
-else
-    fail "duplicate self-register failed or returned same ID: $REG_A2"
-fi
+[ "$AGENT_A2" = "$AGENT_A" ] && ok "re-registration is idempotent: same agent_id returned" \
+                               || fail "expected $AGENT_A, got $AGENT_A2"
+
+[ "$KEY_A2" = "$KEY_A" ] && ok "re-registration returns same api_key (stable credentials)" \
+                           || fail "api_key changed on re-registration"
 
 STILL_UP=$(curl -sf -o /dev/null -w "%{http_code}" "$API_URL/agents/me" \
     -H "x-agent-id: $AGENT_A" -H "x-api-key: $KEY_A" 2>/dev/null || true)
-[ "$STILL_UP" = "200" ] && ok "original agent-a credentials still valid after re-registration" \
-                          || fail "original agent-a credentials broken: $STILL_UP"
+[ "$STILL_UP" = "200" ] && ok "credentials still valid after re-registration" \
+                          || fail "credentials broken after re-registration: $STILL_UP"
 
 # ── MCP: start server, initialize, tool call ─────────────────────────────────
 
