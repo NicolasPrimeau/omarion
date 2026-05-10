@@ -22,6 +22,14 @@ _notification_queue: asyncio.Queue[tuple[str, str]] | None = None
 _client: httpx.AsyncClient | None = None
 
 
+async def _inject_credentials(request: httpx.Request) -> None:
+    aid = _agent_id.get(None)
+    key = _api_key.get(None)
+    if aid and key:
+        request.headers["x-agent-id"] = aid
+        request.headers["x-api-key"] = key
+
+
 @asynccontextmanager
 async def _lifespan(app: "ArtelMCP"):
     global _notification_queue, _client
@@ -31,6 +39,7 @@ async def _lifespan(app: "ArtelMCP"):
             "x-agent-id": settings.mcp_agent_id,
             "x-api-key": settings.mcp_agent_key,
         },
+        event_hooks={"request": [_inject_credentials]},
         timeout=30.0,
     )
     _notification_queue = asyncio.Queue()
@@ -45,7 +54,24 @@ async def _lifespan(app: "ArtelMCP"):
         await _client.aclose()
 
 
+class _CredentialMiddleware:
+    def __init__(self, app: Any) -> None:
+        self._app = app
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] in ("http", "websocket"):
+            headers = dict(scope.get("headers", []))
+            aid = headers.get(b"x-agent-id", b"").decode()
+            key = headers.get(b"x-api-key", b"").decode()
+            _agent_id.set(aid or settings.mcp_agent_id)
+            _api_key.set(key or settings.mcp_agent_key)
+        await self._app(scope, receive, send)
+
+
 class ArtelMCP(FastMCP):
+    def streamable_http_app(self) -> Any:
+        return _CredentialMiddleware(super().streamable_http_app())
+
     async def call_tool(
         self, name: str, arguments: dict[str, Any] | None
     ) -> list[mcp_types.ContentBlock]:
