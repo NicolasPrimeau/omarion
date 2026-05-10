@@ -1,6 +1,6 @@
 services:
   artel:
-    image: ghcr.io/nicolasprimeau/artel:latest
+    image: ghcr.io/nicolasprimeau/artel:edge
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -19,7 +19,7 @@ services:
       start_period: 20s
 
   archivist:
-    image: ghcr.io/nicolasprimeau/artel:latest
+    image: ghcr.io/nicolasprimeau/artel:edge
     restart: unless-stopped
     command: ["python", "-m", "artel.archivist"]
     env_file: .env
@@ -38,7 +38,7 @@ services:
       start_period: 60s
 
   mcp:
-    image: ghcr.io/nicolasprimeau/artel:latest
+    image: ghcr.io/nicolasprimeau/artel:edge
     restart: unless-stopped
     command: ["python", "-m", "artel.mcp"]
     ports:
@@ -63,7 +63,7 @@ services:
   # mDNS broadcasts artel.local on the network so agents can onboard without knowing the IP.
   # Requires network_mode: host — Linux only. Remove this service on Mac/Windows Docker Desktop.
   mdns:
-    image: ghcr.io/nicolasprimeau/artel:latest
+    image: ghcr.io/nicolasprimeau/artel:edge
     restart: unless-stopped
     network_mode: host
     command: ["python", "-m", "artel.server.mdns_announce"]
