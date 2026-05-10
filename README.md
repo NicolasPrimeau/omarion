@@ -3,54 +3,78 @@
 [![CI](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml/badge.svg)](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
 
-Persistent, shared memory for AI agents — plus the coordination layer to use it.
+**A shared brain for your AI agent fleet.**
 
-LLM agents are stateless by default. Every context reset, every machine switch, every new session starts from zero. Artel fixes that: a self-hosted server that gives your fleet a shared brain they can read from and write to over HTTP.
-
-**Memory is the core.** Entries are stored with embeddings, confidence scores, provenance, and version history. Agents search by meaning, not keywords. A background archivist watches all writes, merges conflicts, synthesizes cross-agent insights, and decays stale entries automatically. What one agent learns, every agent can find.
-
-Tasks, messages, and session handoffs are built on top — coordination primitives that only work well because the shared memory underneath is reliable.
-
-Any agent that speaks HTTP participates — Claude Code, AutoGen, raw API scripts, anything.
+LLM agents are stateless by default. Every context reset, every machine switch, every new session starts from zero. Artel fixes that: a self-hosted server that gives your agents shared memory, async messaging, task coordination, and session continuity — over HTTP, from any framework.
 
 ```
 agent-a (Claude Code)  ──┐
-agent-b (Claude API)   ──┤──  REST / MCP HTTP  ──  Artel Server  ──  SQLite + embeddings
-agent-c (AutoGen)      ──┘                           ├── shared memory + semantic search
-                                                      ├── tasks, messages, events
-                                                      └── archivist (conflict merge, synthesis, decay)
+agent-b (Claude API)   ──┤──  REST / MCP  ──  Artel Server  ──  SQLite + embeddings
+agent-c (AutoGen)      ──┘                      ├── shared memory + semantic search
+                                                 ├── tasks · messages · events
+                                                 └── archivist (synthesis · decay · merge)
 ```
 
-![Two agents coordinate a production incident — memory, tasks, messages, and session handoff live](docs/demo.gif)
+![Two agents coordinate a production incident — memory, tasks, messages, and session handoff](docs/demo.gif)
 
 ---
 
-## Web UI
+## What agents can do
 
-A built-in dashboard lets you browse and search memory, inspect tasks, read agent inboxes, and monitor participants — all from a browser.
+**Any agent on your network** registers in one command, then gets access to:
 
-![Artel web UI showing shared memory entries with tags, confidence scores, and provenance](docs/ui.png)
+- **Shared memory** — write observations, search by meaning. What one agent learns, every agent can find.
+- **Tasks** — create work, claim it, complete it. Coordination without a scheduler.
+- **Messages** — async inbox. Agents talk to each other directly, or broadcast to the fleet.
+- **Session handoffs** — save state before going idle, resume with full context on the next start.
+- **Events** — pub/sub stream with SSE for real-time coordination.
 
-Access it at `http://<host>:8000/ui`. Set `UI_PASSWORD` in `.env` to require a password.
+The **archivist** runs in the background, merging conflicts, synthesizing cross-agent knowledge into docs, and decaying stale entries so memory stays clean.
 
 ---
 
-## Memory
+## Dashboard
 
-```python
-agent.post("/memory", json={
-    "content": "orders-service p99 spiked at 03:14 UTC — root cause: missing index on customer_id",
-    "tags": ["incident", "orders", "resolved"],
-    "confidence": 1.0,
-})
+Browse memory, manage tasks, read inboxes, and inspect your fleet — from a browser.
 
-# any agent, any machine, any session — later:
-results = agent.get("/memory/search", params={"q": "orders latency root cause"}).json()
-```
+![Memory — semantic search, confidence scores, provenance, tags](docs/ui_memory.png)
 
-Entries carry **confidence scores** (0.0–1.0) that decay over time if not reinforced, so stale knowledge doesn't pile up. Every write records **provenance** — which agent, when, from which parent entries. The **archivist** runs in the background promoting stable entries from scratch → memory → doc and synthesizing cross-agent findings neither agent could see alone.
+<table>
+<tr>
+<td width="50%">
 
-Session continuity is memory-backed: `POST /sessions/handoff` before you stop, `GET /sessions/handoff/:id` when you start — returns your last summary plus every memory entry written since you were last active.
+**Tasks** — create, claim, complete across agents and machines. Priority levels, assignee tracking, expected outcomes.
+
+![Tasks tab](docs/ui_tasks.png)
+
+</td>
+<td width="50%">
+
+**Messages** — async agent-to-agent inbox. Reply, mark read, or broadcast to the fleet.
+
+![Messages tab](docs/ui_messages.png)
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Agents** — registered fleet with last-seen timestamps and project membership.
+
+![Agents tab](docs/ui_agents.png)
+
+</td>
+<td width="50%">
+
+**Sessions** — load any agent's last handoff: summary, next steps, and in-progress work.
+
+![Sessions tab](docs/ui_sessions.png)
+
+</td>
+</tr>
+</table>
+
+Access at `http://<host>:8000/ui`. Set `UI_PASSWORD` in `.env` to require a password.
 
 ---
 
@@ -78,31 +102,35 @@ curl http://<host>:8000/onboard | sh
 curl -O https://raw.githubusercontent.com/NicolasPrimeau/artel/master/docker-compose.yml
 curl -O https://raw.githubusercontent.com/NicolasPrimeau/artel/master/.env.example
 cp .env.example .env
-# edit .env — set UI_PASSWORD, AGENT_KEYS, and ANTHROPIC_API_KEY at minimum
-python scripts/seed_keys.py  # auto-generates AGENT_KEYS if you have uv
+# edit .env — set UI_PASSWORD and ANTHROPIC_API_KEY at minimum
 docker compose up -d
 ```
 
 - API: `http://<host>:8000`
 - MCP: `http://<host>:8001/mcp`
 
-Images at `ghcr.io/nicolasprimeau/artel`. The `docker-compose.yml` uses `:latest`. Pin to a release tag (`:0.1.0`) for production.
+Images at `ghcr.io/nicolasprimeau/artel:edge`. The UI agent is created automatically on first start — no manual setup needed.
 
 > **mDNS note:** the `mdns` service uses `network_mode: host` and only works on Linux. Remove it on Mac/Windows Docker Desktop — agents can still onboard by specifying the host IP directly.
 
 ---
 
-## Primitives
+## Memory
 
-| Primitive | Description |
-|-----------|-------------|
-| **Memory** | Shared knowledge store with embeddings, confidence scores, provenance, and version history. |
-| **Tasks** | Create, claim, complete across agents and machines. |
-| **Messages** | Async inbox. Send to a specific agent or broadcast. |
-| **Participants** | List registered agents and last-seen timestamps. |
-| **Events** | Pub/sub stream + SSE. |
-| **Sessions** | Save a handoff at session end; load it back with the memory delta at next start. |
-| **Archivist** | Background agent that merges conflicts, synthesizes cross-agent docs, and decays stale entries. |
+```python
+agent.post("/memory", json={
+    "content": "orders-service p99 spiked at 03:14 UTC — root cause: missing index on customer_id",
+    "tags": ["incident", "orders", "resolved"],
+    "confidence": 1.0,
+})
+
+# any agent, any machine, any session — later:
+results = agent.get("/memory/search", params={"q": "orders latency root cause"}).json()
+```
+
+Entries carry **confidence scores** (0.0–1.0) that decay over time if not reinforced. Every write records **provenance** — which agent, when, from which parent entries. The archivist promotes stable entries from scratch → memory → doc and synthesizes cross-agent findings neither agent could see alone.
+
+Session continuity is memory-backed: `POST /sessions/handoff` before you stop, `GET /sessions/handoff/:id` when you resume — returns your last summary plus every memory entry written since you were last active.
 
 ---
 
@@ -201,6 +229,7 @@ Other
 | `PUBLIC_URL` | — | Base URL returned in `mcp_config` |
 | `MCP_URL` | — | MCP URL in `mcp_config` (defaults to `PUBLIC_URL` on port 8001) |
 | `UI_PASSWORD` | — | Web UI password |
+| `UI_AGENT_ID` | `artel-ui` | Agent used by the dashboard — auto-created on startup |
 | `ARCHIVIST_KEY` | — | Must match a key in `AGENT_KEYS` |
 | `ARCHIVIST_PROVIDER` | `anthropic` | LLM provider: `anthropic` or `openai` |
 | `ARCHIVIST_MODEL` | — | Defaults to `claude-sonnet-4-6` / `gpt-4o` |
