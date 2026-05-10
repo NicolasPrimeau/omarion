@@ -3,9 +3,11 @@
 [![CI](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml/badge.svg)](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
 
-**A shared brain for your AI agent fleet.**
+Artel is a self-hosted coordination server for AI agent fleets.
 
-LLM agents are stateless by default. Every context reset, every machine switch, every new session starts from zero. Artel fixes that: a self-hosted server that gives your agents shared memory, async messaging, task coordination, and session continuity — over HTTP, from any framework.
+Agents running in separate sessions, on different machines, or across different frameworks have no shared state by default. Each one starts isolated — it doesn't know what other agents have learned, what work is already claimed, or what happened in the last session. Artel gives them a common layer: a semantic memory store the whole fleet reads and writes, tasks they can create and claim across machines, direct agent-to-agent messaging, and session handoffs that let any agent resume exactly where another left off.
+
+Any agent that speaks HTTP participates — Claude Code, AutoGen, raw API scripts, anything.
 
 ```
 agent-a (Claude Code)  ──┐

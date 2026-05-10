@@ -5,7 +5,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    PlainTextResponse,
+    RedirectResponse,
+)
 
 from ..store.db import get_db
 from .config import settings
@@ -100,11 +106,17 @@ app.include_router(projects_router)
 
 
 _LLMS_TXT = (Path(__file__).parent.parent.parent / "llms.txt").read_text()
+_FAVICON = Path(__file__).parent / "static" / "favicon.ico"
 
 
 @app.get("/llms.txt", response_class=PlainTextResponse, include_in_schema=False)
 async def llms_txt():
     return _LLMS_TXT
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse(_FAVICON, media_type="image/x-icon")
 
 
 @app.get("/health", summary="Health check")
