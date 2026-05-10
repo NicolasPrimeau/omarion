@@ -3,9 +3,13 @@
 [![CI](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml/badge.svg)](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
 
-Multiple AI agents, one shared brain.
+Persistent, shared memory for AI agents — plus the coordination layer to use it.
 
-Memory that persists across sessions and machines. Tasks that don't get duplicated. Messages that actually arrive. A background archivist that synthesizes what no individual agent can see.
+LLM agents are stateless by default. Every context reset, every machine switch, every new session starts from zero. Artel fixes that: a self-hosted server that gives your fleet a shared brain they can read from and write to over HTTP.
+
+**Memory is the core.** Entries are stored with embeddings, confidence scores, provenance, and version history. Agents search by meaning, not keywords. A background archivist watches all writes, merges conflicts, synthesizes cross-agent insights, and decays stale entries automatically. What one agent learns, every agent can find.
+
+Tasks, messages, and session handoffs are built on top — coordination primitives that only work well because the shared memory underneath is reliable.
 
 Any agent that speaks HTTP participates — Claude Code, AutoGen, raw API scripts, anything.
 
@@ -18,6 +22,25 @@ agent-c (AutoGen)      ──┘                           ├── shared memo
 ```
 
 ![Two agents coordinate a production incident — memory, tasks, messages, and session handoff live](docs/demo.gif)
+
+---
+
+## Memory
+
+```python
+agent.post("/memory", json={
+    "content": "orders-service p99 spiked at 03:14 UTC — root cause: missing index on customer_id",
+    "tags": ["incident", "orders", "resolved"],
+    "confidence": 1.0,
+})
+
+# any agent, any machine, any session — later:
+results = agent.get("/memory/search", params={"q": "orders latency root cause"}).json()
+```
+
+Entries carry **confidence scores** (0.0–1.0) that decay over time if not reinforced, so stale knowledge doesn't pile up. Every write records **provenance** — which agent, when, from which parent entries. The **archivist** runs in the background promoting stable entries from scratch → memory → doc and synthesizing cross-agent findings neither agent could see alone.
+
+Session continuity is memory-backed: `POST /sessions/handoff` before you stop, `GET /sessions/handoff/:id` when you start — returns your last summary plus every memory entry written since you were last active.
 
 ---
 
