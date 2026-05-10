@@ -4,290 +4,381 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>artel</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 :root{
-  --bg:        #09090b;
-  --s1:        #18181b;
-  --s2:        #27272a;
-  --s3:        #3f3f46;
-  --b1:        #27272a;
-  --b2:        #3f3f46;
-  --t1:        #fafafa;
-  --t2:        #a1a1aa;
-  --t3:        #71717a;
-  --t4:        #52525b;
-  --accent:    #60a5fa;
-  --a-bg:      rgba(96,165,250,.12);
-  --a-border:  rgba(96,165,250,.25);
-  --green:     #4ade80;
-  --g-bg:      rgba(74,222,128,.1);
-  --red:       #f87171;
-  --r-bg:      rgba(248,113,113,.1);
-  --orange:    #fb923c;
-  --o-bg:      rgba(251,146,60,.1);
-  --purple:    #c084fc;
-  --p-bg:      rgba(192,132,252,.1);
-  --font:      'Inter',system-ui,sans-serif;
-  --mono:      'JetBrains Mono',monospace;
-  --r:         6px;
-  --r-sm:      4px;
-  --hh:        52px;
-  --nh:        40px;
+  --bg:     #070f17;
+  --s1:     #0b1825;
+  --s2:     #10202e;
+  --s3:     #172d40;
+  --b1:     #1c3048;
+  --b2:     #274460;
+  --t1:     #c5dced;
+  --t2:     #7aacc8;
+  --t3:     #4a7599;
+  --t4:     #2d5570;
+  --accent: #00d4ff;
+  --a-bg:   rgba(0,212,255,.07);
+  --a-bord: rgba(0,212,255,.22);
+  --green:  #00e87a;
+  --g-bg:   rgba(0,232,122,.07);
+  --g-bord: rgba(0,232,122,.22);
+  --red:    #ff4d6a;
+  --r-bg:   rgba(255,77,106,.07);
+  --r-bord: rgba(255,77,106,.22);
+  --orange: #ffaa2c;
+  --o-bg:   rgba(255,170,44,.07);
+  --o-bord: rgba(255,170,44,.22);
+  --purple: #a07aff;
+  --p-bg:   rgba(160,122,255,.07);
+  --p-bord: rgba(160,122,255,.22);
+  --mono:   'JetBrains Mono',ui-monospace,'Cascadia Code','Fira Code',monospace;
+  --r:      2px;
+  --hh:     44px;
+  --nh:     36px;
 }
 
 html{height:100%}
-body{font:14px/1.6 var(--font);background:var(--bg);color:var(--t1);min-height:100%}
+body{
+  font:13px/1.6 var(--mono);
+  background:var(--bg);
+  color:var(--t1);
+  min-height:100%;
+  /* subtle dot grid */
+  background-image:radial-gradient(circle,rgba(0,180,255,.035) 1px,transparent 1px);
+  background-size:24px 24px;
+}
 
-/* ── Header ──────────────────────────────── */
+/* ── Header ───────────────────────────── */
 header{
-  display:flex;align-items:center;gap:10px;
-  padding:0 20px;height:var(--hh);
-  background:var(--s1);border-bottom:1px solid var(--b1);
+  display:flex;align-items:center;gap:12px;
+  padding:0 18px;height:var(--hh);
+  background:rgba(7,15,23,.96);
+  border-bottom:1px solid var(--b1);
   position:sticky;top:0;z-index:200;
+  backdrop-filter:blur(8px);
 }
-header b{
-  font:600 15px var(--font);color:var(--t1);
-  letter-spacing:-.3px;flex-shrink:0;
+.logo{
+  font:600 14px var(--mono);
+  color:var(--t1);
+  letter-spacing:-.5px;
+  flex-shrink:0;
+  display:flex;align-items:center;gap:6px;
 }
-.h-sep{color:var(--b2);font-size:11px;flex-shrink:0}
-#h-agent-sel,select#h-project{
-  background:transparent;border:1px solid var(--b1);
-  color:var(--t3);font:13px var(--font);
-  padding:4px 8px;border-radius:var(--r-sm);
-  min-width:0;max-width:140px;cursor:pointer;
-  transition:border-color .15s,color .15s;
+.logo-mark{color:var(--accent);font-size:16px;line-height:1}
+.h-div{color:var(--b2);font-size:10px;flex-shrink:0;user-select:none}
+.h-select{
+  background:transparent;
+  border:1px solid var(--b1);
+  color:var(--t3);
+  font:12px var(--mono);
+  padding:3px 7px;
+  border-radius:var(--r);
+  min-width:0;max-width:150px;
+  cursor:pointer;
+  transition:border-color .12s,color .12s;
+  appearance:none;
+  -webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232d5570' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 7px center;
+  padding-right:22px;
 }
-#h-agent-sel:hover,select#h-project:hover{border-color:var(--b2);color:var(--t2)}
-#h-agent-sel:focus,select#h-project:focus{outline:none;border-color:var(--accent);color:var(--t1)}
+.h-select:hover{border-color:var(--b2);color:var(--t2)}
+.h-select:focus{outline:none;border-color:var(--accent);color:var(--t1)}
+#h-agent-sel,.h-select{background-color:transparent}
 .spacer{flex:1}
-a.out{
-  color:var(--t4);font-size:13px;text-decoration:none;
-  flex-shrink:0;padding:5px 9px;border-radius:var(--r-sm);
-  transition:color .15s,background .15s;
+.h-stat{
+  font:11px var(--mono);color:var(--t4);
+  flex-shrink:0;
+  display:flex;align-items:center;gap:4px;
 }
-a.out:hover{color:var(--t2);background:var(--s2)}
+.h-stat-val{color:var(--t3)}
+.h-logout{
+  color:var(--t4);font:12px var(--mono);
+  text-decoration:none;flex-shrink:0;
+  padding:4px 8px;border-radius:var(--r);
+  border:1px solid transparent;
+  transition:color .12s,border-color .12s;
+}
+.h-logout:hover{color:var(--t2);border-color:var(--b1)}
 
-/* ── Nav ─────────────────────────────────── */
+/* ── Nav ──────────────────────────────── */
 nav{
-  display:flex;background:var(--s1);
+  display:flex;
+  background:rgba(7,15,23,.92);
   border-bottom:1px solid var(--b1);
   overflow-x:auto;scrollbar-width:none;
   position:sticky;top:var(--hh);z-index:199;
+  backdrop-filter:blur(8px);
+  padding:0 6px;
 }
 nav::-webkit-scrollbar{display:none}
 .nav-btn{
-  flex-shrink:0;border:none;border-bottom:2px solid transparent;
-  background:none;padding:0 16px;height:var(--nh);
-  font:500 13px var(--font);color:var(--t4);
-  cursor:pointer;white-space:nowrap;position:relative;
-  transition:color .15s;
+  flex-shrink:0;border:none;background:none;
+  padding:0 12px;height:var(--nh);
+  font:500 11px var(--mono);
+  color:var(--t4);
+  letter-spacing:.6px;text-transform:uppercase;
+  cursor:pointer;white-space:nowrap;
+  position:relative;
+  border-top:2px solid transparent;
+  border-bottom:2px solid transparent;
+  transition:color .12s;
+  margin-top:-1px;
 }
-.nav-btn:hover{color:var(--t2);background:none}
-.nav-btn.on{color:var(--t1);border-bottom-color:var(--accent)}
+.nav-btn:hover{color:var(--t2)}
+.nav-btn.on{color:var(--accent);border-top-color:var(--accent)}
 .badge{
-  position:absolute;top:5px;right:6px;
-  background:var(--accent);color:#000;
-  font:700 10px var(--font);border-radius:8px;
-  padding:0 5px;line-height:16px;min-width:16px;text-align:center;
+  position:absolute;top:4px;right:4px;
+  background:var(--red);color:#fff;
+  font:700 9px var(--mono);
+  border-radius:99px;padding:0 4px;line-height:14px;min-width:14px;text-align:center;
 }
 
-/* ── Inputs / selects / textareas ─────────── */
+/* ── Panels ───────────────────────────── */
+.panel{display:none;padding:18px 20px;max-width:1100px;margin:0 auto}
+.panel.on{display:block}
+
+/* ── Toolbar ──────────────────────────── */
+.toolbar{
+  display:flex;gap:8px;margin-bottom:14px;
+  align-items:center;flex-wrap:wrap;
+}
+
+/* ── Inputs ───────────────────────────── */
 input,select,textarea{
-  background:var(--s2);color:var(--t1);
+  background:var(--s2);
+  color:var(--t1);
   border:1px solid var(--b1);
-  padding:8px 12px;font:14px var(--font);
-  border-radius:var(--r-sm);outline:none;
-  transition:border-color .15s;
+  padding:6px 10px;
+  font:13px var(--mono);
+  border-radius:var(--r);
+  outline:none;
+  transition:border-color .12s;
 }
 input:focus,textarea:focus,select:focus{border-color:var(--accent)}
 input::placeholder,textarea::placeholder{color:var(--t4)}
 textarea{resize:vertical}
+select{
+  cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232d5570' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 8px center;
+  padding-right:26px;
+  appearance:none;
+  -webkit-appearance:none;
+}
 
-/* ── Buttons ─────────────────────────────── */
+/* ── Buttons ──────────────────────────── */
 button{
-  display:inline-flex;align-items:center;justify-content:center;gap:5px;
-  background:var(--s2);color:var(--t2);
+  display:inline-flex;align-items:center;justify-content:center;gap:4px;
+  background:var(--s2);color:var(--t3);
   border:1px solid var(--b1);
-  padding:0 14px;height:34px;
-  font:500 13px var(--font);
-  border-radius:var(--r-sm);cursor:pointer;
-  white-space:nowrap;
-  transition:background .15s,border-color .15s,color .15s;
+  padding:0 12px;height:30px;
+  font:500 11px var(--mono);letter-spacing:.4px;text-transform:uppercase;
+  border-radius:var(--r);cursor:pointer;white-space:nowrap;
+  transition:background .12s,border-color .12s,color .12s;
 }
 button:hover{background:var(--s3);border-color:var(--b2);color:var(--t1)}
-button:active{opacity:.8}
-
+button:active{opacity:.75}
 button.p{
   background:var(--a-bg);color:var(--accent);
-  border-color:var(--a-border);
+  border-color:var(--a-bord);
 }
-button.p:hover{background:rgba(96,165,250,.2);border-color:var(--accent)}
+button.p:hover{background:rgba(0,212,255,.14);border-color:var(--accent)}
+button.danger{color:var(--t4)}
+button.danger:hover{background:var(--r-bg);color:var(--red);border-color:var(--r-bord)}
+button.sm{height:24px;font-size:10px;padding:0 8px}
 
-button.danger{color:var(--t3);border-color:var(--b1)}
-button.danger:hover{background:var(--r-bg);color:var(--red);border-color:rgba(248,113,113,.3)}
-
-@media(max-width:600px){
-  input,select,textarea,button{font-size:16px}
-  button{height:44px}
-}
-
-/* ── Panels ──────────────────────────────── */
-.panel{display:none;padding:20px;max-width:1040px}
-.panel.on{display:block}
-
-/* ── Toolbar ─────────────────────────────── */
-.toolbar{display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
-.toolbar input,.toolbar select{min-width:0}
-
-/* ── Write box ───────────────────────────── */
+/* ── Write box ────────────────────────── */
 .write-box{
-  background:var(--s1);border:1px solid var(--b1);
-  border-radius:var(--r);padding:16px;margin-bottom:20px;
+  background:var(--s1);
+  border:1px solid var(--b1);
+  border-radius:var(--r);
+  padding:14px;
+  margin-bottom:18px;
 }
-.write-box textarea{
-  width:100%;margin-bottom:10px;min-height:80px;
-  background:var(--bg);border-color:var(--b1);
-}
+.write-box textarea{width:100%;margin-bottom:8px;background:var(--bg)}
 .write-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .write-row input,.write-row select{min-width:0}
-
 @media(max-width:600px){
   .write-row{flex-direction:column;align-items:stretch}
   .write-row .spacer{display:none}
   .write-row button,.write-row input,.write-row select{width:100%}
 }
 
-/* ── Cards ───────────────────────────────── */
+/* ── Cards ────────────────────────────── */
 .card{
-  background:var(--s1);border:1px solid var(--b1);
-  border-radius:var(--r);padding:14px 16px;
-  margin-bottom:8px;transition:border-color .15s;
+  background:var(--s1);
+  border:1px solid var(--b1);
+  border-left:3px solid var(--b2);
+  border-radius:var(--r);
+  padding:12px 14px;
+  margin-bottom:6px;
+  transition:border-color .12s;
 }
-.card:hover{border-color:var(--b2)}
+.card:hover{border-color:var(--b2);border-left-color:var(--b2)}
+.card.accent{border-left-color:var(--accent)}
+.card.green {border-left-color:var(--green)}
+.card.orange{border-left-color:var(--orange)}
+.card.red   {border-left-color:var(--red)}
+.card.purple{border-left-color:var(--purple)}
 
+/* ── Meta row ─────────────────────────── */
 .meta{
-  display:flex;gap:7px;align-items:center;flex-wrap:wrap;
-  margin-bottom:8px;font:12px var(--mono);color:var(--t4);
+  display:flex;gap:6px;align-items:center;flex-wrap:wrap;
+  margin-bottom:7px;font:11px var(--mono);color:var(--t4);
 }
-.meta-agent{color:var(--accent);font-weight:500}
-.meta-time{color:var(--t4);margin-left:auto}
-.meta-id{color:var(--t4)}
+.meta-agent{color:var(--accent);font-weight:600}
+.meta-time{color:var(--t4);margin-left:auto;flex-shrink:0}
+.meta-id{color:var(--t4);font-size:10px;letter-spacing:.5px}
 
-/* ── Pills / tags ────────────────────────── */
+/* ── Pills ────────────────────────────── */
+.pill{
+  padding:1px 6px;border-radius:2px;
+  font:600 10px var(--mono);letter-spacing:.3px;
+  text-transform:uppercase;flex-shrink:0;
+}
+.pill.memory {background:var(--a-bg);color:var(--accent);border:1px solid var(--a-bord)}
+.pill.doc    {background:var(--p-bg);color:var(--purple);border:1px solid var(--p-bord)}
+.pill.private{background:var(--r-bg);color:var(--red);border:1px solid var(--r-bord)}
+.pill.project{background:var(--o-bg);color:var(--orange);border:1px solid var(--o-bord)}
 .tag{
-  background:var(--g-bg);color:var(--green);
-  padding:2px 8px;border-radius:99px;
-  font:11px var(--mono);
+  padding:1px 6px;border-radius:2px;
+  font:11px var(--mono);color:var(--t3);
+  background:var(--s3);border:1px solid var(--b2);
 }
-.pill{padding:2px 8px;border-radius:99px;font:600 11px var(--mono)}
-.pill.memory {background:var(--a-bg); color:var(--accent)}
-.pill.doc    {background:var(--p-bg); color:var(--purple)}
-.pill.private{background:var(--r-bg); color:var(--red)}
-.pill.global {background:var(--o-bg); color:var(--orange)}
-.pill.project{background:var(--a-bg); color:var(--accent);border:1px solid var(--a-border)}
 
-.conf{font:11px var(--mono);color:var(--t4)}
-.conf span{color:var(--green)}
+/* ── Confidence bar ───────────────────── */
+.conf-row{
+  display:flex;align-items:center;gap:8px;
+  margin-top:8px;
+}
+.conf-bar{
+  flex:1;max-width:80px;height:3px;
+  background:var(--b1);border-radius:1px;overflow:hidden;
+}
+.conf-fill{
+  height:100%;border-radius:1px;
+  background:var(--accent);
+  transition:width .3s;
+}
+.conf-fill.low{background:var(--orange)}
+.conf-fill.very-low{background:var(--red)}
+.conf-label{font:10px var(--mono);color:var(--t4)}
 
-pre{white-space:pre-wrap;word-break:break-word;font:13px/1.7 var(--mono);color:var(--t2)}
+pre{
+  white-space:pre-wrap;word-break:break-word;
+  font:12px/1.65 var(--mono);color:var(--t2);
+  margin:0;
+}
 
-/* ── Card actions ────────────────────────── */
-.card-actions{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
-.card-actions button{height:28px;font-size:12px;padding:0 10px}
+/* ── Card actions ─────────────────────── */
+.card-actions{display:flex;gap:5px;margin-top:10px;flex-wrap:wrap}
 
-/* ── Status / priority ───────────────────── */
-.s{padding:2px 8px;border-radius:99px;font:600 11px var(--mono)}
-.s.open     {background:var(--o-bg);color:var(--orange)}
-.s.claimed  {background:var(--a-bg);color:var(--accent)}
-.s.completed{background:var(--g-bg);color:var(--green)}
-.s.failed   {background:var(--r-bg);color:var(--red)}
-
-.pri{font:600 11px var(--mono)}
+/* ── Status / priority ────────────────── */
+.s{padding:1px 6px;border-radius:2px;font:600 10px var(--mono);text-transform:uppercase;flex-shrink:0}
+.s.open     {background:var(--o-bg);color:var(--orange);border:1px solid var(--o-bord)}
+.s.claimed  {background:var(--a-bg);color:var(--accent);border:1px solid var(--a-bord)}
+.s.completed{background:var(--g-bg);color:var(--green);border:1px solid var(--g-bord)}
+.s.failed   {background:var(--r-bg);color:var(--red);border:1px solid var(--r-bord)}
+.pri{font:600 10px var(--mono);text-transform:uppercase}
 .pri.high{color:var(--red)}
 .pri.low {color:var(--t4)}
 
-/* ── Events ──────────────────────────────── */
+/* ── Events log ───────────────────────── */
 #ev-log{
-  height:400px;overflow-y:auto;
-  font:12px/1.5 var(--mono);
-  border:1px solid var(--b1);border-radius:var(--r);
-  padding:4px;background:var(--s1);
+  height:420px;overflow-y:auto;
+  font:11px/1.5 var(--mono);
+  border:1px solid var(--b1);
+  border-radius:var(--r);
+  background:var(--bg);
   scrollbar-width:thin;scrollbar-color:var(--s3) transparent;
 }
+#ev-log::-webkit-scrollbar{width:4px}
+#ev-log::-webkit-scrollbar-thumb{background:var(--s3)}
 .el{
-  padding:4px 8px;border-radius:var(--r-sm);
-  display:grid;gap:8px;align-items:baseline;
-  grid-template-columns:65px 1fr auto;
-  grid-template-areas:"time type payload";
+  padding:4px 10px;
+  display:grid;gap:10px;align-items:baseline;
+  border-bottom:1px solid rgba(28,48,72,.4);
+  grid-template-columns:60px 1fr;
+  grid-template-areas:"time payload";
 }
-.el:hover{background:var(--s2)}
-.el-time   {color:var(--t4);grid-area:time}
-.el-type   {color:var(--accent);grid-area:type}
-.el-agent  {color:var(--t3);display:none}
-.el-payload{color:var(--t3);grid-area:payload;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
-
+.el:hover{background:var(--s1)}
 @media(min-width:700px){
-  .el{grid-template-columns:65px 200px 120px 1fr;grid-template-areas:"time type agent payload"}
-  .el-agent{display:block}
+  .el{grid-template-columns:60px 180px 110px 1fr;grid-template-areas:"time type agent payload"}
+  .el-type,.el-agent{display:block}
 }
+.el-time   {color:var(--t4);grid-area:time;font-size:10px}
+.el-type   {color:var(--accent);grid-area:type;display:none}
+.el-agent  {color:var(--t3);grid-area:agent;display:none}
+.el-payload{color:var(--t3);grid-area:payload;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px}
+.sse-dot{
+  width:6px;height:6px;border-radius:50%;
+  display:inline-block;background:var(--t4);flex-shrink:0;
+  transition:background .2s;
+}
+.sse-dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.sse-label{font:11px var(--mono);color:var(--t3)}
 
-.sse-status{font:13px var(--mono);padding:4px 10px;border-radius:var(--r-sm)}
-.sse-status.on {color:var(--green); background:var(--g-bg)}
-.sse-status.off{color:var(--t3);    background:var(--s2)}
-
-/* ── Agents ──────────────────────────────── */
-.agent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+/* ── Agent grid ───────────────────────── */
+.agent-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
 .ac{
   background:var(--s1);border:1px solid var(--b1);
-  border-radius:var(--r);padding:14px 16px;
-  transition:border-color .15s;
+  border-left:3px solid var(--b2);
+  border-radius:var(--r);padding:12px 14px;
+  transition:border-color .12s;
 }
 .ac:hover{border-color:var(--b2)}
+.ac.active{border-left-color:var(--green)}
 .ac-name{
-  font:500 14px var(--font);color:var(--t2);
-  margin-bottom:6px;display:flex;align-items:center;gap:8px;
+  font:500 13px var(--mono);color:var(--t3);
+  margin-bottom:6px;display:flex;align-items:center;gap:7px;
 }
-.dot{width:7px;height:7px;border-radius:50%;background:var(--s3);flex-shrink:0}
-.ac.active .dot{background:var(--green)}
+.dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--b2);flex-shrink:0;
+  transition:background .2s;
+}
+.ac.active .dot{background:var(--green);box-shadow:0 0 5px var(--green)}
 .ac.active .ac-name{color:var(--t1)}
-.ac-meta{font:12px var(--mono);color:var(--t3);display:flex;flex-direction:column;gap:3px;margin-bottom:10px}
+.ac-meta{font:11px var(--mono);color:var(--t4);display:flex;flex-direction:column;gap:2px;margin-bottom:9px}
 
-/* ── Projects ────────────────────────────── */
-.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+/* ── Project grid ─────────────────────── */
+.proj-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px}
 .pj{
   background:var(--s1);border:1px solid var(--b1);
-  border-radius:var(--r);padding:16px;cursor:pointer;
-  transition:border-color .15s;
+  border-left:3px solid var(--b2);
+  border-radius:var(--r);padding:14px;
+  transition:border-color .12s;
 }
 .pj:hover{border-color:var(--b2)}
-.pj.mine{border-color:var(--a-border)}
-.pj-name  {font:600 15px var(--font);color:var(--t1);margin-bottom:6px}
-.pj-agents{font:12px var(--mono);color:var(--t3);margin-bottom:8px}
-.pj-stats {font:12px var(--mono);color:var(--t4);display:flex;gap:14px;flex-wrap:wrap}
+.pj.mine{border-left-color:var(--accent)}
+.pj-name{font:600 13px var(--mono);color:var(--t1);margin-bottom:5px}
+.pj-agents{font:11px var(--mono);color:var(--t4);margin-bottom:7px}
+.pj-stats{font:11px var(--mono);color:var(--t4);display:flex;gap:12px;flex-wrap:wrap}
 .pj-stat-val{color:var(--t3)}
 
-/* ── Misc ────────────────────────────────── */
-.flash{color:var(--green);font-size:13px;margin-left:4px;opacity:0;transition:opacity .3s;white-space:nowrap}
+/* ── Misc ─────────────────────────────── */
+.flash{color:var(--green);font:11px var(--mono);margin-left:4px;opacity:0;transition:opacity .3s}
 .flash.show{opacity:1}
-
 .section-label{
-  font:500 11px var(--mono);color:var(--t4);
-  text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;
+  font:500 10px var(--mono);color:var(--t4);
+  text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px;
 }
+.empty{color:var(--t4);padding:36px 0;text-align:center;font:12px var(--mono)}
 
-.empty{color:var(--t4);padding:40px 0;text-align:center;font-size:14px}
-
-/* ── Mobile ──────────────────────────────── */
+/* ── Mobile ───────────────────────────── */
 @media(max-width:600px){
-  header{padding:0 14px;gap:8px}
-  #h-agent-sel,select#h-project{max-width:110px;font-size:12px}
-  .panel{padding:14px}
-  .write-box{padding:14px}
+  header{padding:0 12px;gap:8px}
+  .h-select{max-width:110px}
+  .panel{padding:12px 14px}
   .agent-grid,.proj-grid{grid-template-columns:1fr}
+  input,select,textarea,button{font-size:14px}
+  button{height:38px}
 }
 </style>
 </head>
@@ -295,16 +386,20 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.7 var(--mono);color:v
 <script>/*CREDS*/</script>
 
 <header>
-  <b>artel</b>
-  <span class="h-sep">|</span>
-  <select id="h-agent-sel" onchange="onAgentChange()" title="active agent">
+  <div class="logo"><span class="logo-mark">◈</span> artel</div>
+  <span class="h-div">·</span>
+  <select id="h-agent-sel" class="h-select" onchange="onAgentChange()" title="active agent">
     <option value="">all agents</option>
   </select>
-  <select id="h-project" onchange="onProjectChange()" title="active project">
+  <select id="h-project" class="h-select" onchange="onProjectChange()" title="active project">
     <option value="">all projects</option>
   </select>
   <div class="spacer"></div>
-  <a class="out" href="/ui/logout">logout</a>
+  <div class="h-stat" id="h-agent-count" style="display:none">
+    <span class="sse-dot on"></span>
+    <span id="h-active-count" class="h-stat-val">0</span><span> active</span>
+  </div>
+  <a class="h-logout" href="/ui/logout">logout</a>
 </header>
 
 <nav>
@@ -320,9 +415,9 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.7 var(--mono);color:v
 <!-- MEMORY -->
 <div id="panel-memory" class="panel on">
   <div class="toolbar">
-    <input id="q" placeholder="search…" style="flex:1;min-width:120px" onkeydown="if(event.key==='Enter')search()">
-    <select id="q-agent" style="width:130px"><option value="">all agents</option></select>
-    <select id="q-type" style="width:110px" onchange="search()">
+    <input id="q" placeholder="semantic search…" style="flex:1;min-width:120px" onkeydown="if(event.key==='Enter')search()">
+    <select id="q-agent" style="width:130px" onchange="search()"><option value="">all agents</option></select>
+    <select id="q-type" style="width:100px" onchange="search()">
       <option value="">all types</option>
       <option>memory</option>
       <option>doc</option>
@@ -331,7 +426,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.7 var(--mono);color:v
     <button onclick="loadMem()">all</button>
   </div>
   <div class="write-box">
-    <textarea id="mc" placeholder="write memory…" rows="3"></textarea>
+    <textarea id="mc" placeholder="write memory entry…" rows="3"></textarea>
     <div class="write-row">
       <input id="mtags" placeholder="tags (comma-separated)" style="flex:1">
       <select id="mtype"><option>memory</option><option>doc</option></select>
@@ -346,8 +441,9 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.7 var(--mono);color:v
 <!-- TASKS -->
 <div id="panel-tasks" class="panel">
   <div class="toolbar">
-    <select id="tf" onchange="loadTasks()">
-      <option value="">all</option><option>open</option><option>claimed</option><option>completed</option><option>failed</option>
+    <select id="tf" onchange="loadTasks()" style="width:120px">
+      <option value="">all</option>
+      <option>open</option><option>claimed</option><option>completed</option><option>failed</option>
     </select>
     <button onclick="loadTasks()">refresh</button>
   </div>
@@ -358,7 +454,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.7 var(--mono);color:v
     </div>
     <div class="write-row">
       <input id="toutcome" placeholder="expected outcome" style="flex:1">
-      <select id="tpri"><option>normal</option><option>low</option><option>high</option></select>
+      <select id="tpri" style="width:100px"><option>normal</option><option>low</option><option>high</option></select>
       <button class="p" onclick="createTask()">create</button>
     </div>
   </div>
@@ -368,14 +464,15 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.7 var(--mono);color:v
 <!-- MESSAGES -->
 <div id="panel-messages" class="panel">
   <div class="write-box">
-    <div class="write-row" style="margin-bottom:10px">
+    <div class="write-row" style="margin-bottom:8px">
       <input id="mto" placeholder="to…" style="flex:1" list="agent-list-dl">
       <datalist id="agent-list-dl"></datalist>
       <input id="msub" placeholder="subject (optional)" style="flex:1">
     </div>
     <textarea id="mbody" placeholder="message…" rows="3"></textarea>
-    <div class="write-row" style="margin-top:10px">
+    <div class="write-row" style="margin-top:8px">
       <div class="spacer"></div>
+      <button onclick="markAllRead()" class="sm">mark all read</button>
       <button class="p" onclick="sendMsg()">send</button>
       <span class="flash" id="msg-flash">sent</span>
     </div>
@@ -390,7 +487,8 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.7 var(--mono);color:v
     <button class="p" onclick="startSSE()">connect</button>
     <button onclick="stopSSE()">disconnect</button>
     <button onclick="$('ev-log').innerHTML=''">clear</button>
-    <span class="sse-status off" id="sse-status">disconnected</span>
+    <span class="sse-dot" id="sse-dot"></span>
+    <span class="sse-label" id="sse-status">disconnected</span>
   </div>
   <div id="ev-log"><div class="empty">connect to stream live events</div></div>
 </div>
@@ -423,30 +521,43 @@ pre{white-space:pre-wrap;word-break:break-word;font:13px/1.7 var(--mono);color:v
     <div class="spacer"></div>
     <span class="flash" id="session-flash">saved</span>
   </div>
-  <div id="session-context" style="margin-bottom:18px"></div>
+  <div id="session-context" style="margin-bottom:16px"></div>
   <div class="write-box" id="handoff-box" style="display:none">
-    <div class="section-label" style="margin-bottom:12px">save handoff</div>
-    <textarea id="hs-summary" placeholder="what did you accomplish this session?" rows="3" style="width:100%;margin-bottom:10px"></textarea>
-    <textarea id="hs-next" placeholder="next steps (one per line)" rows="2" style="width:100%;margin-bottom:10px"></textarea>
-    <textarea id="hs-inprogress" placeholder="task IDs in progress (one per line)" rows="2" style="width:100%;margin-bottom:10px"></textarea>
-    <div class="write-row" style="margin-top:6px">
+    <div class="section-label" style="margin-bottom:10px">save handoff</div>
+    <textarea id="hs-summary" placeholder="what did you accomplish this session?" rows="3" style="width:100%;margin-bottom:8px"></textarea>
+    <textarea id="hs-next" placeholder="next steps (one per line)" rows="2" style="width:100%;margin-bottom:8px"></textarea>
+    <textarea id="hs-inprogress" placeholder="task IDs in progress (one per line)" rows="2" style="width:100%;margin-bottom:8px"></textarea>
+    <div class="write-row" style="margin-top:4px">
       <div class="spacer"></div>
       <button class="p" onclick="saveHandoff()">save handoff</button>
     </div>
   </div>
 </div>
 
+<!-- TASK EDIT MODAL -->
+<div id="task-modal" style="display:none;position:fixed;inset:0;background:rgba(7,15,23,.85);z-index:500;align-items:center;justify-content:center">
+  <div style="background:var(--s1);border:1px solid var(--b2);border-radius:var(--r);padding:20px;width:min(480px,95vw)">
+    <div class="section-label" style="margin-bottom:12px">edit task</div>
+    <input id="et-title" placeholder="title" style="width:100%;margin-bottom:8px">
+    <textarea id="et-desc" placeholder="description" rows="3" style="width:100%;margin-bottom:8px"></textarea>
+    <input id="et-outcome" placeholder="expected outcome" style="width:100%;margin-bottom:10px">
+    <div class="write-row">
+      <select id="et-pri" style="width:100px"><option>normal</option><option>low</option><option>high</option></select>
+      <div class="spacer"></div>
+      <button onclick="closeTaskModal()">cancel</button>
+      <button class="p" onclick="saveTaskEdit()">save</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const $=id=>document.getElementById(id);
-const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const hdrs=()=>({'content-type':'application/json','x-agent-id':window._aid,'x-api-key':window._akey});
-let _sseAbort=null;
-let _agents=[];
-let _projects=[];
-let _myProjects=new Set();
+let _sseAbort=null, _agents=[], _projects=[], _myProjects=new Set(), _editTaskId=null;
+
 async function adminReq(method,path,body){
-  const k=window._regkey;
-  const r=await fetch(path,{method,headers:{'content-type':'application/json','x-registration-key':k},body:body?JSON.stringify(body):undefined});
+  const r=await fetch(path,{method,headers:{'content-type':'application/json','x-registration-key':window._regkey},body:body?JSON.stringify(body):undefined});
   if(!r.ok)throw new Error(await r.text());
   return method==='DELETE'?null:r.json();
 }
@@ -460,10 +571,7 @@ async function req(method,path,body){
   return method==='DELETE'?null:r.json();
 }
 
-function flash(id){
-  const el=$(id);el.classList.add('show');
-  setTimeout(()=>el.classList.remove('show'),2000);
-}
+function flash(id){const el=$(id);el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2000)}
 
 function tab(name,btn){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
@@ -478,35 +586,30 @@ function tab(name,btn){
 }
 
 function onProjectChange(){
-  const panel=document.querySelector('.panel.on');
-  if(!panel)return;
-  const name=panel.id.replace('panel-','');
-  if(name==='memory')loadMem();
-  if(name==='tasks')loadTasks();
-  if(name==='agents')loadAgents();
-  if(name==='projects')loadProjects();
+  const p=document.querySelector('.panel.on');if(!p)return;
+  const n=p.id.replace('panel-','');
+  if(n==='memory')loadMem();
+  if(n==='tasks')loadTasks();
+  if(n==='agents')loadAgents();
+  if(n==='projects')loadProjects();
 }
 
 function onAgentChange(){
   const agent=activeAgent();
   $('q-agent').value=agent||'';
-  const sa=$('sess-agent');
-  if(sa)sa.value=agent||'';
-  const panel=document.querySelector('.panel.on');
-  if(!panel)return;
-  const name=panel.id.replace('panel-','');
-  if(name==='memory')loadMem();
-  if(name==='tasks')loadTasks();
-  if(name==='messages')loadInbox();
-  if(name==='sessions')loadSession();
-  if(name==='events'&&_sseAbort)startSSE();
+  const sa=$('sess-agent');if(sa)sa.value=agent||'';
+  const p=document.querySelector('.panel.on');if(!p)return;
+  const n=p.id.replace('panel-','');
+  if(n==='memory')loadMem();
+  if(n==='tasks')loadTasks();
+  if(n==='messages')loadInbox();
+  if(n==='sessions')loadSession();
+  if(n==='events'&&_sseAbort)startSSE();
 }
 
 async function init(){
   await Promise.all([loadProjectsHeader(),loadAgentsGlobal()]);
-  loadMem();
-  checkInbox();
-  setInterval(checkInbox,30000);
+  loadMem();checkInbox();setInterval(checkInbox,30000);
 }
 
 async function loadProjectsHeader(){
@@ -515,8 +618,7 @@ async function loadProjectsHeader(){
       req('GET','/projects'),
       req('GET','/projects/mine').catch(()=>[]),
     ]);
-    _projects=all;
-    _myProjects=new Set(mine.map(p=>p.project_id));
+    _projects=all;_myProjects=new Set(mine.map(p=>p.project_id));
     const sel=$('h-project');
     sel.innerHTML='<option value="">all projects</option>';
     all.forEach(p=>{
@@ -530,28 +632,29 @@ async function loadProjectsHeader(){
 async function loadAgentsGlobal(){
   try{
     _agents=await req('GET','/participants');
-    const dl=$('agent-list-dl');
+    const dl=$('agent-list-dl'),qa=$('q-agent'),sa=$('sess-agent'),ha=$('h-agent-sel');
     dl.innerHTML='';
-    const qa=$('q-agent');
     qa.innerHTML='<option value="">all agents</option>';
-    const sa=$('sess-agent');
     sa.innerHTML='<option value="">select agent…</option>';
-    const ha=$('h-agent-sel');
     ha.innerHTML='<option value="">all agents</option>';
     _agents.forEach(a=>{
-      const o=document.createElement('option');
-      o.value=a.agent_id;o.textContent=a.agent_id;
-      dl.appendChild(o.cloneNode(true));
-      qa.appendChild(o.cloneNode(true));
-      sa.appendChild(o.cloneNode(true));
-      ha.appendChild(o);
+      const o=document.createElement('option');o.value=a.agent_id;o.textContent=a.agent_id;
+      dl.appendChild(o.cloneNode(true));qa.appendChild(o.cloneNode(true));
+      sa.appendChild(o.cloneNode(true));ha.appendChild(o);
     });
+    const now=Date.now();
+    const active=_agents.filter(a=>a.last_seen&&now-Date.parse(a.last_seen)<300000).length;
+    if(active>0){
+      $('h-active-count').textContent=active;
+      $('h-agent-count').style.display='flex';
+    }
   }catch(_){}
 }
 
+// ── Memory ──────────────────────────────────────────────────────────
+
 async function loadMem(){
-  const proj=activeProject();
-  const agent=activeAgent()||$('q-agent').value;
+  const proj=activeProject(),agent=activeAgent()||$('q-agent').value;
   let url='/memory/delta?since=2000-01-01T00:00:00.000Z';
   if(proj)url+='&project='+encodeURIComponent(proj);
   if(agent)url+='&agent='+encodeURIComponent(agent);
@@ -560,10 +663,7 @@ async function loadMem(){
 }
 
 async function search(){
-  const q=$('q').value.trim();
-  const agent=$('q-agent').value;
-  const type=$('q-type').value;
-  const proj=activeProject();
+  const q=$('q').value.trim(),agent=$('q-agent').value,type=$('q-type').value,proj=activeProject();
   if(!q&&!agent&&!type)return loadMem();
   if(q){
     let url='/memory/search?q='+encodeURIComponent(q)+'&limit=30';
@@ -581,18 +681,22 @@ async function search(){
   }
 }
 
+function confClass(c){return c<0.4?'very-low':c<0.7?'low':''}
+
 function renderMem(es){
   if(!es.length){$('mlist').innerHTML='<div class="empty">no entries</div>';return;}
   $('mlist').innerHTML=es.map(e=>{
-    const conf=e.confidence<1?`<span class="conf">conf <span>${(e.confidence*100).toFixed(0)}%</span></span>`:'';
-    const scope=e.scope==='agent'?`<span class="pill private">agent</span>`:'';
+    const pct=Math.round(e.confidence*100);
+    const cc=confClass(e.confidence);
+    const scope=e.scope==='agent'?`<span class="pill private">private</span>`:'';
     const tags=e.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join(' ');
     const proj=e.project?`<span class="pill project">${esc(e.project)}</span>`:'';
-    return `<div class="card" id="mc-${e.id}">
+    const accent=e.type==='doc'?'purple':'accent';
+    return `<div class="card ${accent}" id="mc-${e.id}">
       <div class="meta">
         <span class="meta-agent">${esc(e.agent_id)}</span>
         <span class="pill ${e.type}">${e.type}</span>
-        ${proj}${scope}${conf}${tags}
+        ${proj}${scope}${tags}
         <span class="meta-time">${e.updated_at.slice(0,16)}</span>
         <span class="meta-id">${e.id.slice(0,8)}</span>
       </div>
@@ -600,31 +704,28 @@ function renderMem(es){
       <div id="medit-${e.id}" style="display:none">
         <textarea id="mta-${e.id}" rows="4" style="width:100%;margin-bottom:8px">${esc(e.content)}</textarea>
         <div class="write-row">
-          <button class="p" onclick="saveMem('${e.id}')">save</button>
-          <button onclick="cancelEditMem('${e.id}')">cancel</button>
+          <button class="p sm" onclick="saveMem('${e.id}')">save</button>
+          <button class="sm" onclick="cancelEditMem('${e.id}')">cancel</button>
         </div>
       </div>
+      <div class="conf-row">
+        <div class="conf-bar"><div class="conf-fill ${cc}" style="width:${pct}%"></div></div>
+        <span class="conf-label">${pct}% conf${e.version>1?` · v${e.version}`:''}${e.parents?.length?` · ${e.parents.length} parent${e.parents.length>1?'s':''}`:''}
+        </span>
+      </div>
       <div class="card-actions">
-        <button onclick="startEditMem('${e.id}')">edit</button>
-        <button class="danger" onclick="deleteMem('${e.id}')">delete</button>
+        <button class="sm" onclick="startEditMem('${e.id}')">edit</button>
+        <button class="sm danger" onclick="deleteMem('${e.id}')">delete</button>
       </div>
     </div>`;
   }).join('');
 }
 
-function startEditMem(id){
-  $('mpre-'+id).style.display='none';
-  $('medit-'+id).style.display='block';
-  $('mta-'+id).focus();
-}
-function cancelEditMem(id){
-  $('mpre-'+id).style.display='';
-  $('medit-'+id).style.display='none';
-}
+function startEditMem(id){$('mpre-'+id).style.display='none';$('medit-'+id).style.display='block';$('mta-'+id).focus()}
+function cancelEditMem(id){$('mpre-'+id).style.display='';$('medit-'+id).style.display='none'}
 async function saveMem(id){
   const content=$('mta-'+id).value.trim();if(!content)return;
-  await req('PATCH',`/memory/${id}`,{content});
-  flash('mem-flash');loadMem();
+  await req('PATCH',`/memory/${id}`,{content});flash('mem-flash');loadMem();
 }
 async function writeMem(){
   const c=$('mc').value.trim();if(!c)return;
@@ -638,10 +739,14 @@ async function deleteMem(id){
   await req('DELETE',`/memory/${id}`);loadMem();
 }
 
+// ── Tasks ────────────────────────────────────────────────────────────
+
+function taskColor(status){
+  return {open:'orange',claimed:'accent',completed:'green',failed:'red'}[status]||'';
+}
+
 async function loadTasks(){
-  const s=$('tf').value;
-  const proj=activeProject();
-  const agent=activeAgent();
+  const s=$('tf').value,proj=activeProject(),agent=activeAgent();
   let url='/tasks';const params=[];
   if(s)params.push('status='+s);
   if(proj)params.push('project='+encodeURIComponent(proj));
@@ -651,7 +756,7 @@ async function loadTasks(){
     const ts=await req('GET',url);
     if(!ts.length){$('tlist').innerHTML='<div class="empty">no tasks</div>';return;}
     $('tlist').innerHTML=ts.map(t=>`
-      <div class="card">
+      <div class="card ${taskColor(t.status)}">
         <div class="meta">
           <span class="s ${t.status}">${t.status}</span>
           ${t.priority!=='normal'?`<span class="pri ${t.priority}">${t.priority}</span>`:''}
@@ -660,25 +765,43 @@ async function loadTasks(){
           ${t.assigned_to?`<span style="color:var(--t3)">→ <span style="color:var(--accent)">${esc(t.assigned_to)}</span></span>`:''}
           <span class="meta-time">${t.created_at.slice(0,16)}</span>
         </div>
-        <div style="font-weight:500">${esc(t.title)}</div>
-        ${t.description?`<div style="color:var(--t3);font-size:13px;margin-top:3px">${esc(t.description)}</div>`:''}
-        ${t.expected_outcome?`<div style="color:var(--t4);font-size:12px;margin-top:3px;font-style:italic">→ ${esc(t.expected_outcome)}</div>`:''}
+        <div style="font:500 13px var(--mono);color:var(--t1)">${esc(t.title)}</div>
+        ${t.description?`<div style="color:var(--t3);font-size:12px;margin-top:3px">${esc(t.description)}</div>`:''}
+        ${t.expected_outcome?`<div style="color:var(--t4);font-size:11px;margin-top:3px">→ ${esc(t.expected_outcome)}</div>`:''}
         <div class="card-actions">
-          ${t.status==='open'?`<button onclick="taskAction('${t.id}','claim')">claim</button>`:''}
-          ${t.status==='claimed'?`<button onclick="taskAction('${t.id}','complete')">complete</button><button class="danger" onclick="taskAction('${t.id}','fail')">fail</button>`:''}
+          ${t.status==='open'?`<button class="sm" onclick="taskAction('${t.id}','claim')">claim</button>`:''}
+          ${t.status==='claimed'?`<button class="sm" onclick="taskAction('${t.id}','complete')">complete</button><button class="sm danger" onclick="taskAction('${t.id}','fail')">fail</button>`:''}
+          ${t.status!=='completed'&&t.status!=='failed'?`<button class="sm" onclick="openTaskEdit('${t.id}','${esc(t.title)}','${esc(t.description||'')}','${esc(t.expected_outcome||'')}','${t.priority}')">edit</button>`:''}
         </div>
       </div>`).join('');
   }catch(e){$('tlist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
 }
+
 async function createTask(){
   const title=$('ttitle').value.trim();if(!title)return;
-  const proj=activeProject();
-  await req('POST','/tasks',{title,description:$('tdesc').value,expected_outcome:$('toutcome').value,project:proj,priority:$('tpri').value});
+  await req('POST','/tasks',{title,description:$('tdesc').value,expected_outcome:$('toutcome').value,project:activeProject(),priority:$('tpri').value});
   $('ttitle').value='';$('tdesc').value='';$('toutcome').value='';loadTasks();
 }
-async function taskAction(id,action){
-  await req('POST',`/tasks/${id}/${action}`);loadTasks();
+async function taskAction(id,action){await req('POST',`/tasks/${id}/${action}`);loadTasks()}
+
+function openTaskEdit(id,title,desc,outcome,pri){
+  _editTaskId=id;
+  $('et-title').value=title;
+  $('et-desc').value=desc;
+  $('et-outcome').value=outcome;
+  $('et-pri').value=pri;
+  const m=$('task-modal');m.style.display='flex';
 }
+function closeTaskModal(){$('task-modal').style.display='none';_editTaskId=null}
+async function saveTaskEdit(){
+  if(!_editTaskId)return;
+  const body={title:$('et-title').value.trim()||undefined,description:$('et-desc').value||undefined,expected_outcome:$('et-outcome').value||undefined,priority:$('et-pri').value};
+  await req('PATCH',`/tasks/${_editTaskId}`,body);
+  closeTaskModal();loadTasks();
+}
+$('task-modal').addEventListener('click',e=>{if(e.target===$('task-modal'))closeTaskModal()});
+
+// ── Messages ─────────────────────────────────────────────────────────
 
 async function loadInbox(){
   $('btn-messages').querySelector('.badge')?.remove();
@@ -688,7 +811,7 @@ async function loadInbox(){
     const ms=await req('GET',url);
     if(!ms.length){$('msglist').innerHTML='<div class="empty">no unread messages</div>';return;}
     $('msglist').innerHTML=ms.map(m=>`
-      <div class="card">
+      <div class="card accent">
         <div class="meta">
           <span class="meta-agent">${esc(m.from_agent)}</span>
           ${m.subject?`<span style="color:var(--t3)">${esc(m.subject)}</span>`:''}
@@ -696,25 +819,23 @@ async function loadInbox(){
         </div>
         <pre>${esc(m.body)}</pre>
         <div class="card-actions">
-          <button onclick="markRead('${m.id}')">mark read</button>
-          <button onclick="replyTo('${esc(m.from_agent)}')">reply</button>
+          <button class="sm" onclick="markRead('${m.id}')">mark read</button>
+          <button class="sm" onclick="replyTo('${esc(m.from_agent)}')">reply</button>
         </div>
       </div>`).join('');
   }catch(e){$('msglist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
 }
+
 async function checkInbox(){
   try{
     const agent=activeAgent();
     const url='/messages/inbox'+(agent?'?agent='+encodeURIComponent(agent):'');
     const ms=await req('GET',url);
-    const btn=$('btn-messages');
-    btn.querySelector('.badge')?.remove();
-    if(ms.length){
-      const b=document.createElement('span');
-      b.className='badge';b.textContent=ms.length;btn.appendChild(b);
-    }
+    const btn=$('btn-messages');btn.querySelector('.badge')?.remove();
+    if(ms.length){const b=document.createElement('span');b.className='badge';b.textContent=ms.length;btn.appendChild(b);}
   }catch(_){}
 }
+
 async function sendMsg(){
   const to=$('mto').value.trim();if(!to)return;
   const body=$('mbody').value.trim();if(!body)return;
@@ -722,50 +843,53 @@ async function sendMsg(){
   $('mto').value='';$('msub').value='';$('mbody').value='';
   flash('msg-flash');loadInbox();
 }
-async function markRead(id){
-  await req('POST',`/messages/${id}/read`);loadInbox();
+async function markRead(id){await req('POST',`/messages/${id}/read`);loadInbox()}
+async function markAllRead(){
+  try{await req('POST','/messages/inbox/read-all');}catch(_){}
+  loadInbox();checkInbox();
 }
 function replyTo(agent){
-  $('mto').value=agent;
-  $('mbody').focus();
+  $('mto').value=agent;$('mbody').focus();
   document.querySelectorAll('nav button').forEach(b=>{if(b.textContent.trim()==='messages')tab('messages',b);});
+}
+
+// ── Events ───────────────────────────────────────────────────────────
+
+function setSseStatus(on,label){
+  const dot=$('sse-dot'),lbl=$('sse-status');
+  dot.className='sse-dot'+(on?' on':'');
+  lbl.textContent=label;
 }
 
 function startSSE(){
   stopSSE();
   _sseAbort=new AbortController();
-  $('sse-status').textContent='connecting…';
-  $('sse-status').className='sse-status off';
+  setSseStatus(false,'connecting…');
   const agent=activeAgent();
-  const streamUrl='/events/stream'+(agent?'?agent='+encodeURIComponent(agent):'');
+  const url='/events/stream'+(agent?'?agent='+encodeURIComponent(agent):'');
   (async()=>{
     try{
-      const r=await fetch(streamUrl,{headers:hdrs(),signal:_sseAbort.signal});
-      if(!r.ok){setSSEOff('error '+r.status);return;}
-      $('sse-status').textContent='connected';$('sse-status').className='sse-status on';
+      const r=await fetch(url,{headers:hdrs(),signal:_sseAbort.signal});
+      if(!r.ok){setSseStatus(false,'error '+r.status);return;}
+      setSseStatus(true,'connected');
       $('ev-log').innerHTML='';
-      const reader=r.body.getReader();const dec=new TextDecoder();
-      let buf='';
+      const reader=r.body.getReader(),dec=new TextDecoder();let buf='';
       while(true){
-        const{done,value}=await reader.read();
-        if(done)break;
+        const{done,value}=await reader.read();if(done)break;
         buf+=dec.decode(value,{stream:true});
         const lines=buf.split('\n');buf=lines.pop();
         for(const line of lines){
-          if(line.startsWith('data: ')&&line.length>6){
-            try{appendEvent(JSON.parse(line.slice(6)));}catch(_){}
-          }
+          if(line.startsWith('data: ')&&line.length>6){try{appendEvent(JSON.parse(line.slice(6)));}catch(_){}}
         }
       }
-      setSSEOff('disconnected');
-    }catch(e){if(e.name!=='AbortError')setSSEOff('error');}
+      setSseStatus(false,'disconnected');
+    }catch(e){if(e.name!=='AbortError')setSseStatus(false,'error');}
   })();
 }
 function stopSSE(){
   if(_sseAbort){_sseAbort.abort();_sseAbort=null;}
-  setSSEOff('disconnected');
+  setSseStatus(false,'disconnected');
 }
-function setSSEOff(msg){$('sse-status').textContent=msg;$('sse-status').className='sse-status off';}
 function appendEvent(e){
   const d=document.createElement('div');d.className='el';
   d.innerHTML=`<span class="el-time">${e.created_at.slice(11,19)}</span><span class="el-type">${esc(e.type)}</span><span class="el-agent">${esc(e.agent_id)}</span><span class="el-payload">${esc(JSON.stringify(e.payload))}</span>`;
@@ -774,6 +898,8 @@ function appendEvent(e){
   log.prepend(d);
 }
 
+// ── Agents ───────────────────────────────────────────────────────────
+
 async function loadAgents(){
   try{
     const [participants,projects]=await Promise.all([
@@ -781,51 +907,44 @@ async function loadAgents(){
       req('GET','/projects').catch(()=>[]),
     ]);
     const agentProjects={};
-    projects.forEach(p=>p.agents.forEach(a=>{
-      (agentProjects[a]||(agentProjects[a]=[])).push(p.name);
-    }));
-    const now=Date.now();
+    projects.forEach(p=>p.agents.forEach(a=>{(agentProjects[a]||(agentProjects[a]=[])).push(p.name)}));
     if(!participants.length){$('alist').innerHTML='<div class="empty">no agents</div>';return;}
+    const now=Date.now();
     const sorted=[...participants].sort((a,b)=>{
-      const ta=a.last_seen?Date.parse(a.last_seen):0;
-      const tb=b.last_seen?Date.parse(b.last_seen):0;
-      return tb-ta;
+      return (b.last_seen?Date.parse(b.last_seen):0)-(a.last_seen?Date.parse(a.last_seen):0);
     });
     $('alist').innerHTML='<div class="agent-grid">'+sorted.map(p=>{
       const seenMs=p.last_seen?Date.parse(p.last_seen):null;
       const active=seenMs&&(now-seenMs)<300000;
-      const seenLabel=p.last_seen?p.last_seen.slice(0,16):'never';
       const projs=(agentProjects[p.agent_id]||[]).map(n=>`<span class="pill project">${esc(n)}</span>`).join(' ');
       const isSelf=p.agent_id===window._aid;
       return `<div class="ac${active?' active':''}">
-        <div class="ac-name"><span class="dot"></span>${esc(p.agent_id)}${isSelf?` <span style="color:var(--t4);font-size:11px">(you)</span>`:''}</div>
+        <div class="ac-name"><span class="dot"></span>${esc(p.agent_id)}${isSelf?` <span style="color:var(--t4);font-size:10px">(you)</span>`:''}</div>
         <div class="ac-meta">
-          <span>last seen: ${seenLabel}</span>
-          ${projs?`<span style="margin-top:4px">${projs}</span>`:''}
+          <span>last seen ${p.last_seen?p.last_seen.slice(0,16):'never'}</span>
+          ${projs?`<span style="margin-top:3px;display:flex;gap:4px;flex-wrap:wrap">${projs}</span>`:''}
         </div>
         <div class="card-actions" style="margin-top:0">
-          <button onclick="renameAgent('${esc(p.agent_id)}')">rename</button>
-          <button class="danger" onclick="deleteAgent('${esc(p.agent_id)}')">delete</button>
+          <button class="sm" onclick="renameAgent('${esc(p.agent_id)}')">rename</button>
+          <button class="sm danger" onclick="deleteAgent('${esc(p.agent_id)}')">delete</button>
         </div>
       </div>`;
     }).join('')+'</div>';
   }catch(e){$('alist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
 }
+
 async function deleteAgent(id){
-  if(!confirm(`Delete agent "${id}"? This cannot be undone.`))return;
-  try{
-    await adminReq('DELETE',`/agents/${id}`);
-    await loadAgents();await loadAgentsGlobal();
-  }catch(e){alert('Failed: '+e.message);}
+  if(!confirm(`Delete agent "${id}"?`))return;
+  try{await adminReq('DELETE',`/agents/${id}`);await Promise.all([loadAgents(),loadAgentsGlobal()]);}
+  catch(e){alert('Failed: '+e.message);}
 }
 async function renameAgent(id){
-  const newId=prompt(`Rename "${id}" to:`);
-  if(!newId||newId===id)return;
-  try{
-    await adminReq('PATCH',`/agents/${id}`,{new_id:newId});
-    await loadAgents();await loadAgentsGlobal();
-  }catch(e){alert('Failed: '+e.message);}
+  const newId=prompt(`Rename "${id}" to:`);if(!newId||newId===id)return;
+  try{await adminReq('PATCH',`/agents/${id}`,{new_id:newId});await Promise.all([loadAgents(),loadAgentsGlobal()]);}
+  catch(e){alert('Failed: '+e.message);}
 }
+
+// ── Projects ─────────────────────────────────────────────────────────
 
 async function loadProjects(){
   try{
@@ -835,101 +954,83 @@ async function loadProjects(){
     ]);
     _myProjects=new Set(mine.map(p=>p.project_id));
     if(!ps.length&&!mine.length){
-      $('pjlist').innerHTML='<div class="empty">no projects yet — type a name above and click join</div>';
-      return;
+      $('pjlist').innerHTML='<div class="empty">no projects — type a name above and join</div>';return;
     }
     const allNames=new Set([...ps.map(p=>p.name),...mine.map(p=>p.project_id)]);
     const byName=Object.fromEntries(ps.map(p=>[p.name,p]));
-    const rows=[...(mine.map(p=>p.project_id)),...ps.map(p=>p.name).filter(n=>!_myProjects.has(n))];
-    const unique=[...new Set(rows)];
-    $('pjlist').innerHTML='<div class="proj-grid">'+unique.map(name=>{
-      const p=byName[name];
-      const isMine=_myProjects.has(name);
-      const last=p?.last_activity?p.last_activity.slice(0,16):'never';
-      const agents=p?.agents||[];
+    const rows=[...mine.map(p=>p.project_id),...ps.map(p=>p.name).filter(n=>!_myProjects.has(n))];
+    $('pjlist').innerHTML='<div class="proj-grid">'+[...new Set(rows)].map(name=>{
+      const p=byName[name],isMine=_myProjects.has(name);
+      const last=p?.last_activity?p.last_activity.slice(0,16):'—';
       return `<div class="pj${isMine?' mine':''}">
-        <div class="pj-name">
-          ${esc(name)}
-          ${isMine?`<span style="color:var(--green);font-size:11px;font-weight:400">● member</span>`:''}
-        </div>
-        <div class="pj-agents">${agents.join(', ')||'no members yet'}</div>
+        <div class="pj-name">${esc(name)}${isMine?` <span style="color:var(--green);font-size:10px">● member</span>`:''}</div>
+        <div class="pj-agents">${(p?.agents||[]).join(', ')||'no members yet'}</div>
         <div class="pj-stats">
           <span><span class="pj-stat-val">${p?.memory_count??0}</span> mem</span>
           <span><span class="pj-stat-val">${p?.task_count??0}</span> tasks</span>
-          <span>last: <span class="pj-stat-val">${last}</span></span>
+          <span>last <span class="pj-stat-val">${last}</span></span>
         </div>
-        <div class="card-actions" style="margin-top:12px">
-          <button onclick="selectProject('${esc(name)}')">set active</button>
+        <div class="card-actions" style="margin-top:10px">
+          <button class="sm" onclick="selectProject('${esc(name)}')">set active</button>
           ${isMine
-            ?`<button class="danger" onclick="leaveProject('${esc(name)}')">leave</button>`
-            :`<button class="p" onclick="joinProject('${esc(name)}')">join</button>`
-          }
+            ?`<button class="sm danger" onclick="leaveProject('${esc(name)}')">leave</button>`
+            :`<button class="sm p" onclick="joinProject('${esc(name)}')">join</button>`}
         </div>
       </div>`;
     }).join('')+'</div>';
   }catch(e){$('pjlist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
 }
-function selectProject(name){
-  $('h-project').value=name;
-  onProjectChange();
-}
+
+function selectProject(name){$('h-project').value=name;onProjectChange()}
 async function joinProject(name){
   if(!name)return;
   await req('POST',`/projects/${name}/join`);
-  await loadProjectsHeader();
-  loadProjects();
+  await loadProjectsHeader();loadProjects();
 }
 async function leaveProject(name){
   if(!confirm(`Leave project "${name}"?`))return;
   await req('DELETE',`/projects/${name}/leave`);
-  await loadProjectsHeader();
-  loadProjects();
+  await loadProjectsHeader();loadProjects();
 }
 async function joinProjectByInput(){
-  const name=$('new-proj').value.trim();
-  if(!name)return;
-  await joinProject(name);
-  $('new-proj').value='';
+  const name=$('new-proj').value.trim();if(!name)return;
+  await joinProject(name);$('new-proj').value='';
 }
 
-function populateSessionAgents(){
-  const sa=$('sess-agent');
-  const g=activeAgent();
-  if(g)sa.value=g;
-}
+// ── Sessions ─────────────────────────────────────────────────────────
+
+function populateSessionAgents(){const sa=$('sess-agent'),g=activeAgent();if(g)sa.value=g}
+
 async function loadSession(){
-  const agent=$('sess-agent').value;
-  if(!agent)return;
-  const isSelf=agent===window._aid;
-  $('handoff-box').style.display=isSelf?'block':'none';
+  const agent=$('sess-agent').value;if(!agent)return;
+  $('handoff-box').style.display=agent===window._aid?'block':'none';
   try{
     const d=await req('GET',`/sessions/handoff/${agent}`);
-    const h=d.last_handoff;
-    let html='';
+    const h=d.last_handoff;let html='';
     if(h){
-      html+=`<div class="card">
+      html+=`<div class="card accent">
         <div class="meta">
           <span class="meta-agent">${esc(h.agent_id)}</span>
           <span class="meta-time">${h.created_at.slice(0,16)}</span>
         </div>
         <pre>${esc(h.summary)}</pre>`;
       if(h.next_steps?.length){
-        html+=`<div style="margin-top:12px"><div class="section-label" style="margin-bottom:6px">next steps</div>`;
-        html+=h.next_steps.map(s=>`<div style="padding:3px 0;color:var(--t3);font-size:13px">→ ${esc(s)}</div>`).join('');
+        html+=`<div style="margin-top:10px"><div class="section-label" style="margin-bottom:5px">next steps</div>`;
+        html+=h.next_steps.map(s=>`<div style="padding:2px 0;color:var(--t3);font-size:12px">→ ${esc(s)}</div>`).join('');
         html+='</div>';
       }
       if(h.in_progress?.length){
-        html+=`<div style="margin-top:12px"><div class="section-label" style="margin-bottom:6px">in progress</div>`;
-        html+=h.in_progress.map(s=>`<div style="padding:2px 0"><span class="pill memory">${esc(s)}</span></div>`).join('');
+        html+=`<div style="margin-top:10px"><div class="section-label" style="margin-bottom:5px">in progress</div>`;
+        html+=h.in_progress.map(s=>`<span class="pill memory" style="margin-right:4px">${esc(s)}</span>`).join('');
         html+='</div>';
       }
       html+='</div>';
     }else{
-      html='<div class="empty">no previous session for '+esc(agent)+'</div>';
+      html=`<div class="empty">no previous session for ${esc(agent)}</div>`;
     }
     if(d.memory_delta?.length){
-      html+=`<div class="section-label" style="margin:18px 0 10px">memory since last session (${d.memory_delta.length})</div>`;
-      html+=d.memory_delta.map(e=>`<div class="card">
+      html+=`<div class="section-label" style="margin:16px 0 8px">memory since last session (${d.memory_delta.length})</div>`;
+      html+=d.memory_delta.map(e=>`<div class="card accent">
         <div class="meta">
           <span class="meta-agent">${esc(e.agent_id)}</span>
           <span class="pill ${e.type}">${e.type}</span>
@@ -942,11 +1043,14 @@ async function loadSession(){
     $('session-context').innerHTML=html;
   }catch(e){$('session-context').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
 }
+
 async function saveHandoff(){
   const summary=$('hs-summary').value.trim();if(!summary)return;
-  const next_steps=$('hs-next').value.split('\n').map(s=>s.trim()).filter(Boolean);
-  const in_progress=$('hs-inprogress').value.split('\n').map(s=>s.trim()).filter(Boolean);
-  await req('POST','/sessions/handoff',{summary,next_steps,in_progress});
+  await req('POST','/sessions/handoff',{
+    summary,
+    next_steps:$('hs-next').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    in_progress:$('hs-inprogress').value.split('\n').map(s=>s.trim()).filter(Boolean),
+  });
   $('hs-summary').value='';$('hs-next').value='';$('hs-inprogress').value='';
   flash('session-flash');loadSession();
 }
