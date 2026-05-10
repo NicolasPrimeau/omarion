@@ -6,7 +6,7 @@ class ArchivistSettings(BaseSettings):
 
     artel_url: str = "http://localhost:8000"
     archivist_id: str = "archivist"
-    archivist_key: str = ""
+    agent_keys: str = ""
     anthropic_api_key: str = ""
     archivist_provider: str = "anthropic"
     archivist_model: str = ""
@@ -19,6 +19,13 @@ class ArchivistSettings(BaseSettings):
     decay_window_days: int = 7
     promotion_memory_min_version: int = 3
     promotion_stability_days: int = 7
+
+    def api_key(self) -> str:
+        for pair in self.agent_keys.split(","):
+            parts = [p.strip() for p in pair.strip().split(":")]
+            if len(parts) >= 2 and parts[0] == self.archivist_id:
+                return parts[1]
+        return ""
 
 
 settings = ArchivistSettings()
