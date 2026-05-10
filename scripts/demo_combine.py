@@ -23,6 +23,38 @@ LABEL_COLOR = "\x1b[38;5;180m"  # muted gold
 RESET = "\x1b[0m"
 
 SNAPSHOT_INTERVAL = 0.12  # seconds between combined frames
+TITLE_DURATION = 2.5  # seconds each act title is shown
+
+CYAN = "\x1b[38;5;51m"
+GOLD = "\x1b[38;5;220m"
+DIM = "\x1b[2m"
+BOLD = "\x1b[1m"
+RESET = "\x1b[0m"
+
+ACTS = [
+    ("ACT I", "DISCOVERY"),
+    ("ACT II", "INVESTIGATION"),
+    ("ACT III", "RESOLUTION"),
+]
+
+
+def _title_card(act_label: str, act_title: str) -> str:
+    mid = TOTAL_H // 2
+    label_line = f"{BOLD}{CYAN}{act_label}{RESET}  {DIM}{act_title}{RESET}"
+    label_plain = f"{act_label}  {act_title}"
+    pad = (COLS - len(label_plain)) // 2
+    bar = f"{DIM}{'─' * COLS}{RESET}"
+
+    out = "\x1b[2J\x1b[H"
+    for row in range(1, TOTAL_H + 1):
+        out += f"\x1b[{row};1H"
+        if row == mid - 1:
+            out += f"\x1b[{mid - 1};{1}H{bar}"
+        elif row == mid:
+            out += f"\x1b[{mid};{pad}H{label_line}"
+        elif row == mid + 1:
+            out += f"\x1b[{mid + 1};{1}H{bar}"
+    return out
 
 
 def load_cast(path):
@@ -113,10 +145,16 @@ def combine(nova_cast, orion_cast, out_cast):
     orion_hdr, orion_events = load_cast(orion_cast)
 
     nova_duration = nova_events[-1][0] if nova_events else 0
-    orion_offset = nova_duration + 2.0  # orion starts 2s after nova ends
+    # Each section is preceded by a title card
+    act1_start = TITLE_DURATION
+    act2_start = act1_start + nova_duration + TITLE_DURATION
+    orion_offset = act2_start + TITLE_DURATION  # orion content starts after ACT II card
 
-    # Time range to cover
-    total_end = orion_offset + (orion_events[-1][0] if orion_events else 0) + 1.0
+    # ACT III fires when orion is ~70% through its content
+    orion_duration = orion_events[-1][0] if orion_events else 0
+    act3_t = orion_offset + orion_duration * 0.65
+
+    total_end = orion_offset + orion_duration + 2.0
 
     combined = []
     t = 0.0
@@ -129,22 +167,49 @@ def combine(nova_cast, orion_cast, out_cast):
     nova_idx = 0
     orion_idx = 0
     prev_frame = None
+    act3_shown = False
 
     while t <= total_end:
-        # Advance nova events
-        while nova_idx < len(nova_events) and nova_events[nova_idx][0] <= t:
+        # Title card windows — freeze content and show overlay
+        if t < act1_start:
+            frame = _title_card(*ACTS[0])
+            combined.append((round(t, 4), "o", frame))
+            t = round(t + SNAPSHOT_INTERVAL, 4)
+            continue
+
+        act2_card_end = act2_start + TITLE_DURATION
+        if act2_start <= t < act2_card_end:
+            frame = _title_card(*ACTS[1])
+            combined.append((round(t, 4), "o", frame))
+            t = round(t + SNAPSHOT_INTERVAL, 4)
+            continue
+
+        # Advance nova events (only during act I window)
+        nova_t = t - act1_start
+        while nova_idx < len(nova_events) and nova_events[nova_idx][0] <= nova_t:
             kind, data = nova_events[nova_idx][1], nova_events[nova_idx][2]
             if kind == "o":
                 nova_stream.feed(data.encode("utf-8", errors="replace"))
             nova_idx += 1
 
-        # Advance orion events (time-shifted)
+        # Advance orion events (time-shifted to after act II card)
         orion_t = t - orion_offset
         while orion_idx < len(orion_events) and orion_events[orion_idx][0] <= orion_t:
             kind, data = orion_events[orion_idx][1], orion_events[orion_idx][2]
             if kind == "o":
                 orion_stream.feed(data.encode("utf-8", errors="replace"))
             orion_idx += 1
+
+        # ACT III title card overlay (brief, overlaid on live content)
+        if not act3_shown and t >= act3_t:
+            act3_card_end = act3_t + TITLE_DURATION
+            if t < act3_card_end:
+                frame = _title_card(*ACTS[2])
+                combined.append((round(t, 4), "o", frame))
+                t = round(t + SNAPSHOT_INTERVAL, 4)
+                continue
+            else:
+                act3_shown = True
 
         # Build combined frame
         frame = (
