@@ -15,7 +15,7 @@ class ArtelClient:
             base_url=settings.artel_url,
             headers={
                 "x-agent-id": settings.archivist_id,
-                "x-api-key": settings.archivist_key,
+                "x-api-key": settings.api_key(),
             },
             timeout=30.0,
         )

@@ -125,7 +125,7 @@ class AgentAuthMiddleware:
                 ).decode() or settings.mcp_agent_id
                 api_key = (
                     headers.get(b"x-api-key") or qs.get(b"api_key") or b""
-                ).decode() or settings.mcp_agent_key
+                ).decode() or settings.api_key()
 
             t1 = _agent_id.set(agent_id)
             t2 = _api_key.set(api_key)
@@ -142,7 +142,7 @@ def _credentials_valid() -> bool:
     try:
         resp = httpx.get(
             f"{settings.artel_url}/agents/me",
-            headers={"x-agent-id": settings.mcp_agent_id, "x-api-key": settings.mcp_agent_key},
+            headers={"x-agent-id": settings.mcp_agent_id, "x-api-key": settings.api_key()},
             timeout=5,
         )
         return resp.status_code != 401
@@ -153,10 +153,9 @@ def _credentials_valid() -> bool:
 
 def main():
     if settings.mcp_transport in ("sse", "streamable-http"):
-        if not settings.mcp_agent_id or not settings.mcp_agent_key:
+        if not settings.mcp_agent_id or not settings.api_key():
             log.error(
-                "MCP_AGENT_ID and MCP_AGENT_KEY must be set for HTTP transport. "
-                "Run scripts/seed_keys.py to generate them."
+                "MCP_AGENT_ID must be set and its key must appear in AGENT_KEYS for HTTP transport."
             )
             raise SystemExit(1)
         app_fn = (
@@ -165,7 +164,7 @@ def main():
         app: ASGIApp = AgentAuthMiddleware(app_fn())
         uvicorn.run(app, host=settings.mcp_host, port=settings.mcp_port)
     else:
-        if not settings.mcp_agent_key or not _credentials_valid():
+        if not settings.api_key() or not _credentials_valid():
             settings.mcp_agent_id, settings.mcp_agent_key = _auto_register()
         mcp.run(transport="stdio")
 

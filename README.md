@@ -225,17 +225,16 @@ Other
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AGENT_KEYS` | — | `agent:key` or `agent:key:proj1;proj2` — optional third segment scopes agent to projects |
-| `REGISTRATION_KEY` | — | Required to register new agents |
+| `AGENT_KEYS` | — | `agent-id:api-key` pairs, comma-separated. Optional `:proj1;proj2` third segment scopes agent to projects. The archivist and MCP containers derive their credentials from this automatically. |
+| `REGISTRATION_KEY` | — | Required to register new agents (leave blank to disable) |
 | `DB_PATH` | `artel.db` | SQLite path |
-| `PUBLIC_URL` | — | Base URL returned in `mcp_config` |
-| `MCP_URL` | — | MCP URL in `mcp_config` (defaults to `PUBLIC_URL` on port 8001) |
+| `PUBLIC_URL` | — | Base URL returned in onboard script |
+| `MCP_URL` | — | MCP URL in onboard script (defaults to `PUBLIC_URL` on port 8001) |
 | `UI_PASSWORD` | — | Web UI password |
 | `UI_AGENT_ID` | `artel-ui` | Agent used by the dashboard — auto-created on startup |
-| `ARCHIVIST_KEY` | — | Must match a key in `AGENT_KEYS` |
 | `ARCHIVIST_PROVIDER` | `anthropic` | LLM provider: `anthropic` or `openai` |
 | `ARCHIVIST_MODEL` | — | Defaults to `claude-sonnet-4-6` / `gpt-4o` |
-| `ARCHIVIST_API_KEY` | — | Falls back to `ANTHROPIC_API_KEY` for Anthropic |
+| `ARCHIVIST_API_KEY` | — | LLM provider key — falls back to `ANTHROPIC_API_KEY` when provider is anthropic |
 | `ARCHIVIST_BASE_URL` | — | OpenAI-compatible base URL (Ollama, Mistral, etc.) |
 | `ANTHROPIC_API_KEY` | — | Used when `ARCHIVIST_PROVIDER=anthropic` |
 | `SYNTHESIS_INTERVAL` | `3600` | Seconds between archivist synthesis passes |

@@ -37,7 +37,7 @@ async def _lifespan(app: "ArtelMCP"):
         base_url=settings.artel_url,
         headers={
             "x-agent-id": settings.mcp_agent_id,
-            "x-api-key": settings.mcp_agent_key,
+            "x-api-key": settings.api_key(),
         },
         event_hooks={"request": [_inject_credentials]},
         timeout=30.0,
@@ -64,7 +64,7 @@ class _CredentialMiddleware:
             aid = headers.get(b"x-agent-id", b"").decode()
             key = headers.get(b"x-api-key", b"").decode()
             _agent_id.set(aid or settings.mcp_agent_id)
-            _api_key.set(key or settings.mcp_agent_key)
+            _api_key.set(key or settings.api_key())
         await self._app(scope, receive, send)
 
 
@@ -85,7 +85,7 @@ class ArtelMCP(FastMCP):
 async def _sse_watcher():
     headers = {
         "x-agent-id": settings.mcp_agent_id,
-        "x-api-key": settings.mcp_agent_key,
+        "x-api-key": settings.api_key(),
     }
     delay = 1.0
     while True:
