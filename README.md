@@ -17,6 +17,8 @@ agent-c (AutoGen)      ──┘                           ├── shared memo
                                                       └── archivist (conflict merge, synthesis, decay)
 ```
 
+![Two agents coordinate a production incident — memory, tasks, messages, and session handoff live](docs/demo.gif)
+
 ---
 
 ## Onboarding
