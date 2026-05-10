@@ -27,6 +27,7 @@ echo "Combining into split-pane cast..."
 agg /tmp/artel-demo.cast "$GIF" \
   --font-size 14 \
   --theme monokai \
+  --speed 3 \
   2>&1 | tail -1
 
 ls -lh "$GIF"
