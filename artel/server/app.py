@@ -153,6 +153,10 @@ async def ui(request: Request):
         return RedirectResponse("/ui/login")
     aid = settings.ui_agent_id
     akey = settings.ui_agent_key()
+    if not akey:
+        row = get_db().execute("SELECT api_key FROM agents WHERE id=?", (aid,)).fetchone()
+        if row:
+            akey = row["api_key"]
     regkey = settings.registration_key
     html = _UI.read_text().replace(
         "/*CREDS*/",
