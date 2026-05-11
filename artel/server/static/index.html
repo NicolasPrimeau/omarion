@@ -818,10 +818,15 @@ async function loadTasks(){
 
 async function createTask(){
   const title=$('ttitle').value.trim();if(!title)return;
-  await req('POST','/tasks',{title,description:$('tdesc').value,expected_outcome:$('toutcome').value,project:activeProject(),priority:$('tpri').value});
-  $('ttitle').value='';$('tdesc').value='';$('toutcome').value='';loadTasks();
+  try{
+    await req('POST','/tasks',{title,description:$('tdesc').value,expected_outcome:$('toutcome').value,project:activeProject(),priority:$('tpri').value});
+    $('ttitle').value='';$('tdesc').value='';$('toutcome').value='';loadTasks();
+  }catch(e){$('tlist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
 }
-async function taskAction(id,action){await req('POST',`/tasks/${id}/${action}`);loadTasks()}
+async function taskAction(id,action){
+  try{await req('POST',`/tasks/${id}/${action}`);loadTasks();}
+  catch(e){alert(e.message);}
+}
 
 function openTaskEdit(id,title,desc,outcome,pri){
   _editTaskId=id;
@@ -835,8 +840,10 @@ function closeTaskModal(){$('task-modal').style.display='none';_editTaskId=null}
 async function saveTaskEdit(){
   if(!_editTaskId)return;
   const body={title:$('et-title').value.trim()||undefined,description:$('et-desc').value||undefined,expected_outcome:$('et-outcome').value||undefined,priority:$('et-pri').value};
-  await req('PATCH',`/tasks/${_editTaskId}`,body);
-  closeTaskModal();loadTasks();
+  try{
+    await req('PATCH',`/tasks/${_editTaskId}`,body);
+    closeTaskModal();loadTasks();
+  }catch(e){alert(e.message);}
 }
 $('task-modal').addEventListener('click',e=>{if(e.target===$('task-modal'))closeTaskModal()});
 
@@ -878,11 +885,16 @@ async function checkInbox(){
 async function sendMsg(){
   const to=$('mto').value.trim();if(!to)return;
   const body=$('mbody').value.trim();if(!body)return;
-  await req('POST','/messages',{to,subject:$('msub').value||'',body});
-  $('mto').value='';$('msub').value='';$('mbody').value='';
-  flash('msg-flash');loadInbox();
+  try{
+    await req('POST','/messages',{to,subject:$('msub').value||'',body});
+    $('mto').value='';$('msub').value='';$('mbody').value='';
+    flash('msg-flash');loadInbox();
+  }catch(e){$('msglist').innerHTML=`<div class="empty">${esc(e.message)}</div>`;}
 }
-async function markRead(id){await req('POST',`/messages/${id}/read`);loadInbox()}
+async function markRead(id){
+  try{await req('POST',`/messages/${id}/read`);loadInbox();}
+  catch(_){}
+}
 async function markAllRead(){
   try{await req('POST','/messages/inbox/read-all');}catch(_){}
   loadInbox();checkInbox();
@@ -1023,13 +1035,17 @@ async function loadProjects(){
 function selectProject(name){$('h-project').value=name;onProjectChange()}
 async function joinProject(name){
   if(!name)return;
-  await req('POST',`/projects/${name}/join`);
-  await loadProjectsHeader();loadProjects();
+  try{
+    await req('POST',`/projects/${name}/join`);
+    await loadProjectsHeader();loadProjects();
+  }catch(e){alert(e.message);}
 }
 async function leaveProject(name){
   if(!confirm(`Leave project "${name}"?`))return;
-  await req('DELETE',`/projects/${name}/leave`);
-  await loadProjectsHeader();loadProjects();
+  try{
+    await req('DELETE',`/projects/${name}/leave`);
+    await loadProjectsHeader();loadProjects();
+  }catch(e){alert(e.message);}
 }
 async function joinProjectByInput(){
   const name=$('new-proj').value.trim();if(!name)return;
