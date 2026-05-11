@@ -20,9 +20,14 @@ ROWS = 18  # half-height; will be combined later
 
 NOVA_PROMPT = (
     "check context and inbox. "
-    "you're the support agent. three customers today hit checkout timeouts — different accounts, same flow. "
-    "search memory for any prior reports. log the pattern, open a task for the product team, message orion. "
-    "save your session when done."
+    "you're starting work on a rate limiting feature for the API. "
+    "search memory for any prior work on this. write your design plan to memory, create a task. "
+    "save a session handoff when done — you'll be continuing this on another machine."
+)
+
+NOVA2_PROMPT = (
+    "check your session context. "
+    "you're the same agent on a different machine. pick up exactly where you left off."
 )
 
 ORION_PROMPT = (
@@ -179,6 +184,11 @@ if __name__ == "__main__":
     agent = sys.argv[1] if len(sys.argv) > 1 else "nova"
     out = sys.argv[2] if len(sys.argv) > 2 else f"/tmp/artel-{agent}.cast"
     adir = f"/tmp/artel-demo/{agent}"
-    prompt = NOVA_PROMPT if agent == "nova" else ORION_PROMPT
+    if agent == "nova2":
+        prompt = NOVA2_PROMPT
+    elif agent == "nova":
+        prompt = NOVA_PROMPT
+    else:
+        prompt = ORION_PROMPT
     print(f"Recording {agent}...", flush=True)
     record(adir, prompt, out)
