@@ -23,10 +23,11 @@ LABEL_COLOR = "\x1b[38;5;180m"  # muted gold
 RESET = "\x1b[0m"
 
 SNAPSHOT_INTERVAL = 0.12  # seconds between combined frames
-TITLE_DURATION = 2.5  # seconds each act title is shown
+TITLE_DURATION = 6.0  # seconds each act title is shown
 
 CYAN = "\x1b[38;5;51m"
 GOLD = "\x1b[38;5;220m"
+WHITE = "\x1b[97m"
 DIM = "\x1b[2m"
 BOLD = "\x1b[1m"
 RESET = "\x1b[0m"
@@ -40,20 +41,24 @@ ACTS = [
 
 def _title_card(act_label: str, act_title: str) -> str:
     mid = TOTAL_H // 2
-    label_line = f"{BOLD}{CYAN}{act_label}{RESET}  {DIM}{act_title}{RESET}"
-    label_plain = f"{act_label}  {act_title}"
-    pad = (COLS - len(label_plain)) // 2
-    bar = f"{DIM}{'─' * COLS}{RESET}"
+    rule = "─" * COLS
+
+    act_plain = act_label
+    title_plain = act_title
+    act_pad = (COLS - len(act_plain)) // 2
+    title_pad = (COLS - len(title_plain)) // 2
+
+    act_line = f"{BOLD}{GOLD}{' ' * act_pad}{act_plain}{RESET}"
+    title_line = f"{BOLD}{WHITE}{' ' * title_pad}{title_plain}{RESET}"
+    rule_line = f"{DIM}{rule}{RESET}"
 
     out = "\x1b[2J\x1b[H"
-    for row in range(1, TOTAL_H + 1):
-        out += f"\x1b[{row};1H"
-        if row == mid - 1:
-            out += f"\x1b[{mid - 1};{1}H{bar}"
-        elif row == mid:
-            out += f"\x1b[{mid};{pad}H{label_line}"
-        elif row == mid + 1:
-            out += f"\x1b[{mid + 1};{1}H{bar}"
+    out += f"\x1b[{mid - 2};1H{rule_line}"
+    out += f"\x1b[{mid - 1};1H"  # blank breathing room
+    out += f"\x1b[{mid};1H{act_line}"
+    out += f"\x1b[{mid + 1};1H{title_line}"
+    out += f"\x1b[{mid + 2};1H"  # blank breathing room
+    out += f"\x1b[{mid + 3};1H{rule_line}"
     return out
 
 
