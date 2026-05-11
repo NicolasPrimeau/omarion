@@ -29,6 +29,7 @@ dependencies = [
     "uvicorn[standard]>=0.46.0",
     "zeroconf>=0.136.0",
     "python-jose>=3.3.0",
+    "supervisor>=4.3.0",
 ]
 
 [project.urls]
@@ -48,6 +49,7 @@ dev = [
     "hatchling>=1.27.0",
     "httpx>=0.28.1",
     "pre-commit>=4.0.0",
+    "pyte>=0.8.2",
     "pytest>=8.3.0",
     "pytest-asyncio>=0.25.0",
     "python-dotenv>=1.2.2",
