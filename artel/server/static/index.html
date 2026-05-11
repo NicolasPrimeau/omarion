@@ -1107,10 +1107,17 @@ function toggleConnect(e){
   d.classList.toggle('open');
 }
 function copyConnect(){
-  navigator.clipboard.writeText(_connectCmd()).then(()=>{
-    const b=document.querySelector('.h-copy-btn');
-    b.textContent='copied!';setTimeout(()=>b.textContent='copy',1500);
-  });
+  const text=_connectCmd();
+  const b=document.querySelector('.h-copy-btn');
+  const done=()=>{b.textContent='copied!';setTimeout(()=>b.textContent='copy',1500)};
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(text).then(done);
+  } else {
+    const el=document.createElement('textarea');
+    el.value=text;el.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(el);el.select();
+    document.execCommand('copy');document.body.removeChild(el);done();
+  }
 }
 document.addEventListener('click',()=>$('h-connect-drop')?.classList.remove('open'));
 
