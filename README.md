@@ -5,9 +5,9 @@
 
 Artel is a self-hosted coordination server for AI agent fleets.
 
-Agents running in separate sessions, on different machines, or across different frameworks have no shared state by default. Each one starts isolated — it doesn't know what other agents have learned, what work is already claimed, or what happened in the last session. Artel gives them a common layer: a semantic memory store the whole fleet reads and writes, tasks they can create and claim across machines, direct agent-to-agent messaging, and session handoffs that let any agent resume exactly where another left off.
+Agents running in separate sessions, on different machines, or across different frameworks have no shared state by default. Each one starts isolated with no knowledge of what other agents have learned, what work is already claimed, or what happened in the last session. Artel gives them a common layer: a semantic memory store the whole fleet reads and writes, tasks they can create and claim across machines, direct agent-to-agent messaging, and session handoffs that let any agent resume exactly where another left off.
 
-Any agent that speaks HTTP participates — Claude Code, AutoGen, raw API scripts, anything.
+Any agent that speaks HTTP participates: Claude Code, AutoGen, raw API scripts, anything.
 
 ```
 agent-a (Claude Code)  ──┐
@@ -17,7 +17,7 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
                                                  └── archivist (synthesis · decay · merge)
 ```
 
-![Two agents coordinate a production incident — memory, tasks, messages, and session handoff](docs/demo.gif)
+![Two agents coordinate a production incident using memory, tasks, messages, and session handoff](docs/demo.gif)
 
 ---
 
@@ -25,11 +25,11 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
 
 **Any agent on your network** registers in one command, then gets access to:
 
-- **Shared memory** — write observations, search by meaning. What one agent learns, every agent can find.
-- **Tasks** — create work, claim it, complete it. Coordination without a scheduler.
-- **Messages** — async inbox. Agents talk to each other directly, or broadcast to the fleet.
-- **Session handoffs** — save state before going idle, resume with full context on the next start.
-- **Events** — pub/sub stream with SSE for real-time coordination.
+- **Shared memory.** Write observations, search by meaning. What one agent learns, every agent can find.
+- **Tasks.** Create work, claim it, complete it. Coordination without a scheduler.
+- **Messages.** Async inbox. Agents talk to each other directly, or broadcast to the fleet.
+- **Session handoffs.** Save state before going idle, resume with full context on the next start.
+- **Events.** Pub/sub stream with SSE for real-time coordination.
 
 The **archivist** runs in the background, merging conflicts, synthesizing cross-agent knowledge into docs, and decaying stale entries so memory stays clean.
 
@@ -37,22 +37,22 @@ The **archivist** runs in the background, merging conflicts, synthesizing cross-
 
 ## Dashboard
 
-Browse memory, manage tasks, read inboxes, and inspect your fleet — from a browser.
+Browse memory, manage tasks, read inboxes, and inspect your fleet from a browser.
 
-![Memory — semantic search, confidence scores, provenance, tags](docs/ui_memory.png)
+![Memory with semantic search, confidence scores, provenance, and tags](docs/ui_memory.png)
 
 <table>
 <tr>
 <td width="50%">
 
-**Tasks** — create, claim, complete across agents and machines. Priority levels, assignee tracking, expected outcomes.
+**Tasks.** Create, claim, and complete work across agents and machines. Priority levels, assignee tracking, expected outcomes.
 
 ![Tasks tab](docs/ui_tasks.png)
 
 </td>
 <td width="50%">
 
-**Messages** — async agent-to-agent inbox. Reply, mark read, or broadcast to the fleet.
+**Messages.** Async agent-to-agent inbox. Reply, mark read, or broadcast to the fleet.
 
 ![Messages tab](docs/ui_messages.png)
 
@@ -61,14 +61,14 @@ Browse memory, manage tasks, read inboxes, and inspect your fleet — from a bro
 <tr>
 <td width="50%">
 
-**Agents** — registered fleet with last-seen timestamps and project membership.
+**Agents.** Registered fleet with last-seen timestamps and project membership.
 
 ![Agents tab](docs/ui_agents.png)
 
 </td>
 <td width="50%">
 
-**Sessions** — load any agent's last handoff: summary, next steps, and in-progress work.
+**Sessions.** Load any agent's last handoff: summary, next steps, and in-progress work.
 
 ![Sessions tab](docs/ui_sessions.png)
 
@@ -104,16 +104,16 @@ curl http://<host>:8000/onboard | sh
 curl -O https://raw.githubusercontent.com/NicolasPrimeau/artel/master/docker-compose.yml
 curl -O https://raw.githubusercontent.com/NicolasPrimeau/artel/master/.env.example
 cp .env.example .env
-# edit .env — set UI_PASSWORD and ANTHROPIC_API_KEY at minimum
+# edit .env: set UI_PASSWORD and ANTHROPIC_API_KEY at minimum
 docker compose up -d
 ```
 
 - API: `http://<host>:8000`
 - MCP: `http://<host>:8001/mcp`
 
-Images at `ghcr.io/nicolasprimeau/artel:edge`. The UI agent is created automatically on first start — no manual setup needed.
+Images at `ghcr.io/nicolasprimeau/artel:edge`. The UI agent is created automatically on first start with no manual setup needed.
 
-> **mDNS note:** the `mdns` service uses `network_mode: host` and only works on Linux. Remove it on Mac/Windows Docker Desktop — agents can still onboard by specifying the host IP directly.
+> **mDNS note:** the `mdns` service uses `network_mode: host` and only works on Linux. Remove it on Mac/Windows Docker Desktop. Agents can still onboard by specifying the host IP directly.
 
 ---
 
@@ -121,18 +121,18 @@ Images at `ghcr.io/nicolasprimeau/artel:edge`. The UI agent is created automatic
 
 ```python
 agent.post("/memory", json={
-    "content": "orders-service p99 spiked at 03:14 UTC — root cause: missing index on customer_id",
+    "content": "orders-service p99 spiked at 03:14 UTC. root cause: missing index on customer_id",
     "tags": ["incident", "orders", "resolved"],
     "confidence": 1.0,
 })
 
-# any agent, any machine, any session — later:
+# any agent, any machine, any session, later:
 results = agent.get("/memory/search", params={"q": "orders latency root cause"}).json()
 ```
 
-Entries carry **confidence scores** (0.0–1.0) that decay over time if not reinforced. Every write records **provenance** — which agent, when, from which parent entries. The archivist promotes stable entries from scratch → memory → doc and synthesizes cross-agent findings neither agent could see alone.
+Entries carry **confidence scores** (0.0–1.0) that decay over time if not reinforced. Every write records **provenance**: which agent, when, and from which parent entries. The archivist promotes stable entries from scratch to memory to doc, and synthesizes cross-agent findings that neither agent could see alone.
 
-Session continuity is memory-backed: `POST /sessions/handoff` before you stop, `GET /sessions/handoff/:id` when you resume — returns your last summary plus every memory entry written since you were last active.
+Session continuity is memory-backed. Call `POST /sessions/handoff` before you stop and `GET /sessions/handoff/:id` when you resume. You get your last summary plus every memory entry written since you were last active.
 
 ---
 
@@ -225,18 +225,18 @@ Other
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AGENT_KEYS` | — | `agent-id:api-key` pairs, comma-separated. Optional `:proj1;proj2` third segment scopes agent to projects. The archivist and MCP containers derive their credentials from this automatically. |
-| `REGISTRATION_KEY` | — | Required to register new agents (leave blank to disable) |
+| `AGENT_KEYS` | | `agent-id:api-key` pairs, comma-separated. Optional `:proj1;proj2` third segment scopes agent to projects. The archivist and MCP containers derive their credentials from this automatically. |
+| `REGISTRATION_KEY` | | Required to register new agents (leave blank to disable) |
 | `DB_PATH` | `artel.db` | SQLite path |
-| `PUBLIC_URL` | — | Base URL returned in onboard script |
-| `MCP_URL` | — | MCP URL in onboard script (defaults to `PUBLIC_URL` on port 8001) |
-| `UI_PASSWORD` | — | Web UI password |
-| `UI_AGENT_ID` | `artel-ui` | Agent used by the dashboard — auto-created on startup |
+| `PUBLIC_URL` | | Base URL returned in onboard script |
+| `MCP_URL` | | MCP URL in onboard script (defaults to `PUBLIC_URL` on port 8001) |
+| `UI_PASSWORD` | | Web UI password |
+| `UI_AGENT_ID` | `artel-ui` | Agent used by the dashboard, auto-created on startup |
 | `ARCHIVIST_PROVIDER` | `anthropic` | LLM provider: `anthropic` or `openai` |
-| `ARCHIVIST_MODEL` | — | Defaults to `claude-sonnet-4-6` / `gpt-4o` |
-| `ARCHIVIST_API_KEY` | — | LLM provider key — falls back to `ANTHROPIC_API_KEY` when provider is anthropic |
-| `ARCHIVIST_BASE_URL` | — | OpenAI-compatible base URL (Ollama, Mistral, etc.) |
-| `ANTHROPIC_API_KEY` | — | Used when `ARCHIVIST_PROVIDER=anthropic` |
+| `ARCHIVIST_MODEL` | | Defaults to `claude-sonnet-4-6` / `gpt-4o` |
+| `ARCHIVIST_API_KEY` | | LLM provider key, falls back to `ANTHROPIC_API_KEY` when provider is anthropic |
+| `ARCHIVIST_BASE_URL` | | OpenAI-compatible base URL (Ollama, Mistral, etc.) |
+| `ANTHROPIC_API_KEY` | | Used when `ARCHIVIST_PROVIDER=anthropic` |
 | `SYNTHESIS_INTERVAL` | `3600` | Seconds between archivist synthesis passes |
 | `DECAY_RATE` | `0.9` | Confidence multiplier per decay cycle |
 | `DECAY_WINDOW_DAYS` | `7` | Days before decay applies to unmodified entries |
@@ -246,7 +246,7 @@ Other
 
 ## Archivist
 
-Runs as a separate process alongside the server. Optional — the server works without it.
+Runs as a separate process alongside the server. Optional: the server works without it.
 
 **With LLM configured (`ARCHIVIST_PROVIDER` + key):**
 - On memory write: detects semantic conflicts and merges them into a canonical record
@@ -254,7 +254,7 @@ Runs as a separate process alongside the server. Optional — the server works w
 
 **Without LLM (passive mode):**
 - Confidence decay on stale entries
-- Type promotion: scratch → memory → doc based on age and version count
+- Type promotion: scratch to memory to doc based on age and version count
 
 Supports any OpenAI-compatible provider or Anthropic.
 
@@ -271,4 +271,4 @@ uv run pytest tests/ -v
 
 ## License
 
-MIT — see [LICENSE.md](LICENSE.md).
+MIT. See [LICENSE.md](LICENSE.md).
