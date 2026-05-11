@@ -20,9 +20,8 @@ ROWS = 18  # half-height; will be combined later
 
 NOVA_PROMPT = (
     "check context and inbox. "
-    "you're starting work on a rate limiting feature for the API. "
-    "search memory for any prior work on this. write your design plan to memory, create a task. "
-    "save a session handoff when done — you'll be continuing this on another machine."
+    "you just finished a rate limiting middleware. "
+    "write the key design decisions to memory, open a review task for orion, message them to take a look."
 )
 
 NOVA2_PROMPT = (
@@ -32,7 +31,7 @@ NOVA2_PROMPT = (
 
 ORION_PROMPT = (
     "check inbox and context. "
-    "you're the product agent. nova flagged something from support — investigate and make a call."
+    "nova wants a code review — look over what they wrote and give your verdict."
 )
 
 TERMINAL_RESPONSES = [
