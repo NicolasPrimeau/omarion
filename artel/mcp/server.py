@@ -20,6 +20,7 @@ _api_key: contextvars.ContextVar[str] = contextvars.ContextVar("api_key")
 _sessions: dict[str, ServerSession] = {}
 _notification_queue: asyncio.Queue[tuple[str, str]] | None = None
 _client: httpx.AsyncClient | None = None
+_key_cache: dict[str, str] = {}
 
 
 async def _inject_credentials(request: httpx.Request) -> None:
@@ -27,7 +28,27 @@ async def _inject_credentials(request: httpx.Request) -> None:
     key = _api_key.get(None)
     if aid and key:
         request.headers["x-agent-id"] = aid
-        request.headers["x-api-key"] = key
+        request.headers["x-api-key"] = _key_cache.get(aid, key)
+
+
+async def _refresh_key(agent_id: str) -> str | None:
+    if not settings.mcp_registration_key:
+        return None
+    c = _http()
+    try:
+        r = await c.post(
+            "/agents/self-register",
+            json={"agent_id": agent_id},
+            headers={"x-registration-key": settings.mcp_registration_key},
+        )
+        if r.status_code == 201:
+            new_key = r.json()["api_key"]
+            _key_cache[agent_id] = new_key
+            _api_key.set(new_key)
+            return new_key
+    except Exception:
+        pass
+    return None
 
 
 @asynccontextmanager
@@ -76,10 +97,23 @@ class ArtelMCP(FastMCP):
         self, name: str, arguments: dict[str, Any] | None
     ) -> list[mcp_types.ContentBlock]:
         ctx = self.get_context()
+        aid = _agent_id.get(settings.mcp_agent_id)
         if ctx._request_context is not None:
-            aid = _agent_id.get(settings.mcp_agent_id)
             _sessions[aid] = ctx._request_context.session
-        return await super().call_tool(name, arguments)
+        try:
+            return await super().call_tool(name, arguments)
+        except _StaleKeyError:
+            new_key = await _refresh_key(aid)
+            if new_key:
+                raise RuntimeError(
+                    "Your Artel API key was stale and has been refreshed for this session. "
+                    "Retry this tool call — it will succeed. "
+                    f"To persist the new key: curl {settings.artel_url.rstrip('/')}/onboard | sh"
+                )
+            raise RuntimeError(
+                "Artel rejected your API key (401). Credentials in .mcp.json are stale. "
+                f"Fix: curl {settings.artel_url.rstrip('/')}/onboard | sh  then /reload-plugins"
+            )
 
 
 async def _sse_watcher():
@@ -187,12 +221,7 @@ _HTTPX_ERRORS = (httpx.HTTPStatusError, httpx.TransportError)
 def _err(e: Exception) -> str:
     if isinstance(e, httpx.HTTPStatusError):
         if e.response.status_code == 401:
-            raise RuntimeError(
-                "Artel rejected your API key (401 Unauthorized). "
-                "Your credentials in .mcp.json are stale. "
-                "Fix: run `curl <artel-url>/onboard | sh` in your project directory, "
-                "then run /reload-plugins in Claude Code."
-            )
+            raise _StaleKeyError()
         try:
             detail = e.response.json().get("detail", e.response.text)
         except Exception:
@@ -203,6 +232,10 @@ def _err(e: Exception) -> str:
     if isinstance(e, httpx.ReadTimeout):
         return "error: request timed out"
     return f"error: {type(e).__name__}: {e}"
+
+
+class _StaleKeyError(BaseException):
+    pass
 
 
 def _fmt_memory(e: dict, full_content: bool = False) -> str:
