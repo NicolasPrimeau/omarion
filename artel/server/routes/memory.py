@@ -251,7 +251,12 @@ async def patch_memory(
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
-    if row["agent_id"] != agent_id:
+
+    is_owner = row["agent_id"] == agent_id
+    wants_owner_fields = any(
+        f is not None for f in (body.content, body.tags, body.scope, body.project)
+    )
+    if not is_owner and wants_owner_fields:
         raise HTTPException(status_code=403, detail="forbidden")
 
     updates: dict = {}
