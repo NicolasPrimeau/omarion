@@ -243,7 +243,20 @@ async def test_agent_delete_self(mcp):
     assert row is None
 
 
-async def test_agent_delete_removes_from_participants(mcp):
+async def test_agent_delete_removes_from_participants(mcp, monkeypatch):
+    import artel.mcp.server as mcp_mod
+    from artel.server.app import app
+
     await mcp.agent_delete()
+
+    def agent2_http():
+        return httpx.AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test",
+            headers={"x-agent-id": AGENT2, "x-api-key": KEY2},
+            timeout=30.0,
+        )
+
+    monkeypatch.setattr(mcp_mod, "_http", agent2_http)
     result = await mcp.agent_list()
     assert TEST_AGENT not in result
