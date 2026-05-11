@@ -6,6 +6,7 @@ Usage: artel-demo-combine.py nova.cast orion.cast out.cast
 """
 
 import json
+import re
 import sys
 import time
 
@@ -63,6 +64,46 @@ def _title_card(act_label: str, act_title: str) -> str:
 
 
 CREDITS_DURATION = 10.0  # seconds credits are shown
+
+_ANSI_RE = re.compile(r"\x1b(?:\[[0-9;?]*[a-zA-Z]|\][^\x07]*\x07|.)")
+_SPINNER_CHARS = set("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏✢✶✻✽●⠐⠂")
+_DELAY_FAST = 0.025  # spinner / tool-call frames
+_DELAY_NORM = 0.12  # default
+_DELAY_SLOW = 0.70  # new readable text just appeared
+
+
+def _retime(events):
+    """Variable-speed retiming: compress spinners, pause on readable text.
+
+    Compares the full rendered grid character-by-character to count how many
+    alpha chars actually changed — avoids false positives from terminal scrolling.
+    """
+
+    def _strip(s):
+        return _ANSI_RE.sub("", s)
+
+    result = []
+    t = 0.0
+    prev_text = ""
+
+    for _ev_t, kind, data in events:
+        text = _strip(data)
+
+        changed_alpha = sum(1 for a, b in zip(text, prev_text) if a != b and a.isalpha())
+        has_spinner = any(c in _SPINNER_CHARS for c in text)
+
+        if has_spinner and changed_alpha < 8:
+            delay = _DELAY_FAST
+        elif changed_alpha > 25:
+            delay = _DELAY_SLOW
+        else:
+            delay = _DELAY_NORM
+
+        result.append((round(t, 4), kind, data))
+        t = round(t + delay, 4)
+        prev_text = text
+
+    return result
 
 
 def _credits_card() -> str:
@@ -260,22 +301,7 @@ def combine(nova_cast, orion_cast, out_cast):
 
         t = round(t + SNAPSHOT_INTERVAL, 4)
 
-    # Cap gaps
-    def cap_gaps(events, max_gap=2.0):
-        result, offset, prev = [], 0.0, None
-        for ev_t, kind, data in events:
-            adj = ev_t - offset
-            if prev is not None and adj - prev > max_gap:
-                offset += adj - prev - max_gap
-                adj = ev_t - offset
-            result.append((round(adj, 4), kind, data))
-            prev = adj
-        return result
-
-    combined = cap_gaps(combined)
-    if combined:
-        t0 = combined[0][0]
-        combined = [(round(t - t0, 4), k, d) for t, k, d in combined]
+    combined = _retime(combined)
 
     header = {
         "version": 2,
