@@ -24,7 +24,7 @@ LABEL_COLOR = "\x1b[38;5;180m"  # muted gold
 RESET = "\x1b[0m"
 
 SNAPSHOT_INTERVAL = 0.12  # seconds between combined frames
-TITLE_DURATION = 10.0  # seconds each act title is shown (video is 2.5x accelerated)
+TITLE_DURATION = 5.0  # seconds each act title is shown (video is 2.0x accelerated)
 
 CYAN = "\x1b[38;5;51m"
 GOLD = "\x1b[38;5;220m"
@@ -63,13 +63,14 @@ def _title_card(act_label: str, act_title: str) -> str:
     return out
 
 
-CREDITS_DURATION = 10.0  # seconds credits are shown
+CREDITS_DURATION = 5.0  # seconds credits are shown
 
 _ANSI_RE = re.compile(r"\x1b(?:\[[0-9;?]*[a-zA-Z]|\][^\x07]*\x07|.)")
 _SPINNER_CHARS = set("⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏✢✶✻✽●⠐⠂")
-_DELAY_FAST = 0.025  # spinner / tool-call frames
-_DELAY_NORM = 0.12  # default
-_DELAY_SLOW = 0.70  # new readable text just appeared
+_DELAY_FAST = 0.08  # spinner / tool-call frames — visible but quick
+_DELAY_NORM = 0.15  # default
+_DELAY_SLOW = 0.60  # moderate new text appeared
+_DELAY_READ = 1.20  # big readable block — hold for reading
 
 
 def _retime(events):
@@ -94,6 +95,8 @@ def _retime(events):
 
         if has_spinner and changed_alpha < 8:
             delay = _DELAY_FAST
+        elif changed_alpha > 100:
+            delay = _DELAY_READ
         elif changed_alpha > 25:
             delay = _DELAY_SLOW
         else:
@@ -323,8 +326,30 @@ def combine(nova_cast, orion_cast, out_cast):
     print(f"combined: {len(combined)} frames, {dur:.0f}s", flush=True)
 
 
+def retime_cast(in_cast, out_cast):
+    with open(in_cast) as f:
+        lines = f.readlines()
+    header = json.loads(lines[0])
+    events = [json.loads(line) for line in lines[1:]]
+    retimed = _retime(events)
+    header["timestamp"] = int(time.time())
+    if retimed:
+        header["duration"] = retimed[-1][0] + 2.0
+    with open(out_cast, "w") as f:
+        f.write(json.dumps(header) + "\n")
+        for row in retimed:
+            f.write(json.dumps(list(row)) + "\n")
+    dur = retimed[-1][0] if retimed else 0
+    print(f"retimed: {len(retimed)} frames, {dur:.0f}s", flush=True)
+
+
 if __name__ == "__main__":
-    nova_cast = sys.argv[1] if len(sys.argv) > 1 else "/tmp/artel-nova.cast"
-    orion_cast = sys.argv[2] if len(sys.argv) > 2 else "/tmp/artel-orion.cast"
-    out_cast = sys.argv[3] if len(sys.argv) > 3 else "/tmp/artel-demo.cast"
-    combine(nova_cast, orion_cast, out_cast)
+    if len(sys.argv) >= 2 and sys.argv[1] == "retime":
+        in_cast = sys.argv[2] if len(sys.argv) > 2 else "/tmp/artel-demo.cast"
+        out_cast = sys.argv[3] if len(sys.argv) > 3 else in_cast
+        retime_cast(in_cast, out_cast)
+    else:
+        nova_cast = sys.argv[1] if len(sys.argv) > 1 else "/tmp/artel-nova.cast"
+        orion_cast = sys.argv[2] if len(sys.argv) > 2 else "/tmp/artel-orion.cast"
+        out_cast = sys.argv[3] if len(sys.argv) > 3 else "/tmp/artel-demo.cast"
+        combine(nova_cast, orion_cast, out_cast)
