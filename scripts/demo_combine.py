@@ -23,7 +23,7 @@ LABEL_COLOR = "\x1b[38;5;180m"  # muted gold
 RESET = "\x1b[0m"
 
 SNAPSHOT_INTERVAL = 0.12  # seconds between combined frames
-TITLE_DURATION = 20.0  # seconds each act title is shown (video is 2.5x accelerated)
+TITLE_DURATION = 10.0  # seconds each act title is shown (video is 2.5x accelerated)
 
 CYAN = "\x1b[38;5;51m"
 GOLD = "\x1b[38;5;220m"
@@ -33,9 +33,9 @@ BOLD = "\x1b[1m"
 RESET = "\x1b[0m"
 
 ACTS = [
-    ("ACT I", "NOVA STARTS THE BUILD"),
-    ("ACT II", "ORION PICKS UP THE HANDOFF"),
-    ("ACT III", "SHIPPED"),
+    ("ACT I", "THE SUPPORT AGENT SPOTS A PATTERN"),
+    ("ACT II", "THE PRODUCT AGENT MAKES THE CALL"),
+    ("ACT III", "DECISION IN SHARED MEMORY"),
 ]
 
 
@@ -62,7 +62,7 @@ def _title_card(act_label: str, act_title: str) -> str:
     return out
 
 
-CREDITS_DURATION = 20.0  # seconds credits are shown
+CREDITS_DURATION = 10.0  # seconds credits are shown
 
 
 def _credits_card() -> str:

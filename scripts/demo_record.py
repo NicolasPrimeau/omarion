@@ -20,13 +20,14 @@ ROWS = 18  # half-height; will be combined later
 
 NOVA_PROMPT = (
     "check context and inbox. "
-    "i need a demo for artel — two claude code agents building something together across sessions. "
-    "search memory for any prior work on this. create a task, write your design in memory. "
-    "save a session handoff when done and ask orion to take it from there."
+    "you're the support agent. three customers today hit checkout timeouts — different accounts, same flow. "
+    "search memory for any prior reports. log the pattern, open a task for the product team, message orion. "
+    "save your session when done."
 )
 
 ORION_PROMPT = (
-    "check inbox and context. nova was working on the artel demo design — pick it up and finish it."
+    "check inbox and context. "
+    "you're the product agent. nova flagged something from support — investigate and make a call."
 )
 
 TERMINAL_RESPONSES = [
