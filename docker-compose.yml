@@ -49,6 +49,7 @@ services:
     environment:
       - ARTEL_URL=http://artel:8000
       - MCP_TRANSPORT=streamable-http
+      - MCP_REGISTRATION_KEY=${REGISTRATION_KEY:-}
       - MCP_PORT=8001
     labels:
       - "com.centurylinklabs.watchtower.enable=true"
