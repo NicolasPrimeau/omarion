@@ -33,9 +33,9 @@ BOLD = "\x1b[1m"
 RESET = "\x1b[0m"
 
 ACTS = [
-    ("ACT I", "DISCOVERY"),
-    ("ACT II", "INVESTIGATION"),
-    ("ACT III", "RESOLUTION"),
+    ("ACT I", "NOVA STARTS THE BUILD"),
+    ("ACT II", "ORION PICKS UP THE HANDOFF"),
+    ("ACT III", "SHIPPED"),
 ]
 
 
