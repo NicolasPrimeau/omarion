@@ -31,9 +31,13 @@ def _row_to_msg(row: sqlite3.Row) -> MessageEntry:
     summary="Send a message to an agent or broadcast",
 )
 async def send_message(body: MessageSend, agent_id: str = Depends(require_agent)):
+    from ..config import settings
+
     db = get_db()
     if body.to != "broadcast":
-        if not db.execute("SELECT id FROM agents WHERE id=?", (body.to,)).fetchone():
+        in_db = db.execute("SELECT id FROM agents WHERE id=?", (body.to,)).fetchone()
+        in_config = body.to in settings.api_keys().values()
+        if not in_db and not in_config:
             raise HTTPException(status_code=404, detail="recipient not found")
     msg_id = new_id()
     event_id = new_id()

@@ -89,6 +89,8 @@ async def search_memory(
     limit: int = Query(default=10, le=50),
     project: str | None = Query(default=None),
     tag: str | None = Query(default=None),
+    type: str | None = Query(default=None),
+    agent: str | None = Query(default=None),
     max_distance: float | None = Query(default=None),
     agent_id: str = Depends(require_agent),
 ):
@@ -121,6 +123,10 @@ async def search_memory(
         rows = [r for r in rows if r["distance"] <= max_distance]
     if tag:
         rows = [r for r in rows if tag in json.loads(r["tags"])]
+    if type:
+        rows = [r for r in rows if r["type"] == type]
+    if agent:
+        rows = [r for r in rows if r["agent_id"] == agent]
 
     return [_row_to_entry(r) for r in rows[:limit]]
 
