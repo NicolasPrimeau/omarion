@@ -112,6 +112,44 @@ class ArtelClient:
         r = await self._request("GET", "/memory/delta", params={"since": since})
         return r.json()
 
+    async def get_task(self, task_id: str) -> dict:
+        r = await self._request("GET", f"/tasks/{task_id}")
+        return r.json()
+
+    async def list_tasks(self, status: str | None = None, limit: int = 50) -> list[dict]:
+        params: dict = {"limit": limit}
+        if status:
+            params["status"] = status
+        r = await self._request("GET", "/tasks", params=params)
+        return r.json()
+
+    async def create_task(
+        self,
+        title: str,
+        description: str | None = None,
+        priority: str = "medium",
+        project: str | None = None,
+    ) -> dict:
+        r = await self._request(
+            "POST",
+            "/tasks",
+            json={
+                "title": title,
+                "description": description,
+                "priority": priority,
+                "project": project,
+            },
+        )
+        return r.json()
+
+    async def send_message(self, to: str, subject: str, body: str) -> dict:
+        r = await self._request(
+            "POST",
+            "/messages",
+            json={"to": to, "subject": subject, "body": body},
+        )
+        return r.json()
+
     async def stream_events(self, event_type: str | None = None):
         params = {}
         if event_type:
