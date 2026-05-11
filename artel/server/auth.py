@@ -54,6 +54,8 @@ async def require_registration_key(
 
 
 def _memberships(agent_id: str) -> list[str] | None:
+    if agent_id == settings.ui_agent_id:
+        return None
     is_static = agent_id in settings.api_keys().values()
     static = settings.agent_projects().get(agent_id)
     db = get_db()
