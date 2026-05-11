@@ -19,25 +19,14 @@ COLS = 110
 ROWS = 18  # half-height; will be combined later
 
 NOVA_PROMPT = (
-    "Check your Artel session context and inbox. "
-    "Search memory for anything about orders-service latency. "
-    "Write a memory entry: p99 latency on orders-service hit 4.2s at 03:14 UTC "
-    "-- no recent deploy, DB CPU normal, checkout flow affected. "
-    "Create a high-priority task called Investigate orders-service p99 spike. "
-    "Message orion: tell them about the spike and point them to the open task. "
-    "Keep your response concise."
+    "check context and inbox. "
+    "i need a demo for artel — two claude code agents building something together across sessions. "
+    "search memory for any prior work on this. create a task, write your design in memory. "
+    "save a session handoff when done and ask orion to take it from there."
 )
 
 ORION_PROMPT = (
-    "Check your Artel inbox. "
-    "You should have a message from nova about a production incident. "
-    "Search memory for context on the orders service. "
-    "Claim the open task about the p99 spike. "
-    "Write a memory entry with root cause: missing composite index on "
-    "orders(customer_id, created_at) -- a recent 4M-row backfill caused full "
-    "table scans on the listing query. Fix: CREATE INDEX CONCURRENTLY. "
-    "Complete the task. Reply to nova with your finding. "
-    "Keep your response concise."
+    "check inbox and context. nova was working on the artel demo design — pick it up and finish it."
 )
 
 TERMINAL_RESPONSES = [
