@@ -23,7 +23,7 @@ LABEL_COLOR = "\x1b[38;5;180m"  # muted gold
 RESET = "\x1b[0m"
 
 SNAPSHOT_INTERVAL = 0.12  # seconds between combined frames
-TITLE_DURATION = 6.0  # seconds each act title is shown
+TITLE_DURATION = 20.0  # seconds each act title is shown (video is 2.5x accelerated)
 
 CYAN = "\x1b[38;5;51m"
 GOLD = "\x1b[38;5;220m"
@@ -59,6 +59,29 @@ def _title_card(act_label: str, act_title: str) -> str:
     out += f"\x1b[{mid + 1};1H{title_line}"
     out += f"\x1b[{mid + 2};1H"  # blank breathing room
     out += f"\x1b[{mid + 3};1H{rule_line}"
+    return out
+
+
+CREDITS_DURATION = 20.0  # seconds credits are shown
+
+
+def _credits_card() -> str:
+    mid = TOTAL_H // 2
+    rule = "─" * COLS
+    rule_line = f"{DIM}{rule}{RESET}"
+
+    lines = [
+        f"{BOLD}{GOLD}{'directed by':^{COLS}}{RESET}",
+        f"{BOLD}{WHITE}{'Claudin Tarantino':^{COLS}}{RESET}",
+        "",
+        f"{DIM}{'artel.ai':^{COLS}}{RESET}",
+    ]
+
+    out = "\x1b[2J\x1b[H"
+    out += f"\x1b[{mid - 3};1H{rule_line}"
+    for i, line in enumerate(lines):
+        out += f"\x1b[{mid - 1 + i};1H{line}"
+    out += f"\x1b[{mid + len(lines) + 1};1H{rule_line}"
     return out
 
 
@@ -159,7 +182,8 @@ def combine(nova_cast, orion_cast, out_cast):
     orion_duration = orion_events[-1][0] if orion_events else 0
     act3_t = orion_offset + orion_duration * 0.65
 
-    total_end = orion_offset + orion_duration + 2.0
+    credits_start = orion_offset + orion_duration + 2.0
+    total_end = credits_start + CREDITS_DURATION
 
     combined = []
     t = 0.0
@@ -223,6 +247,12 @@ def combine(nova_cast, orion_cast, out_cast):
             + border_line()
             + screen_to_ansi(orion_screen, row_offset=PANE_H + BORDER)
         )
+
+        if t >= credits_start:
+            frame = _credits_card()
+            combined.append((round(t, 4), "o", frame))
+            t = round(t + SNAPSHOT_INTERVAL, 4)
+            continue
 
         if frame != prev_frame:
             combined.append((round(t, 4), "o", frame))
