@@ -6,25 +6,50 @@ from .client import ArtelClient
 from .config import settings
 from .conflict import check_and_merge
 from .llm import is_configured
-from .synthesis import decay_confidence, run_promotion, run_synthesis
+from .synthesis import (
+    decay_confidence,
+    on_task_completed,
+    on_task_failed,
+    run_promotion,
+    run_synthesis,
+)
 
 log = logging.getLogger(__name__)
 
 _HEARTBEAT = pathlib.Path("/tmp/archivist.heartbeat")
 
 
+async def _dispatch(event: dict, client: ArtelClient) -> None:
+    event_type = event.get("type", "")
+    payload = event.get("payload", {})
+    agent_id = event.get("agent_id", "")
+
+    if event_type == "memory.written":
+        entry_id = payload.get("memory_id")
+        if entry_id:
+            await check_and_merge(entry_id, client)
+
+    elif event_type == "task.completed":
+        task_id = payload.get("task_id")
+        if task_id:
+            await on_task_completed(task_id, agent_id, client)
+
+    elif event_type == "task.failed":
+        task_id = payload.get("task_id")
+        if task_id:
+            await on_task_failed(task_id, agent_id, client)
+
+
 async def _event_watcher(client: ArtelClient) -> None:
     delay = 1.0
     while True:
         try:
-            async for event in client.stream_events("memory.written"):
+            async for event in client.stream_events():
                 delay = 1.0
-                entry_id = event.get("payload", {}).get("memory_id")
-                if entry_id:
-                    try:
-                        await check_and_merge(entry_id, client)
-                    except Exception as e:
-                        log.error("conflict check failed %s: %s", entry_id, e)
+                try:
+                    await _dispatch(event, client)
+                except Exception as e:
+                    log.error("dispatch failed for %s: %s", event.get("type"), e)
         except asyncio.CancelledError:
             raise
         except Exception as e:
