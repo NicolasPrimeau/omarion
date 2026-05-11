@@ -186,6 +186,13 @@ _HTTPX_ERRORS = (httpx.HTTPStatusError, httpx.TransportError)
 
 def _err(e: Exception) -> str:
     if isinstance(e, httpx.HTTPStatusError):
+        if e.response.status_code == 401:
+            raise RuntimeError(
+                "Artel rejected your API key (401 Unauthorized). "
+                "Your credentials in .mcp.json are stale. "
+                "Fix: run `curl <artel-url>/onboard | sh` in your project directory, "
+                "then run /reload-plugins in Claude Code."
+            )
         try:
             detail = e.response.json().get("detail", e.response.text)
         except Exception:
