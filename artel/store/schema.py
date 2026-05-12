@@ -98,4 +98,16 @@ CREATE TABLE IF NOT EXISTS kv (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS oauth_codes (
+    code            TEXT PRIMARY KEY,
+    agent_id        TEXT NOT NULL,
+    api_key         TEXT NOT NULL,
+    client_id       TEXT NOT NULL,
+    code_challenge  TEXT,
+    redirect_uri    TEXT NOT NULL,
+    expires_at      REAL NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_oauth_codes_expires ON oauth_codes (expires_at);
 """
