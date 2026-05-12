@@ -63,13 +63,13 @@ header{
   backdrop-filter:blur(12px);
 }
 .logo{
-  font:600 14px var(--mono);
+  font:600 15px var(--mono);
   color:var(--t1);
   letter-spacing:-.5px;
   flex-shrink:0;
-  display:flex;align-items:center;gap:6px;
+  display:flex;align-items:center;gap:8px;
 }
-.logo-mark{color:var(--accent);font-size:16px;line-height:1}
+.logo-mark{color:var(--accent);width:22px;height:22px;flex-shrink:0;display:block}
 .h-div{color:var(--b2);font-size:10px;flex-shrink:0;user-select:none}
 .h-select{
   background:transparent;
@@ -106,6 +106,13 @@ header{
   transition:color .15s,border-color .15s;
 }
 .h-logout:hover{color:var(--t2);border-color:var(--b1)}
+.h-icon-btn{
+  background:transparent;border:1px solid transparent;color:var(--t3);
+  font-size:20px;line-height:1;padding:4px 10px;border-radius:var(--r);
+  cursor:pointer;flex-shrink:0;
+  transition:color .15s,border-color .15s,background .15s;
+}
+.h-icon-btn:hover{color:var(--accent);border-color:var(--b2);background:var(--a-bg)}
 .h-connect{position:relative;flex-shrink:0}
 .h-connect-btn{
   background:transparent;border:1px solid var(--b2);color:var(--t3);
@@ -527,7 +534,7 @@ pre{
 <script>/*CREDS*/</script>
 
 <header>
-  <div class="logo"><span class="logo-mark">◈</span> artel</div>
+  <div class="logo"><svg class="logo-mark" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polygon points="32,4 60,32 32,60 4,32" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/><circle cx="32" cy="32" r="6" fill="currentColor"/></svg> artel</div>
   <span class="h-div">·</span>
   <select id="h-agent-sel" class="h-select" onchange="onAgentChange()" title="active agent">
     <option value="">all agents</option>
@@ -540,6 +547,7 @@ pre{
     <span class="sse-dot on"></span>
     <span id="h-active-count" class="h-stat-val">0</span><span> active</span>
   </div>
+  <button class="h-icon-btn" onclick="openProjectsModal()" title="manage projects" aria-label="manage projects">⚙</button>
   <div class="h-connect">
     <button class="h-connect-btn" onclick="toggleConnect(event)">connect agent</button>
     <div class="h-connect-drop" id="h-connect-drop">
@@ -550,7 +558,6 @@ pre{
       </div>
     </div>
   </div>
-  <a class="h-logout" href="/ui/logout">logout</a>
 </header>
 
 <nav>
@@ -559,7 +566,6 @@ pre{
   <button class="nav-btn" onclick="tab('messages',this)" id="btn-messages">messages</button>
   <button class="nav-btn" onclick="tab('events',this)">events</button>
   <button class="nav-btn" onclick="tab('agents',this)">agents</button>
-  <button class="nav-btn" onclick="tab('projects',this)">projects</button>
   <button class="nav-btn" onclick="tab('sessions',this)">sessions</button>
 </nav>
 
@@ -659,13 +665,23 @@ pre{
 </div>
 
 <!-- PROJECTS -->
-<div id="panel-projects" class="panel">
-  <div class="toolbar">
-    <input id="new-proj" placeholder="create or join project…" style="flex:1;max-width:240px" onkeydown="if(event.key==='Enter')joinProjectByInput()">
-    <button class="p" onclick="joinProjectByInput()">join / create</button>
-    <button onclick="loadProjects()">refresh</button>
+<!-- PROJECTS / SETTINGS MODAL -->
+<div id="projects-modal" class="modal-backdrop">
+  <div class="modal" style="max-width:720px;width:90vw">
+    <div class="modal-header">
+      <span class="modal-title">manage projects</span>
+      <button class="modal-close" onclick="closeProjectsModal()" title="close">✕</button>
+    </div>
+    <div class="toolbar" style="margin-bottom:12px">
+      <input id="new-proj" placeholder="create or join project…" style="flex:1;min-width:0" onkeydown="if(event.key==='Enter')joinProjectByInput()">
+      <button class="p" onclick="joinProjectByInput()">join / create</button>
+      <button onclick="loadProjects()">refresh</button>
+    </div>
+    <div id="pjlist"></div>
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--b1);display:flex;justify-content:flex-end">
+      <a class="h-logout" href="/ui/logout">logout</a>
+    </div>
   </div>
-  <div id="pjlist"></div>
 </div>
 
 <!-- SESSIONS -->
@@ -780,8 +796,15 @@ function tab(name,btn){
   if(name==='messages')loadInbox();
   if(name==='events'&&!_sseAbort)startSSE();
   if(name==='agents')loadAgents();
-  if(name==='projects')loadProjects();
   if(name==='sessions'){populateSessionAgents();loadSession();}
+}
+
+function openProjectsModal(){
+  $('projects-modal').classList.add('open');
+  loadProjects();
+}
+function closeProjectsModal(){
+  $('projects-modal').classList.remove('open');
 }
 
 function onProjectChange(){
@@ -790,7 +813,6 @@ function onProjectChange(){
   if(n==='memory')loadMem();
   if(n==='tasks')loadTasks();
   if(n==='agents')loadAgents();
-  if(n==='projects')loadProjects();
 }
 
 function onAgentChange(){
