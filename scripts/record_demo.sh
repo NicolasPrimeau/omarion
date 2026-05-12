@@ -8,7 +8,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-GIF="$SCRIPT_DIR/../docs/demo.gif"
+GIF="$SCRIPT_DIR/../docs/incident_response.gif"
 VENV_PYTHON="$SCRIPT_DIR/../.venv/bin/python3"
 
 # Record nova (top pane)

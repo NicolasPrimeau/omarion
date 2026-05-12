@@ -18,7 +18,7 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
 ```
 
 <p align="center">
-  <img src="docs/showcase.gif?v=2" alt="Two agents coordinate a production incident using Artel: shared memory, tasks, messages, session handoff" width="720">
+  <img src="docs/hero.gif" alt="Two agents coordinate a production incident using Artel: shared memory, tasks, messages, session handoff" width="720">
 </p>
 
 ## Contents
@@ -56,19 +56,19 @@ The **archivist** runs in the background, merging conflicts, synthesizing cross-
 
 ### Incident response
 
-Two agents coordinate a production p99 spike: one writes timeline entries to memory, the other claims a follow-up task and resumes the investigation in a fresh session with full context. [Watch the demo.](docs/demo.gif)
+Two agents coordinate a production p99 spike: one writes timeline entries to memory, the other claims a follow-up task and resumes the investigation in a fresh session with full context. [Watch the demo.](docs/incident_response.gif)
 
 ### Code review handoff
 
-`nova` writes a rate-limiting middleware, records design decisions in memory, opens a review task, and messages `orion`. `orion` joins cold, reads the full context, reviews the design, and completes the task with a verdict. No call needed. [Watch the demo.](docs/demo_review.gif)
+`nova` writes a rate-limiting middleware, records design decisions in memory, opens a review task, and messages `orion`. `orion` joins cold, reads the full context, reviews the design, and completes the task with a verdict. No call needed. [Watch the demo.](docs/code_review.gif)
 
 ### Session continuity across machines
 
-Same agent, two machines. Stop on one machine after writing a `session_handoff`. Start on the other and `session_context()` returns the summary plus every memory entry written in the gap. [Watch the demo.](docs/demo_continuity.gif)
+Same agent, two machines. Stop on one machine after writing a `session_handoff`. Start on the other and `session_context()` returns the summary plus every memory entry written in the gap. [Watch the demo.](docs/session_continuity.gif)
 
 ### Project management via tasks
 
-A human or planner agent creates tasks with titles, descriptions, and expected outcomes. Worker agents on any machine claim open tasks, mark them complete or failed, and update progress in shared memory. The UI shows the live queue, who is on what, and where each task stands. [Watch the demo.](docs/demo_tasks.gif)
+A human or planner agent creates tasks with titles, descriptions, and expected outcomes. Worker agents on any machine claim open tasks, mark them complete or failed, and update progress in shared memory. The UI shows the live queue, who is on what, and where each task stands. [Watch the demo.](docs/project_management.gif)
 
 ---
 
@@ -76,7 +76,7 @@ A human or planner agent creates tasks with titles, descriptions, and expected o
 
 Browse memory, manage tasks, read inboxes, and inspect your fleet from a browser.
 
-![Memory with semantic search, confidence scores, provenance, and tags](docs/ui_memory.png?v=2)
+![Memory with semantic search, confidence scores, provenance, and tags](docs/tab_memory.png)
 
 <table>
 <tr>
@@ -84,14 +84,14 @@ Browse memory, manage tasks, read inboxes, and inspect your fleet from a browser
 
 **Tasks.** Create, claim, and complete work across agents and machines. Priority levels, assignee tracking, expected outcomes.
 
-![Tasks tab](docs/ui_tasks.png?v=2)
+![Tasks tab](docs/tab_tasks.png)
 
 </td>
 <td width="50%">
 
 **Messages.** Async agent-to-agent inbox. Reply, mark read, or broadcast to the fleet.
 
-![Messages tab](docs/ui_messages.png?v=2)
+![Messages tab](docs/tab_messages.png)
 
 </td>
 </tr>
@@ -100,14 +100,14 @@ Browse memory, manage tasks, read inboxes, and inspect your fleet from a browser
 
 **Agents.** Registered fleet with last-seen timestamps and project membership.
 
-![Agents tab](docs/ui_agents.png?v=2)
+![Agents tab](docs/tab_agents.png)
 
 </td>
 <td width="50%">
 
 **Sessions.** Load any agent's last handoff: summary, next steps, and in-progress work.
 
-![Sessions tab](docs/ui_sessions.png?v=2)
+![Sessions tab](docs/tab_sessions.png)
 
 </td>
 </tr>
