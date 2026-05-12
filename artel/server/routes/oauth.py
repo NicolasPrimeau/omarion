@@ -1,3 +1,7 @@
+import re
+import secrets
+import time
+
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import JSONResponse
 
@@ -6,6 +10,13 @@ from ..config import settings
 from ..jwt_utils import sign_token
 
 router = APIRouter(tags=["oauth"])
+
+_AGENT_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def _safe_agent_id(name: str) -> str:
+    cleaned = re.sub(r"[^a-zA-Z0-9_-]", "-", name.strip().lower()).strip("-")
+    return cleaned or "oauth-client"
 
 
 def _validate_client(client_id: str, client_secret: str) -> tuple[str, str] | None:
@@ -49,6 +60,7 @@ async def oauth_server_metadata(request: Request):
         "issuer": base,
         "authorization_endpoint": f"{base}/oauth/authorize",
         "token_endpoint": f"{base}/oauth/token",
+        "registration_endpoint": f"{base}/oauth/register",
         "token_endpoint_auth_methods_supported": ["client_secret_post"],
         "grant_types_supported": ["client_credentials"],
         "response_types_supported": ["token"],
@@ -65,3 +77,32 @@ async def authorize_endpoint():
         },
         status_code=400,
     )
+
+
+@router.post("/oauth/register", status_code=201, include_in_schema=False)
+async def register_endpoint(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    client_name = body.get("client_name") or body.get("software_id") or "oauth-client"
+    base = _safe_agent_id(str(client_name))
+    db = get_db()
+    candidate, i = base, 1
+    while db.execute("SELECT 1 FROM agents WHERE id=?", (candidate,)).fetchone():
+        candidate = f"{base}-{i}"
+        i += 1
+    api_key = secrets.token_urlsafe(32)
+    db.execute("INSERT INTO agents (id, api_key) VALUES (?, ?)", (candidate, api_key))
+    db.commit()
+    return {
+        "client_id": candidate,
+        "client_secret": api_key,
+        "client_id_issued_at": int(time.time()),
+        "client_secret_expires_at": 0,
+        "token_endpoint_auth_method": "client_secret_post",
+        "grant_types": ["client_credentials"],
+        "response_types": ["token"],
+    }
