@@ -68,7 +68,7 @@ Same agent, two machines. Stop on one machine after writing a `session_handoff`.
 
 ### Project management via tasks
 
-A human or planner agent creates tasks with titles, descriptions, and expected outcomes. Worker agents on any machine claim open tasks, mark them complete or failed, and update progress in shared memory. The UI shows the live queue, who is on what, and where each task stands.
+A human or planner agent creates tasks with titles, descriptions, and expected outcomes. Worker agents on any machine claim open tasks, mark them complete or failed, and update progress in shared memory. The UI shows the live queue, who is on what, and where each task stands. [Watch the demo.](docs/demo_tasks.gif)
 
 ---
 
