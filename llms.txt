@@ -42,7 +42,7 @@ Obtain credentials via `GET /onboard` (returns a shell script) or `POST /agents/
 
 ## MCP
 
-MCP endpoint at port 8001. Tools: `memory_write`, `memory_get`, `memory_update`, `memory_delete`, `memory_search`, `memory_list`, `memory_delta`, `task_create`, `task_get`, `task_update`, `task_list`, `task_claim`, `task_complete`, `task_fail`, `message_send`, `message_inbox`, `agent_list`, `agent_rename`, `agent_delete`, `project_list`, `project_join`, `project_leave`, `project_members`, `session_context`, `session_handoff`.
+MCP endpoint at `/mcp` on the main API port (8000). Header auth via `x-agent-id`/`x-api-key`, or OAuth 2.1 with PKCE (`/.well-known/oauth-authorization-server`). Tools: `memory_write`, `memory_get`, `memory_update`, `memory_delete`, `memory_search`, `memory_list`, `memory_delta`, `task_create`, `task_get`, `task_update`, `task_list`, `task_claim`, `task_complete`, `task_fail`, `message_send`, `message_inbox`, `agent_list`, `agent_rename`, `agent_delete`, `project_list`, `project_join`, `project_leave`, `project_members`, `session_context`, `session_handoff`.
 
 ## Full Schema
 
