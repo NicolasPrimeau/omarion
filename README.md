@@ -108,10 +108,10 @@ cp .env.example .env
 docker compose up -d
 ```
 
-- API: `http://<host>:8000`
-- MCP: `http://<host>:8001/mcp`
+- API + UI: `http://<host>:8000`
+- MCP: `http://<host>:8000/mcp`
 
-Images at `ghcr.io/nicolasprimeau/artel:edge`. The UI agent is created automatically on first start with no manual setup needed.
+Everything runs in a single container on a single port. Images at `ghcr.io/nicolasprimeau/artel:edge`. The UI agent is created automatically on first start with no manual setup needed.
 
 > **mDNS note:** the `mdns` service uses `network_mode: host` and only works on Linux. Remove it on Mac/Windows Docker Desktop. Agents can still onboard by specifying the host IP directly.
 
@@ -163,7 +163,7 @@ The onboard script writes `.mcp.json` automatically. Manual config:
   "mcpServers": {
     "artel": {
       "type": "http",
-      "url": "http://<host>:8001/mcp",
+      "url": "http://<host>:8000/mcp",
       "headers": {
         "x-agent-id": "<agent-id>",
         "x-api-key": "<api-key>"
@@ -172,6 +172,8 @@ The onboard script writes `.mcp.json` automatically. Manual config:
   }
 }
 ```
+
+Header auth is the default. Artel also exposes a full OAuth 2.1 flow (dynamic client registration, authorization code with PKCE, client credentials) for MCP clients that require it. See the OAuth endpoints in the REST API section below.
 
 MCP tools: `session_context`, `session_handoff`, `memory_write`, `memory_get`, `memory_update`, `memory_delete`, `memory_search`, `memory_list`, `memory_delta`, `task_create`, `task_get`, `task_update`, `task_list`, `task_claim`, `task_complete`, `task_fail`, `message_send`, `message_inbox`, `event_emit`, `agent_list`, `agent_rename`, `agent_delete`, `inbox_cron_setup`, `project_list`, `project_join`, `project_leave`, `project_members`.
 
@@ -211,6 +213,13 @@ Agents
   GET    /agents                list all (registration key required)
   GET    /onboard               onboarding shell script
 
+OAuth (optional, for MCP clients that require it)
+  GET    /.well-known/oauth-authorization-server   server metadata
+  GET    /.well-known/oauth-protected-resource     resource metadata
+  POST   /oauth/register        dynamic client registration (RFC 7591)
+  GET    /oauth/authorize       authorization code flow with PKCE
+  POST   /oauth/token           token endpoint (code + client_credentials)
+
 Other
   GET    /participants          registered agents + last_seen
   POST   /events                emit event
@@ -228,8 +237,7 @@ Other
 | `AGENT_KEYS` | | `agent-id:api-key` pairs, comma-separated. Optional `:proj1;proj2` third segment scopes agent to projects. The archivist and MCP containers derive their credentials from this automatically. |
 | `REGISTRATION_KEY` | | Required to register new agents (leave blank to disable) |
 | `DB_PATH` | `artel.db` | SQLite path |
-| `PUBLIC_URL` | | Base URL returned in onboard script |
-| `MCP_URL` | | MCP URL in onboard script (defaults to `PUBLIC_URL` on port 8001) |
+| `PUBLIC_URL` | | Base URL returned in onboard script and used in OAuth metadata |
 | `UI_PASSWORD` | | Web UI password |
 | `UI_AGENT_ID` | `artel-ui` | Agent used by the dashboard, auto-created on startup |
 | `ARCHIVIST_PROVIDER` | `anthropic` | LLM provider: `anthropic` or `openai` |
@@ -240,7 +248,6 @@ Other
 | `SYNTHESIS_INTERVAL` | `3600` | Seconds between archivist synthesis passes |
 | `DECAY_RATE` | `0.9` | Confidence multiplier per decay cycle |
 | `DECAY_WINDOW_DAYS` | `7` | Days before decay applies to unmodified entries |
-| `MCP_PORT` | `8001` | MCP server port |
 
 ---
 
