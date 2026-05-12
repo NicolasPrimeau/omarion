@@ -10,11 +10,6 @@ services:
     volumes:
       - ./artel:/app/artel
 
-  mcp:
-    build: .
-    volumes:
-      - ./artel:/app/artel
-
   mdns:
     build: .
     volumes:

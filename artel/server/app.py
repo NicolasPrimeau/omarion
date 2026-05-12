@@ -12,9 +12,12 @@ from fastapi.responses import (
     PlainTextResponse,
     RedirectResponse,
 )
+from starlette.types import ASGIApp, Receive, Scope, Send
 
+from ..mcp.server import mcp as mcp_server
 from ..store.db import get_db
 from .config import settings
+from .jwt_utils import verify_token
 from .mdns import MDNSService
 from .routes.agents import router as agents_router
 from .routes.events import router as events_router
@@ -26,6 +29,11 @@ from .routes.participants import router as participants_router
 from .routes.projects import router as projects_router
 from .routes.sessions import router as sessions_router
 from .routes.tasks import router as tasks_router
+
+mcp_server.settings.streamable_http_path = "/"
+from mcp.server.fastmcp import FastMCP as _FastMCP  # noqa: E402
+
+_mcp_asgi = _FastMCP.streamable_http_app(mcp_server)
 
 _UI = Path(__file__).parent / "static" / "index.html"
 _sessions: dict[str, float] = {}
@@ -80,11 +88,85 @@ async def lifespan(app: FastAPI):
         await mdns.start()
     except Exception:
         pass
-    yield
+    async with _mcp_asgi.router.lifespan_context(_mcp_asgi):
+        yield
     try:
         await mdns.stop()
     except Exception:
         pass
+
+
+def _protected_resource_body() -> bytes:
+    base = settings.public_url or f"http://localhost:{settings.port}"
+    return json.dumps(
+        {
+            "resource": f"{base}/mcp",
+            "authorization_servers": [base],
+            "bearer_methods_supported": ["header"],
+        }
+    ).encode()
+
+
+class MCPAuthMiddleware:
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        from ..mcp.server import _agent_id, _api_key
+
+        headers = dict(scope.get("headers", []))
+        qs = dict(p.split(b"=", 1) for p in scope.get("query_string", b"").split(b"&") if b"=" in p)
+        auth_header = headers.get(b"authorization", b"").decode()
+
+        aid = api_key = ""
+        if auth_header.startswith("Bearer "):
+            token = auth_header[7:]
+            try:
+                from .auth import _verify_agent
+
+                aid, api_key = verify_token(token)
+                if not _verify_agent(aid, api_key):
+                    raise ValueError("revoked")
+            except Exception:
+                base = settings.public_url or f"http://localhost:{settings.port}"
+                www_auth = (
+                    f'Bearer realm="artel", error="invalid_token",'
+                    f' resource_metadata="{base}/.well-known/oauth-protected-resource"'
+                )
+                body = b'{"error":"invalid_token"}'
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 401,
+                        "headers": [
+                            (b"content-type", b"application/json"),
+                            (b"www-authenticate", www_auth.encode()),
+                            (b"content-length", str(len(body)).encode()),
+                        ],
+                    }
+                )
+                await send({"type": "http.response.body", "body": body})
+                return
+        else:
+            aid = (headers.get(b"x-agent-id") or qs.get(b"agent_id") or b"").decode()
+            api_key = (headers.get(b"x-api-key") or qs.get(b"api_key") or b"").decode()
+            if not aid or not api_key:
+                from ..mcp.config import settings as mcp_settings
+
+                aid = aid or mcp_settings.mcp_agent_id
+                api_key = api_key or mcp_settings.api_key()
+
+        t1 = _agent_id.set(aid)
+        t2 = _api_key.set(api_key)
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            _agent_id.reset(t1)
+            _api_key.reset(t2)
 
 
 app = FastAPI(
@@ -104,6 +186,14 @@ app.include_router(events_router)
 app.include_router(sessions_router)
 app.include_router(participants_router)
 app.include_router(projects_router)
+
+
+@app.get("/.well-known/oauth-protected-resource", include_in_schema=False)
+async def oauth_protected_resource():
+    return JSONResponse(content=json.loads(_protected_resource_body()))
+
+
+app.mount("/mcp", MCPAuthMiddleware(_mcp_asgi))
 
 
 _LLMS_TXT = (Path(__file__).parent.parent.parent / "llms.txt").read_text()

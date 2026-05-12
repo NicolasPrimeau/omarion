@@ -57,6 +57,21 @@ def _protected_resource_body() -> bytes:
     ).encode()
 
 
+async def _send_json(send: Send, status: int, payload: dict) -> None:
+    body = json.dumps(payload).encode()
+    await send(
+        {
+            "type": "http.response.start",
+            "status": status,
+            "headers": [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(body)).encode()),
+            ],
+        }
+    )
+    await send({"type": "http.response.body", "body": body})
+
+
 class AgentAuthMiddleware:
     def __init__(self, app: ASGIApp) -> None:
         self.app = app
@@ -76,6 +91,12 @@ class AgentAuthMiddleware:
             )
             await send({"type": "http.response.body", "body": body})
             return
+
+        if scope["type"] == "http":
+            path = scope.get("path", "")
+            if not path.startswith("/mcp"):
+                await _send_json(send, 404, {"detail": "not found"})
+                return
 
         if scope["type"] in ("http", "websocket"):
             headers = dict(scope.get("headers", []))
