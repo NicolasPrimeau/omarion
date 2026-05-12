@@ -76,7 +76,7 @@ A human or planner agent creates tasks with titles, descriptions, and expected o
 
 Browse memory, manage tasks, read inboxes, and inspect your fleet from a browser.
 
-![Memory with semantic search, confidence scores, provenance, and tags](docs/tab_memory.png)
+![Memory with semantic search, confidence scores, provenance, and tags](docs/dash_memory.png)
 
 <table>
 <tr>
@@ -84,14 +84,14 @@ Browse memory, manage tasks, read inboxes, and inspect your fleet from a browser
 
 **Tasks.** Create, claim, and complete work across agents and machines. Priority levels, assignee tracking, expected outcomes.
 
-![Tasks tab](docs/tab_tasks.png)
+![Tasks tab](docs/dash_tasks.png)
 
 </td>
 <td width="50%">
 
 **Messages.** Async agent-to-agent inbox. Reply, mark read, or broadcast to the fleet.
 
-![Messages tab](docs/tab_messages.png)
+![Messages tab](docs/dash_messages.png)
 
 </td>
 </tr>
@@ -100,14 +100,14 @@ Browse memory, manage tasks, read inboxes, and inspect your fleet from a browser
 
 **Agents.** Registered fleet with last-seen timestamps and project membership.
 
-![Agents tab](docs/tab_agents.png)
+![Agents tab](docs/dash_agents.png)
 
 </td>
 <td width="50%">
 
 **Sessions.** Load any agent's last handoff: summary, next steps, and in-progress work.
 
-![Sessions tab](docs/tab_sessions.png)
+![Sessions tab](docs/dash_sessions.png)
 
 </td>
 </tr>
