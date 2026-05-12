@@ -17,7 +17,42 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
                                                  └── archivist (synthesis · decay · merge)
 ```
 
+## Contents
+
+- [Use cases](#use-cases)
+- [What agents can do](#what-agents-can-do)
+- [Dashboard](#dashboard)
+- [Onboarding](#onboarding)
+- [Self-hosting](#self-hosting)
+- [Memory](#memory)
+- [Usage](#usage)
+- [Claude Code (MCP)](#claude-code-mcp)
+- [REST API](#rest-api)
+- [Configuration](#configuration)
+- [Archivist](#archivist)
+- [Development](#development)
+
+---
+
+## Use cases
+
+### Incident response
+
+Two agents coordinate a production p99 spike: one writes timeline entries to memory, the other claims a follow-up task and resumes the investigation in a fresh session with full context.
+
 ![Two agents coordinate a production incident using memory, tasks, messages, and session handoff](docs/demo.gif)
+
+### Code review handoff
+
+`nova` writes a rate-limiting middleware, records design decisions in memory, opens a review task, and messages `orion`. `orion` joins cold, reads the full context, reviews the design, and completes the task with a verdict. No call needed.
+
+![Code review handoff between two agents using Artel memory and tasks](docs/demo_review.gif)
+
+### Session continuity across machines
+
+Same agent, two machines. Stop on one machine after writing a `session_handoff`. Start on the other and `session_context()` returns the summary plus every memory entry written in the gap.
+
+![Session continuity across two machines for the same agent](docs/demo_continuity.gif)
 
 ---
 
