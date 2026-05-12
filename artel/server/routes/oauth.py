@@ -15,7 +15,6 @@ from ..jwt_utils import sign_token
 router = APIRouter(tags=["oauth"])
 
 _AGENT_ID_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
-_AUTH_CODES: dict[str, dict] = {}
 _AUTH_CODE_TTL = 600.0
 
 
@@ -25,9 +24,7 @@ def _safe_agent_id(name: str) -> str:
 
 
 def _gc_codes() -> None:
-    now = time.time()
-    for k in [c for c, v in _AUTH_CODES.items() if v["expires_at"] < now]:
-        _AUTH_CODES.pop(k, None)
+    get_db().execute("DELETE FROM oauth_codes WHERE expires_at < ?", (time.time(),))
 
 
 def _validate_client(client_id: str, client_secret: str) -> tuple[str, str] | None:
@@ -84,13 +81,22 @@ async def token_endpoint(
     if grant_type == "authorization_code":
         if not code:
             return JSONResponse({"error": "invalid_request"}, status_code=400)
-        _gc_codes()
-        stored = _AUTH_CODES.pop(code, None)
-        if not stored:
+        db = get_db()
+        with db:
+            _gc_codes()
+            row = db.execute(
+                "SELECT agent_id, api_key, client_id, code_challenge, expires_at"
+                " FROM oauth_codes WHERE code=?",
+                (code,),
+            ).fetchone()
+            if not row:
+                return JSONResponse({"error": "invalid_grant"}, status_code=400)
+            db.execute("DELETE FROM oauth_codes WHERE code=?", (code,))
+        if row["expires_at"] < time.time():
             return JSONResponse({"error": "invalid_grant"}, status_code=400)
-        if client_id and stored.get("client_id") and client_id != stored["client_id"]:
+        if client_id and client_id != row["client_id"]:
             return JSONResponse({"error": "invalid_grant"}, status_code=400)
-        challenge = stored.get("code_challenge")
+        challenge = row["code_challenge"]
         if challenge:
             if not code_verifier:
                 return JSONResponse({"error": "invalid_request"}, status_code=400)
@@ -98,7 +104,7 @@ async def token_endpoint(
             expected = base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
             if expected != challenge:
                 return JSONResponse({"error": "invalid_grant"}, status_code=400)
-        access_token = sign_token(stored["agent_id"], stored["api_key"], settings.jwt_ttl)
+        access_token = sign_token(row["agent_id"], row["api_key"], settings.jwt_ttl)
         return {
             "access_token": access_token,
             "token_type": "bearer",
@@ -154,16 +160,23 @@ async def authorize_endpoint(
         return RedirectResponse(_redirect_with_params(redirect_uri, params), status_code=302)
 
     agent_id, api_key = found
-    _gc_codes()
     code = secrets.token_urlsafe(32)
-    _AUTH_CODES[code] = {
-        "agent_id": agent_id,
-        "api_key": api_key,
-        "client_id": client_id,
-        "code_challenge": code_challenge,
-        "redirect_uri": redirect_uri,
-        "expires_at": time.time() + _AUTH_CODE_TTL,
-    }
+    db = get_db()
+    with db:
+        _gc_codes()
+        db.execute(
+            "INSERT INTO oauth_codes (code, agent_id, api_key, client_id, code_challenge,"
+            " redirect_uri, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                code,
+                agent_id,
+                api_key,
+                client_id,
+                code_challenge,
+                redirect_uri,
+                time.time() + _AUTH_CODE_TTL,
+            ),
+        )
     params = {"code": code}
     if state:
         params["state"] = state
