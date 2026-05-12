@@ -110,4 +110,12 @@ CREATE TABLE IF NOT EXISTS oauth_codes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_oauth_codes_expires ON oauth_codes (expires_at);
+
+CREATE TABLE IF NOT EXISTS ui_sessions (
+    token        TEXT PRIMARY KEY,
+    created_at   REAL NOT NULL,
+    last_seen_at REAL NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ui_sessions_last_seen ON ui_sessions (last_seen_at);
 """

@@ -36,7 +36,6 @@ from mcp.server.fastmcp import FastMCP as _FastMCP  # noqa: E402
 _mcp_asgi = _FastMCP.streamable_http_app(mcp_server)
 
 _UI = Path(__file__).parent / "static" / "index.html"
-_sessions: dict[str, float] = {}
 _SESSION_TTL = 86400.0
 
 _LOGIN = """\
@@ -219,16 +218,28 @@ async def health():
         return JSONResponse({"status": "error", "detail": str(e)}, status_code=503)
 
 
+def _gc_ui_sessions() -> None:
+    cutoff = time.time() - _SESSION_TTL
+    get_db().execute("DELETE FROM ui_sessions WHERE last_seen_at < ?", (cutoff,))
+
+
 def _authed(request: Request) -> bool:
     if not settings.ui_password:
         return True
     token = request.cookies.get("session", "")
-    ts = _sessions.get(token)
-    if ts is None:
+    if not token:
         return False
-    if time.time() - ts > _SESSION_TTL:
-        _sessions.pop(token, None)
+    db = get_db()
+    row = db.execute("SELECT last_seen_at FROM ui_sessions WHERE token=?", (token,)).fetchone()
+    if not row:
         return False
+    now = time.time()
+    if now - row["last_seen_at"] > _SESSION_TTL:
+        with db:
+            db.execute("DELETE FROM ui_sessions WHERE token=?", (token,))
+        return False
+    with db:
+        db.execute("UPDATE ui_sessions SET last_seen_at=? WHERE token=?", (now, token))
     return True
 
 
@@ -242,7 +253,14 @@ async def login_page(error: str = ""):
 async def login(password: str = Form(...)):
     if password == settings.ui_password:
         token = secrets.token_urlsafe(32)
-        _sessions[token] = time.time()
+        now = time.time()
+        db = get_db()
+        with db:
+            _gc_ui_sessions()
+            db.execute(
+                "INSERT INTO ui_sessions (token, created_at, last_seen_at) VALUES (?, ?, ?)",
+                (token, now, now),
+            )
         r = RedirectResponse("/ui", status_code=303)
         r.set_cookie("session", token, httponly=True, samesite="lax")
         return r
@@ -251,7 +269,11 @@ async def login(password: str = Form(...)):
 
 @app.get("/ui/logout", include_in_schema=False)
 async def logout(request: Request):
-    _sessions.pop(request.cookies.get("session", ""), None)
+    token = request.cookies.get("session", "")
+    if token:
+        db = get_db()
+        with db:
+            db.execute("DELETE FROM ui_sessions WHERE token=?", (token,))
     r = RedirectResponse("/ui/login", status_code=303)
     r.delete_cookie("session")
     return r
