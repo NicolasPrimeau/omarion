@@ -1338,7 +1338,7 @@ async function saveHandoff(){
 function _connectCmd(){
   const base=window.location.origin;
   return window._regkey
-    ?`ARTEL_REG_KEY=${window._regkey} curl ${base}/onboard | sh`
+    ?`curl ${base}/onboard | ARTEL_REG_KEY=${window._regkey} sh`
     :`curl ${base}/onboard | sh`;
 }
 function toggleConnect(e){
