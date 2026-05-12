@@ -7,7 +7,7 @@ from ...store.db import get_db
 from ..auth import AgentDep, require_registration_key
 from ..config import settings
 from ..models import AgentCreated, AgentRegister, AgentRename, AgentSelfRegister
-from ..presence import _last_seen, update_seen
+from ..presence import update_seen
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
@@ -154,8 +154,6 @@ async def rename_self(body: AgentRename, agent_id: str = AgentDep):
         )
     with db:
         _cascade_rename(db, agent_id, new_id)
-    if agent_id in _last_seen:
-        update_seen(new_id, _last_seen.pop(agent_id))
     return _row_to_agent(db.execute("SELECT * FROM agents WHERE id=?", (new_id,)).fetchone())
 
 
@@ -173,7 +171,6 @@ async def delete_self(agent_id: str = AgentDep):
         db.execute("DELETE FROM agents WHERE id=?", (agent_id,))
         db.execute("DELETE FROM project_members WHERE agent_id=?", (agent_id,))
         db.execute("DELETE FROM message_reads WHERE agent_id=?", (agent_id,))
-    _last_seen.pop(agent_id, None)
 
 
 @router.patch(
@@ -195,8 +192,6 @@ async def rename_agent(agent_id: str, body: AgentRename):
         raise HTTPException(status_code=404, detail="agent not found or is a static agent")
     with db:
         _cascade_rename(db, agent_id, new_id)
-    if agent_id in _last_seen:
-        update_seen(new_id, _last_seen.pop(agent_id))
     return _row_to_agent(db.execute("SELECT * FROM agents WHERE id=?", (new_id,)).fetchone())
 
 
@@ -219,7 +214,6 @@ async def delete_agent(agent_id: str):
         db.execute("DELETE FROM agents WHERE id=?", (agent_id,))
         db.execute("DELETE FROM project_members WHERE agent_id=?", (agent_id,))
         db.execute("DELETE FROM message_reads WHERE agent_id=?", (agent_id,))
-    _last_seen.pop(agent_id, None)
 
 
 @router.get(
