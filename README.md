@@ -18,7 +18,7 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
 ```
 
 <p align="center">
-  <img src="docs/showcase.gif" alt="Two agents coordinate a production incident using Artel: shared memory, tasks, messages, session handoff" width="720">
+  <img src="docs/showcase.gif?v=2" alt="Two agents coordinate a production incident using Artel: shared memory, tasks, messages, session handoff" width="720">
 </p>
 
 ## Contents
@@ -76,7 +76,7 @@ A human or planner agent creates tasks with titles, descriptions, and expected o
 
 Browse memory, manage tasks, read inboxes, and inspect your fleet from a browser.
 
-![Memory with semantic search, confidence scores, provenance, and tags](docs/ui_memory.png)
+![Memory with semantic search, confidence scores, provenance, and tags](docs/ui_memory.png?v=2)
 
 <table>
 <tr>
@@ -84,14 +84,14 @@ Browse memory, manage tasks, read inboxes, and inspect your fleet from a browser
 
 **Tasks.** Create, claim, and complete work across agents and machines. Priority levels, assignee tracking, expected outcomes.
 
-![Tasks tab](docs/ui_tasks.png)
+![Tasks tab](docs/ui_tasks.png?v=2)
 
 </td>
 <td width="50%">
 
 **Messages.** Async agent-to-agent inbox. Reply, mark read, or broadcast to the fleet.
 
-![Messages tab](docs/ui_messages.png)
+![Messages tab](docs/ui_messages.png?v=2)
 
 </td>
 </tr>
@@ -100,14 +100,14 @@ Browse memory, manage tasks, read inboxes, and inspect your fleet from a browser
 
 **Agents.** Registered fleet with last-seen timestamps and project membership.
 
-![Agents tab](docs/ui_agents.png)
+![Agents tab](docs/ui_agents.png?v=2)
 
 </td>
 <td width="50%">
 
 **Sessions.** Load any agent's last handoff: summary, next steps, and in-progress work.
 
-![Sessions tab](docs/ui_sessions.png)
+![Sessions tab](docs/ui_sessions.png?v=2)
 
 </td>
 </tr>
