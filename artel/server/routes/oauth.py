@@ -47,8 +47,21 @@ async def oauth_server_metadata(request: Request):
     base = settings.public_url or str(request.base_url).rstrip("/")
     return {
         "issuer": base,
+        "authorization_endpoint": f"{base}/oauth/authorize",
         "token_endpoint": f"{base}/oauth/token",
         "token_endpoint_auth_methods_supported": ["client_secret_post"],
         "grant_types_supported": ["client_credentials"],
         "response_types_supported": ["token"],
+        "code_challenge_methods_supported": ["S256"],
     }
+
+
+@router.get("/oauth/authorize", include_in_schema=False)
+async def authorize_endpoint():
+    return JSONResponse(
+        {
+            "error": "unsupported_response_type",
+            "error_description": "Artel only supports client_credentials grant",
+        },
+        status_code=400,
+    )
