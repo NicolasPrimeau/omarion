@@ -17,7 +17,9 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
                                                  └── archivist (synthesis · decay · merge)
 ```
 
-![Two agents coordinate a production incident using Artel — shared memory, tasks, messages, session handoff](docs/showcase.gif)
+<p align="center">
+  <img src="docs/showcase.gif" alt="Two agents coordinate a production incident using Artel: shared memory, tasks, messages, session handoff" width="720">
+</p>
 
 ## Contents
 
