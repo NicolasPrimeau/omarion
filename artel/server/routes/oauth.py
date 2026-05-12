@@ -102,6 +102,7 @@ async def register_endpoint(request: Request):
         "client_secret": api_key,
         "client_id_issued_at": int(time.time()),
         "client_secret_expires_at": 0,
+        "redirect_uris": body.get("redirect_uris") or [],
         "token_endpoint_auth_method": "client_secret_post",
         "grant_types": ["client_credentials"],
         "response_types": ["token"],
