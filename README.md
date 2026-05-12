@@ -17,12 +17,12 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
                                                  └── archivist (synthesis · decay · merge)
 ```
 
-[Watch two agents coordinate a production incident](docs/demo.gif) using memory, tasks, messages, and session handoff.
+![Two agents coordinate a production incident using Artel — shared memory, tasks, messages, session handoff](docs/showcase.gif)
 
 ## Contents
 
 - [What agents can do](#what-agents-can-do)
-- [Use cases](#use-cases)
+- [Examples](#examples)
 - [Dashboard](#dashboard)
 - [Onboarding](#onboarding)
 - [Self-hosting](#self-hosting)
@@ -50,7 +50,7 @@ The **archivist** runs in the background, merging conflicts, synthesizing cross-
 
 ---
 
-## Use cases
+## Examples
 
 ### Incident response
 

@@ -118,7 +118,7 @@ def _credits_card() -> str:
         f"{BOLD}{GOLD}{'directed by':^{COLS}}{RESET}",
         f"{BOLD}{WHITE}{'Claudin Tarantino':^{COLS}}{RESET}",
         "",
-        f"{DIM}{'artel.ai':^{COLS}}{RESET}",
+        f"{DIM}{'        ':^{COLS}}{RESET}",
     ]
 
     out = "\x1b[2J\x1b[H"

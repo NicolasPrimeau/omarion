@@ -31,7 +31,20 @@ async def test_token_wrong_credentials(client):
     assert r.json()["error"] == "invalid_client"
 
 
-async def test_token_wrong_grant_type(client):
+async def test_token_unsupported_grant_type(client):
+    r = await client.post(
+        "/oauth/token",
+        data={
+            "grant_type": "password",
+            "client_id": TEST_AGENT,
+            "client_secret": TEST_KEY,
+        },
+    )
+    assert r.status_code == 400
+    assert r.json()["error"] == "unsupported_grant_type"
+
+
+async def test_token_authorization_code_without_code(client):
     r = await client.post(
         "/oauth/token",
         data={
@@ -41,7 +54,7 @@ async def test_token_wrong_grant_type(client):
         },
     )
     assert r.status_code == 400
-    assert r.json()["error"] == "unsupported_grant_type"
+    assert r.json()["error"] == "invalid_request"
 
 
 async def test_oauth_server_metadata(client):
