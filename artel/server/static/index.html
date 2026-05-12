@@ -193,18 +193,23 @@ input,select,textarea{
 }
 input:focus,textarea:focus,select:focus{
   border-color:var(--accent);
-  box-shadow:0 0 0 3px rgba(0,212,255,.08);
+  box-shadow:0 0 0 3px var(--a-bg);
 }
 input::placeholder,textarea::placeholder{color:var(--t4)}
 textarea{resize:vertical}
 select{
   cursor:pointer;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%232d5570' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a89984' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
   background-repeat:no-repeat;
   background-position:right 8px center;
   padding-right:26px;
   appearance:none;
   -webkit-appearance:none;
+  color-scheme:dark;
+}
+option{
+  background:var(--s2);
+  color:var(--t1);
 }
 
 /* ── Buttons ──────────────────────────── */
@@ -564,7 +569,6 @@ pre{
 <div id="panel-memory" class="panel on">
   <div class="toolbar">
     <input id="q" placeholder="semantic search…" style="flex:1;min-width:120px" onkeydown="if(event.key==='Enter')search()">
-    <select id="q-agent" style="width:130px" onchange="search()"><option value="">all agents</option></select>
     <select id="q-type" style="width:110px" onchange="search()">
       <option value="">all types</option>
       <option>memory</option>
@@ -791,7 +795,6 @@ function onProjectChange(){
 
 function onAgentChange(){
   const agent=activeAgent();
-  $('q-agent').value=agent||'';
   const sa=$('sess-agent');if(sa)sa.value=agent||'';
   const p=document.querySelector('.panel.on');if(!p)return;
   const n=p.id.replace('panel-','');
@@ -827,14 +830,13 @@ async function loadProjectsHeader(){
 async function loadAgentsGlobal(){
   try{
     _agents=await req('GET','/participants');
-    const dl=$('agent-list-dl'),qa=$('q-agent'),sa=$('sess-agent'),ha=$('h-agent-sel');
+    const dl=$('agent-list-dl'),sa=$('sess-agent'),ha=$('h-agent-sel');
     dl.innerHTML='';
-    qa.innerHTML='<option value="">all agents</option>';
     sa.innerHTML='<option value="">select agent…</option>';
     ha.innerHTML='<option value="">all agents</option>';
     _agents.forEach(a=>{
       const o=document.createElement('option');o.value=a.agent_id;o.textContent=a.agent_id;
-      dl.appendChild(o.cloneNode(true));qa.appendChild(o.cloneNode(true));
+      dl.appendChild(o.cloneNode(true));
       sa.appendChild(o.cloneNode(true));ha.appendChild(o);
     });
     const now=Date.now();
@@ -849,7 +851,7 @@ async function loadAgentsGlobal(){
 // ── Memory ──────────────────────────────────────────────────────────
 
 async function loadMem(){
-  const proj=activeProject(),agent=activeAgent()||$('q-agent').value;
+  const proj=activeProject(),agent=activeAgent();
   loading('mlist');
   let url='/memory/delta?since=2000-01-01T00:00:00.000Z';
   if(proj)url+='&project='+encodeURIComponent(proj);
@@ -859,7 +861,7 @@ async function loadMem(){
 }
 
 async function search(){
-  const q=$('q').value.trim(),agent=$('q-agent').value,type=$('q-type').value,proj=activeProject();
+  const q=$('q').value.trim(),agent=activeAgent(),type=$('q-type').value,proj=activeProject();
   if(!q&&!agent&&!type)return loadMem();
   loading('mlist');
   if(q){
