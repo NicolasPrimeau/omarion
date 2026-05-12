@@ -178,5 +178,4 @@ async def onboard(
     project: str | None = Query(default=None),
 ):
     artel_url = settings.public_url or str(request.base_url).rstrip("/")
-    mcp_url = (settings.mcp_url or artel_url.replace(":8000", ":8001")).rstrip("/")
-    return _SCRIPT.format(artel_url=artel_url, project=project or "", mcp_url=mcp_url)
+    return _SCRIPT.format(artel_url=artel_url, project=project or "", mcp_url=artel_url)
