@@ -50,14 +50,14 @@ _LOGIN = """\
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font:15px/1.6 Inter,system-ui,sans-serif;background:#0d0d0d;color:#c8c8c8;display:flex;justify-content:center;align-items:center;min-height:100vh}
+body{font:15px/1.6 Inter,system-ui,sans-serif;background:#1d2021;color:#ebdbb2;display:flex;justify-content:center;align-items:center;min-height:100vh}
 form{display:flex;flex-direction:column;gap:12px;width:280px}
-h1{font-size:20px;color:#4af;font-weight:500;letter-spacing:.5px;margin-bottom:4px}
-input{background:#161616;color:#c8c8c8;border:1px solid #2a2a2a;padding:9px 12px;font:15px Inter,sans-serif;border-radius:3px}
-input:focus{outline:none;border-color:#4af}
-button{background:#161616;color:#4af;border:1px solid #4af;padding:9px;font:15px Inter,sans-serif;border-radius:3px;cursor:pointer}
-button:hover{background:#0a1a2a}
-.err{color:#f55;font-size:13px}
+h1{font-size:20px;color:#d79921;font-weight:500;letter-spacing:.5px;margin-bottom:4px}
+input{background:#282828;color:#ebdbb2;border:1px solid #504945;padding:9px 12px;font:15px Inter,sans-serif;border-radius:3px}
+input:focus{outline:none;border-color:#d79921}
+button{background:#282828;color:#d79921;border:1px solid #d79921;padding:9px;font:15px Inter,sans-serif;border-radius:3px;cursor:pointer}
+button:hover{background:#3c3836}
+.err{color:#fb4934;font-size:13px}
 </style>
 </head>
 <body>

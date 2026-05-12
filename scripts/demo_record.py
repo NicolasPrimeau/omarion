@@ -34,6 +34,12 @@ ORION_PROMPT = (
     "nova wants a code review — look over what they wrote and give your verdict."
 )
 
+TASKS_PROMPT = (
+    "check open tasks in artel. "
+    "pick the highest priority one, claim it, write a one-line plan as a memory entry, "
+    "then mark it complete. then claim the next one."
+)
+
 TERMINAL_RESPONSES = [
     (b"\x1b[c", b"\x1b[?1;2c"),
     (b"\x1b[0c", b"\x1b[?1;2c"),
@@ -187,6 +193,9 @@ if __name__ == "__main__":
         prompt = NOVA2_PROMPT
     elif agent == "nova":
         prompt = NOVA_PROMPT
+    elif agent == "tasks":
+        prompt = TASKS_PROMPT
+        adir = "/tmp/artel-demo/nova"
     else:
         prompt = ORION_PROMPT
     print(f"Recording {agent}...", flush=True)
