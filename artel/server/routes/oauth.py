@@ -61,10 +61,11 @@ async def oauth_server_metadata(request: Request):
         "authorization_endpoint": f"{base}/oauth/authorize",
         "token_endpoint": f"{base}/oauth/token",
         "registration_endpoint": f"{base}/oauth/register",
-        "token_endpoint_auth_methods_supported": ["client_secret_post"],
-        "grant_types_supported": ["client_credentials"],
-        "response_types_supported": ["token"],
+        "token_endpoint_auth_methods_supported": ["client_secret_post", "none"],
+        "grant_types_supported": ["authorization_code", "client_credentials"],
+        "response_types_supported": ["code", "token"],
         "code_challenge_methods_supported": ["S256"],
+        "scopes_supported": ["mcp"],
     }
 
 
