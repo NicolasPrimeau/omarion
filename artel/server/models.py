@@ -11,6 +11,7 @@ def new_id() -> str:
 EntryType = Literal["memory", "doc"]
 Scope = Literal["agent", "project"]
 TaskStatus = Literal["open", "claimed", "completed", "failed"]
+TaskCommentKind = Literal["comment", "claim", "unclaim", "complete", "fail"]
 Priority = Literal["low", "normal", "high"]
 
 
@@ -79,6 +80,23 @@ class TaskUpdate(BaseModel):
     title: str | None = None
     priority: Priority | None = None
     expected_outcome: str | None = None
+
+
+class TaskAction(BaseModel):
+    body: str = ""
+
+
+class TaskCommentCreate(BaseModel):
+    body: str
+
+
+class TaskComment(BaseModel):
+    id: str
+    task_id: str
+    agent_id: str
+    kind: TaskCommentKind
+    body: str
+    created_at: str
 
 
 class MessageSend(BaseModel):

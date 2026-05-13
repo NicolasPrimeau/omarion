@@ -165,6 +165,104 @@ async def test_update_task_append_empty_existing(client):
     assert r2.json()["description"] == "first note"
 
 
+async def test_unclaim_task(client):
+    r = await client.post("/tasks", json={"title": "unclaimable"}, headers=HEADERS)
+    tid = r.json()["id"]
+    await client.post(f"/tasks/{tid}/claim", headers=HEADERS)
+
+    r2 = await client.post(f"/tasks/{tid}/unclaim", headers=HEADERS)
+    assert r2.status_code == 200
+    t = r2.json()
+    assert t["status"] == "open"
+    assert t["assigned_to"] is None
+
+
+async def test_unclaim_records_comment_with_body(client):
+    r = await client.post("/tasks", json={"title": "with reason"}, headers=HEADERS)
+    tid = r.json()["id"]
+    await client.post(f"/tasks/{tid}/claim", headers=HEADERS)
+    await client.post(
+        f"/tasks/{tid}/unclaim", json={"body": "waiting on external review"}, headers=HEADERS
+    )
+
+    r3 = await client.get(f"/tasks/{tid}/comments", headers=HEADERS)
+    comments = r3.json()
+    kinds = [c["kind"] for c in comments]
+    assert "claim" in kinds and "unclaim" in kinds
+    unclaim = next(c for c in comments if c["kind"] == "unclaim")
+    assert unclaim["body"] == "waiting on external review"
+    assert unclaim["agent_id"] == TEST_AGENT
+
+
+async def test_unclaim_by_non_assignee_forbidden(client):
+    r = await client.post("/tasks", json={"title": "owned"}, headers=HEADERS)
+    tid = r.json()["id"]
+    await client.post(f"/tasks/{tid}/claim", headers=HEADERS)
+
+    r2 = await client.post(f"/tasks/{tid}/unclaim", headers=HEADERS2)
+    assert r2.status_code == 403
+
+
+async def test_unclaim_unclaimed_task_rejected(client):
+    r = await client.post("/tasks", json={"title": "still open"}, headers=HEADERS)
+    tid = r.json()["id"]
+
+    r2 = await client.post(f"/tasks/{tid}/unclaim", headers=HEADERS)
+    assert r2.status_code == 409
+
+
+async def test_unclaim_then_reclaim_by_different_agent(client):
+    r = await client.post("/tasks", json={"title": "passable"}, headers=HEADERS)
+    tid = r.json()["id"]
+    await client.post(f"/tasks/{tid}/claim", headers=HEADERS)
+    await client.post(f"/tasks/{tid}/unclaim", headers=HEADERS)
+
+    r2 = await client.post(f"/tasks/{tid}/claim", headers=HEADERS2)
+    assert r2.status_code == 200
+    assert r2.json()["assigned_to"] == "otheragent"
+
+
+async def test_add_comment(client):
+    r = await client.post("/tasks", json={"title": "commentable"}, headers=HEADERS)
+    tid = r.json()["id"]
+
+    r2 = await client.post(
+        f"/tasks/{tid}/comments", json={"body": "found a clue in logs"}, headers=HEADERS
+    )
+    assert r2.status_code == 201
+    cmt = r2.json()
+    assert cmt["kind"] == "comment"
+    assert cmt["body"] == "found a clue in logs"
+    assert cmt["agent_id"] == TEST_AGENT
+
+
+async def test_list_comments_chronological(client):
+    r = await client.post("/tasks", json={"title": "logged"}, headers=HEADERS)
+    tid = r.json()["id"]
+    await client.post(f"/tasks/{tid}/comments", json={"body": "first"}, headers=HEADERS)
+    await client.post(f"/tasks/{tid}/comments", json={"body": "second"}, headers=HEADERS2)
+    await client.post(f"/tasks/{tid}/claim", json={"body": "picking up"}, headers=HEADERS)
+    await client.post(f"/tasks/{tid}/complete", json={"body": "shipped"}, headers=HEADERS)
+
+    r2 = await client.get(f"/tasks/{tid}/comments", headers=HEADERS)
+    assert r2.status_code == 200
+    comments = r2.json()
+    assert [c["kind"] for c in comments] == ["comment", "comment", "claim", "complete"]
+    assert [c["body"] for c in comments] == ["first", "second", "picking up", "shipped"]
+
+
+async def test_lifecycle_ops_without_body_still_log(client):
+    r = await client.post("/tasks", json={"title": "bare lifecycle"}, headers=HEADERS)
+    tid = r.json()["id"]
+    await client.post(f"/tasks/{tid}/claim", headers=HEADERS)
+    await client.post(f"/tasks/{tid}/fail", headers=HEADERS)
+
+    r2 = await client.get(f"/tasks/{tid}/comments", headers=HEADERS)
+    comments = r2.json()
+    assert [c["kind"] for c in comments] == ["claim", "fail"]
+    assert all(c["body"] == "" for c in comments)
+
+
 async def test_task_lifecycle(client):
     r = await client.post("/tasks", json={"title": "lifecycle"}, headers=HEADERS)
     tid = r.json()["id"]
