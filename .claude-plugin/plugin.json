@@ -1,6 +1,6 @@
 {
   "name": "artel",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Shared semantic memory, tasks, agent-to-agent messages, and session handoffs for AI agent fleets. Wires up Artel's MCP server and the recommended hooks so every session loads context and reads its inbox automatically.",
   "author": {
     "name": "Nicolas Primeau",
