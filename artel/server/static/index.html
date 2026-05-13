@@ -770,7 +770,7 @@ async function parseErr(r){
   try{const j=await r.json();return j.detail||JSON.stringify(j);}catch{return await r.text();}
 }
 async function adminReq(method,path,body){
-  const r=await fetch(path,{method,headers:{'content-type':'application/json','x-registration-key':window._regkey},body:body?JSON.stringify(body):undefined});
+  const r=await fetch(path,{method,headers:{...hdrs(),'x-registration-key':window._regkey},body:body?JSON.stringify(body):undefined});
   if(!r.ok)throw new Error(await parseErr(r));
   return method==='DELETE'?null:r.json();
 }
@@ -1270,16 +1270,16 @@ async function deleteAgent(id){
   try{
     await adminReq('DELETE',`/agents/${id}`);
     toast(`Agent "${id}" deleted`,'info');
-    await Promise.all([loadAgents(),loadAgentsGlobal()]);
-  }catch(e){toast('Failed: '+e.message,'err');}
+  }catch(e){toast('Failed: '+e.message,'err');return;}
+  await Promise.all([loadAgents(),loadAgentsGlobal()]);
 }
 async function renameAgent(id){
   const newId=prompt(`Rename "${id}" to:`);if(!newId||newId===id)return;
   try{
     await adminReq('PATCH',`/agents/${id}`,{new_id:newId});
     toast('Agent renamed','ok');
-    await Promise.all([loadAgents(),loadAgentsGlobal()]);
-  }catch(e){toast('Failed: '+e.message,'err');}
+  }catch(e){toast('Failed: '+e.message,'err');return;}
+  await Promise.all([loadAgents(),loadAgentsGlobal()]);
 }
 
 // ── Projects ─────────────────────────────────────────────────────────
