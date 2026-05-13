@@ -47,6 +47,5 @@
         "x-api-key": "${user_config.agent_key}"
       }
     }
-  },
-  "hooks": "./hooks/hooks.json"
+  }
 }
