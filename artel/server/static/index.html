@@ -709,9 +709,9 @@ pre{
 
 <!-- TASK EDIT MODAL -->
 <div id="task-modal" class="modal-backdrop">
-  <div class="modal">
+  <div class="modal" style="max-width:640px;width:90vw">
     <div class="modal-header">
-      <span class="modal-title">edit task</span>
+      <span class="modal-title">task</span>
       <button class="modal-close" onclick="closeTaskModal()" title="close">✕</button>
     </div>
     <input id="et-title" placeholder="title" style="width:100%;margin-bottom:8px">
@@ -722,6 +722,15 @@ pre{
       <div class="spacer"></div>
       <button onclick="closeTaskModal()">cancel</button>
       <button class="p" onclick="saveTaskEdit()">save</button>
+    </div>
+    <div style="margin-top:16px;border-top:1px solid var(--s3);padding-top:12px">
+      <div class="modal-title" style="margin-bottom:8px">comments</div>
+      <div id="et-comments" style="max-height:240px;overflow-y:auto;margin-bottom:8px;font-size:12px"></div>
+      <textarea id="et-cmtbody" placeholder="add a comment..." rows="2" style="width:100%;margin-bottom:6px"></textarea>
+      <div class="write-row">
+        <div class="spacer"></div>
+        <button class="p sm" onclick="postTaskComment()">add comment</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1023,8 +1032,8 @@ async function loadTasks(){
         ${t.expected_outcome?`<div style="color:var(--t4);font-size:11px;margin-top:3px">→ ${esc(t.expected_outcome)}</div>`:''}
         <div class="card-actions">
           ${t.status==='open'?`<button class="sm p" onclick="taskAction('${t.id}','claim')">claim</button>`:''}
-          ${t.status==='claimed'?`<button class="sm p" onclick="taskAction('${t.id}','complete')">complete</button><button class="sm danger" onclick="taskAction('${t.id}','fail')">fail</button>`:''}
-          ${t.status!=='completed'&&t.status!=='failed'?`<button class="sm" onclick="openTaskEdit('${t.id}')">edit</button>`:''}
+          ${t.status==='claimed'?`<button class="sm p" onclick="taskAction('${t.id}','complete')">complete</button><button class="sm" onclick="taskActionWithReason('${t.id}','unclaim','Release this claim back to the open queue. Optional reason:')">unclaim</button><button class="sm danger" onclick="taskActionWithReason('${t.id}','fail','Mark this task as failed. Reason (recommended):')">fail</button>`:''}
+          <button class="sm" onclick="openTaskEdit('${t.id}')">${t.status==='completed'||t.status==='failed'?'view':'edit'}</button>
         </div>
       </div>`).join('');
   }catch(e){$('tlist').innerHTML=emptyState('⚠','Error: '+e.message);}
@@ -1038,12 +1047,18 @@ async function createTask(){
     toast('Task created','ok');loadTasks();
   }catch(e){toast('Create failed: '+e.message,'err');}
 }
-async function taskAction(id,action){
+async function taskAction(id,action,body){
   try{
-    await req('POST',`/tasks/${id}/${action}`);
-    const label={claim:'claimed',complete:'completed',fail:'failed'}[action]||action;
+    const payload=body!==undefined?{body}:undefined;
+    await req('POST',`/tasks/${id}/${action}`,payload);
+    const label={claim:'claimed',unclaim:'unclaimed',complete:'completed',fail:'failed'}[action]||action;
     toast('Task '+label,'ok');loadTasks();
   }catch(e){toast('Failed: '+e.message,'err');}
+}
+async function taskActionWithReason(id,action,promptText){
+  const reason=window.prompt(promptText,'');
+  if(reason===null)return;
+  await taskAction(id,action,reason);
 }
 
 function openTaskEdit(id){
@@ -1053,7 +1068,10 @@ function openTaskEdit(id){
   $('et-desc').value=d.desc||'';
   $('et-outcome').value=d.outcome||'';
   $('et-pri').value=d.pri||'normal';
+  $('et-cmtbody').value='';
+  $('et-comments').innerHTML='<span style="color:var(--t4)">loading...</span>';
   $('task-modal').classList.add('open');
+  loadTaskComments(id);
 }
 function closeTaskModal(){$('task-modal').classList.remove('open');_editTaskId=null}
 async function saveTaskEdit(){
@@ -1061,8 +1079,38 @@ async function saveTaskEdit(){
   const body={title:$('et-title').value.trim()||undefined,description:$('et-desc').value||undefined,expected_outcome:$('et-outcome').value||undefined,priority:$('et-pri').value};
   try{
     await req('PATCH',`/tasks/${_editTaskId}`,body);
-    closeTaskModal();toast('Task updated','ok');loadTasks();
+    toast('Task updated','ok');loadTasks();
   }catch(e){toast('Save failed: '+e.message,'err');}
+}
+
+const _kindGlyph={comment:'💬',claim:'▶',unclaim:'↶',complete:'✓',fail:'✕'};
+const _kindColor={comment:'var(--t2)',claim:'var(--accent)',unclaim:'var(--t3)',complete:'var(--green)',fail:'var(--red)'};
+async function loadTaskComments(id){
+  try{
+    const cs=await req('GET',`/tasks/${id}/comments`);
+    if(!cs.length){$('et-comments').innerHTML='<span style="color:var(--t4)">no comments yet</span>';return;}
+    $('et-comments').innerHTML=cs.map(c=>`
+      <div style="border-left:2px solid ${_kindColor[c.kind]||'var(--s3)'};padding:4px 8px;margin-bottom:6px">
+        <div style="color:var(--t4);font-size:11px;margin-bottom:2px">
+          <span style="color:${_kindColor[c.kind]||'var(--t2)'}">${_kindGlyph[c.kind]||'•'} ${c.kind}</span>
+          <span> · </span>
+          <span class="meta-agent">${esc(c.agent_id)}</span>
+          <span> · </span>
+          <span class="meta-time" title="${c.created_at}">${relTime(c.created_at)}</span>
+        </div>
+        ${c.body?`<div style="color:var(--t2);white-space:pre-wrap">${esc(c.body)}</div>`:''}
+      </div>`).join('');
+  }catch(e){$('et-comments').innerHTML='<span style="color:var(--red)">Error: '+esc(e.message)+'</span>';}
+}
+async function postTaskComment(){
+  if(!_editTaskId)return;
+  const body=$('et-cmtbody').value.trim();
+  if(!body)return;
+  try{
+    await req('POST',`/tasks/${_editTaskId}/comments`,{body});
+    $('et-cmtbody').value='';
+    loadTaskComments(_editTaskId);
+  }catch(e){toast('Comment failed: '+e.message,'err');}
 }
 $('task-modal').addEventListener('click',e=>{if(e.target===$('task-modal'))closeTaskModal()});
 
