@@ -886,18 +886,19 @@ async def task_create(
 
 
 @mcp.tool()
-async def task_claim(task_id: str) -> str:
+async def task_claim(task_id: str, body: str = "") -> str:
     """Claim an open task — marks it as yours and sets status to 'claimed'.
 
     Always claim a task before working on it. This prevents two agents from doing
-    the same work. Call task_complete() or task_fail() when done.
+    the same work. Call task_complete(), task_fail(), or task_unclaim() when done.
 
     Args:
         task_id: ID from task_list() or task_create().
+        body: Optional note recorded on the task's comment log (e.g. why you're picking this up).
     """
     c = _http()
     try:
-        r = await c.post(f"/tasks/{task_id}/claim")
+        r = await c.post(f"/tasks/{task_id}/claim", json={"body": body})
         r.raise_for_status()
     except _HTTPX_ERRORS as e:
         return _err(e)
@@ -906,15 +907,39 @@ async def task_claim(task_id: str) -> str:
 
 
 @mcp.tool()
-async def task_complete(task_id: str) -> str:
+async def task_unclaim(task_id: str, body: str = "") -> str:
+    """Release your claim on a task — returns it to 'open' so others can pick it up.
+
+    Use when you're stepping away mid-flight and the task isn't done or failed
+    (e.g. blocked on an async external process, handing off, ending a session).
+    Only the agent that claimed it can unclaim it.
+
+    Args:
+        task_id: ID of a task you have claimed.
+        body: Optional reason recorded on the task's comment log. Strongly recommended —
+              the next agent to look at this task will see your context.
+    """
+    c = _http()
+    try:
+        r = await c.post(f"/tasks/{task_id}/unclaim", json={"body": body})
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    t = r.json()
+    return f"unclaimed [{t['id']}] {t['title']}"
+
+
+@mcp.tool()
+async def task_complete(task_id: str, body: str = "") -> str:
     """Mark your claimed task as completed. Only the agent that claimed it can complete it.
 
     Args:
         task_id: ID of a task you have claimed.
+        body: Optional note recorded on the task's comment log (e.g. result, links, follow-ups).
     """
     c = _http()
     try:
-        r = await c.post(f"/tasks/{task_id}/complete")
+        r = await c.post(f"/tasks/{task_id}/complete", json={"body": body})
         r.raise_for_status()
     except _HTTPX_ERRORS as e:
         return _err(e)
@@ -923,18 +948,20 @@ async def task_complete(task_id: str) -> str:
 
 
 @mcp.tool()
-async def task_fail(task_id: str) -> str:
+async def task_fail(task_id: str, body: str = "") -> str:
     """Mark your claimed task as failed. Use when you cannot complete it.
 
     Prefer this over abandoning — it unblocks other agents who can see the task
-    failed and decide what to do next.
+    failed and decide what to do next. If you're stepping away but the task isn't
+    truly failed, use task_unclaim() instead.
 
     Args:
         task_id: ID of a task you have claimed.
+        body: Optional reason recorded on the task's comment log. Strongly recommended.
     """
     c = _http()
     try:
-        r = await c.post(f"/tasks/{task_id}/fail")
+        r = await c.post(f"/tasks/{task_id}/fail", json={"body": body})
         r.raise_for_status()
     except _HTTPX_ERRORS as e:
         return _err(e)
@@ -943,8 +970,31 @@ async def task_fail(task_id: str) -> str:
 
 
 @mcp.tool()
+async def task_comment(task_id: str, body: str) -> str:
+    """Add a free-form comment to a task's chronological log.
+
+    Use to record progress notes, intermediate findings, or context any agent looking
+    at this task should see. The task description holds the canonical spec; the
+    comment log holds the running history. Status changes (claim, unclaim, complete,
+    fail) also appear in the log automatically.
+
+    Args:
+        task_id: ID of the task to comment on.
+        body: Comment text.
+    """
+    c = _http()
+    try:
+        r = await c.post(f"/tasks/{task_id}/comments", json={"body": body})
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    cmt = r.json()
+    return f"commented [{cmt['id']}] on task {cmt['task_id']}"
+
+
+@mcp.tool()
 async def task_get(task_id: str) -> str:
-    """Fetch full details of a task by ID.
+    """Fetch full details of a task by ID, including its chronological comment log.
 
     Args:
         task_id: The UUID of the task.
@@ -953,9 +1003,12 @@ async def task_get(task_id: str) -> str:
     try:
         r = await c.get(f"/tasks/{task_id}")
         r.raise_for_status()
+        cr = await c.get(f"/tasks/{task_id}/comments")
+        cr.raise_for_status()
     except _HTTPX_ERRORS as e:
         return _err(e)
     t = r.json()
+    comments = cr.json()
     assigned = t["assigned_to"] or "unassigned"
     project = f" | project: {t['project']}" if t.get("project") else ""
     lines = [
@@ -966,6 +1019,14 @@ async def task_get(task_id: str) -> str:
         lines.append(t["description"])
     if t.get("expected_outcome"):
         lines.append(f"expected outcome: {t['expected_outcome']}")
+    if comments:
+        lines.append("")
+        lines.append("comments:")
+        for cmt in comments:
+            tag = f"[{cmt['kind']}]" if cmt["kind"] != "comment" else ""
+            prefix = f"  {cmt['created_at']} {cmt['agent_id']} {tag}".rstrip()
+            body = cmt["body"] or ("" if cmt["kind"] == "comment" else f"({cmt['kind']})")
+            lines.append(f"{prefix} {body}".rstrip())
     return "\n".join(lines)
 
 
