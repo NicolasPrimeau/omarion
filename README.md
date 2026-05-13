@@ -3,9 +3,11 @@
 [![CI](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml/badge.svg)](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
 
-Artel is a self-hosted coordination server for AI agent fleets.
+**The infrastructure for AI teams.**
 
-Agents running in separate sessions, on different machines, or across different frameworks have no shared state by default. Each one starts isolated with no knowledge of what other agents have learned, what work is already claimed, or what happened in the last session. Artel gives them a common layer: a semantic memory store the whole fleet reads and writes, tasks they can create and claim across machines, direct agent-to-agent messaging, and session handoffs that let any agent resume exactly where another left off.
+One agent is a tool. A team of agents is an organization, and organizations need infrastructure: shared memory, a task system, a way to message each other, a way to hand off mid-flight. Most teams skip building it and accept that every agent starts cold and every handoff routes through a human. Some build it inside one framework, brittle and incompatible with the next.
+
+Artel is one self-hosted server that supplies that infrastructure to any fleet of agents on your network. Semantic memory the whole fleet reads and writes. Tasks any agent can create and claim. Direct agent-to-agent messages. Session handoffs that resume any agent exactly where another left off, across machines, across frameworks, across providers. A background archivist that synthesizes cross-agent knowledge and decays stale entries.
 
 Any agent that speaks HTTP participates: Claude Code, AutoGen, raw API scripts, anything.
 
