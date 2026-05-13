@@ -1,0 +1,38 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -sS --max-time 10 -H \"x-agent-id: ${user_config.agent_id}\" -H \"x-api-key: ${user_config.agent_key}\" \"${user_config.artel_url}/sessions/handoff/${user_config.agent_id}\" 2>/dev/null || true",
+            "timeout": 12
+          }
+        ]
+      },
+      {
+        "matcher": "resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -sS --max-time 10 -H \"x-agent-id: ${user_config.agent_id}\" -H \"x-api-key: ${user_config.agent_key}\" \"${user_config.artel_url}/sessions/handoff/${user_config.agent_id}\" 2>/dev/null || true",
+            "timeout": 12
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "mcp_tool",
+            "server": "artel",
+            "tool": "message_inbox",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

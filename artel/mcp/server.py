@@ -210,6 +210,18 @@ IDENTITY:
 )
 
 
+_RO = mcp_types.ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False)
+_WRITE = mcp_types.ToolAnnotations(
+    readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False
+)
+_WRITE_IDEM = mcp_types.ToolAnnotations(
+    readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False
+)
+_DELETE = mcp_types.ToolAnnotations(
+    readOnlyHint=False, destructiveHint=True, idempotentHint=True, openWorldHint=False
+)
+
+
 def _http() -> httpx.AsyncClient:
     assert _client is not None, "MCP lifespan not started"
     return _client
@@ -253,7 +265,7 @@ def _fmt_memory(e: dict, full_content: bool = False) -> str:
 # ── Session ──────────────────────────────────────────────────────────────────
 
 
-@mcp.tool()
+@mcp.tool(annotations=_RO)
 async def session_context(agent_id: str | None = None) -> str:
     """CALL THIS FIRST at the start of every session, before doing any work.
 
@@ -298,7 +310,7 @@ async def session_context(agent_id: str | None = None) -> str:
     return "\n\n".join(parts)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE)
 async def session_handoff(
     summary: str,
     next_steps: list[str] | None = None,
@@ -334,7 +346,7 @@ async def session_handoff(
 # ── Memory ───────────────────────────────────────────────────────────────────
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE)
 async def memory_write(
     content: str,
     entry_type: str = "memory",
@@ -390,7 +402,7 @@ async def memory_write(
     return f"written [{entry['id']}] ({entry['type']}) {snippet!r}"
 
 
-@mcp.tool()
+@mcp.tool(annotations=_RO)
 async def memory_search(
     q: str,
     project: str | None = None,
@@ -427,7 +439,7 @@ async def memory_search(
     return "\n\n".join(_fmt_memory(e) for e in entries)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_RO)
 async def memory_list(
     entry_type: str | None = None,
     project: str | None = None,
@@ -472,7 +484,7 @@ async def memory_list(
     return "\n\n".join(_fmt_memory(e) for e in entries)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_RO)
 async def memory_get(entry_id: str) -> str:
     """Fetch a single memory entry by ID. Use when you have an ID and need the full content.
 
@@ -488,7 +500,7 @@ async def memory_get(entry_id: str) -> str:
     return _fmt_memory(r.json(), full_content=True)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE_IDEM)
 async def memory_update(
     entry_id: str,
     content: str | None = None,
@@ -531,7 +543,7 @@ async def memory_update(
     return _fmt_memory(r.json(), full_content=False)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_DELETE)
 async def memory_delete(entry_id: str) -> str:
     """Delete a memory entry. Only the entry's owner can delete it.
 
@@ -550,7 +562,7 @@ async def memory_delete(entry_id: str) -> str:
     return f"deleted [{entry_id}]"
 
 
-@mcp.tool()
+@mcp.tool(annotations=_RO)
 async def memory_delta(since: str) -> str:
     """Get all memory written or updated after a timestamp.
 
@@ -576,7 +588,7 @@ async def memory_delta(since: str) -> str:
 # ── Projects & Agents ────────────────────────────────────────────────────────
 
 
-@mcp.tool()
+@mcp.tool(annotations=_RO)
 async def project_list() -> str:
     """List all projects with their members, memory count, and last activity.
 
@@ -604,7 +616,7 @@ async def project_list() -> str:
     return "\n".join(lines)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE_IDEM)
 async def project_join(project_id: str) -> str:
     """Join a project so you can read and write its shared memories and tasks.
 
@@ -623,7 +635,7 @@ async def project_join(project_id: str) -> str:
     return f"joined project {project_id!r}"
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE_IDEM)
 async def project_leave(project_id: str) -> str:
     """Leave a project. You will no longer see its project-scoped memories.
 
@@ -639,7 +651,7 @@ async def project_leave(project_id: str) -> str:
     return f"left project {project_id!r}"
 
 
-@mcp.tool()
+@mcp.tool(annotations=_RO)
 async def project_members(project_id: str) -> str:
     """List the agents that are members of a project.
 
@@ -660,7 +672,7 @@ async def project_members(project_id: str) -> str:
     return "\n".join(f"{m['agent_id']} (joined {m['joined_at'][:10]})" for m in members)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_RO)
 async def agent_list() -> str:
     """List all registered agents and when they were last active.
 
@@ -689,7 +701,7 @@ async def agent_list() -> str:
     return "\n".join(lines)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_DELETE)
 async def agent_delete() -> str:
     """Deregister yourself from Artel.
 
@@ -710,7 +722,7 @@ async def agent_delete() -> str:
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=_RO)
 def inbox_cron_setup() -> str:
     """Get instructions for scheduling automatic inbox checks via Claude Code cron.
 
@@ -736,7 +748,7 @@ def inbox_cron_setup() -> str:
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE_IDEM)
 async def agent_rename(new_id: str) -> str:
     """Rename yourself. Cascades the new ID across all memory, tasks, messages, and sessions.
 
@@ -758,7 +770,7 @@ async def agent_rename(new_id: str) -> str:
 # ── Messages ─────────────────────────────────────────────────────────────────
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE)
 async def message_inbox() -> str:
     """Read and clear your unread messages. Call this at session start.
 
@@ -787,7 +799,7 @@ async def message_inbox() -> str:
     return "\n\n".join(lines)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE)
 async def message_send(to: str, body: str, subject: str = "") -> str:
     """Send a message to another agent's inbox.
 
@@ -813,7 +825,7 @@ async def message_send(to: str, body: str, subject: str = "") -> str:
 # ── Tasks ────────────────────────────────────────────────────────────────────
 
 
-@mcp.tool()
+@mcp.tool(annotations=_RO)
 async def task_list(status: str | None = None, project: str | None = None) -> str:
     """List tasks. Call with status="open" to find work that needs doing.
 
@@ -845,7 +857,7 @@ async def task_list(status: str | None = None, project: str | None = None) -> st
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE)
 async def task_create(
     title: str,
     description: str = "",
@@ -885,7 +897,7 @@ async def task_create(
     return f"created [{t['id']}] [{t['priority']}] {t['title']}"
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE_IDEM)
 async def task_claim(task_id: str, body: str = "") -> str:
     """Claim an open task — marks it as yours and sets status to 'claimed'.
 
@@ -906,7 +918,7 @@ async def task_claim(task_id: str, body: str = "") -> str:
     return f"claimed [{t['id']}] {t['title']}"
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE_IDEM)
 async def task_unclaim(task_id: str, body: str = "") -> str:
     """Release your claim on a task — returns it to 'open' so others can pick it up.
 
@@ -929,7 +941,7 @@ async def task_unclaim(task_id: str, body: str = "") -> str:
     return f"unclaimed [{t['id']}] {t['title']}"
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE_IDEM)
 async def task_complete(task_id: str, body: str = "") -> str:
     """Mark your claimed task as completed. Only the agent that claimed it can complete it.
 
@@ -947,7 +959,7 @@ async def task_complete(task_id: str, body: str = "") -> str:
     return f"completed [{t['id']}] {t['title']}"
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE_IDEM)
 async def task_fail(task_id: str, body: str = "") -> str:
     """Mark your claimed task as failed. Use when you cannot complete it.
 
@@ -969,7 +981,7 @@ async def task_fail(task_id: str, body: str = "") -> str:
     return f"failed [{t['id']}] {t['title']}"
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE)
 async def task_comment(task_id: str, body: str) -> str:
     """Add a free-form comment to a task's chronological log.
 
@@ -992,7 +1004,7 @@ async def task_comment(task_id: str, body: str) -> str:
     return f"commented [{cmt['id']}] on task {cmt['task_id']}"
 
 
-@mcp.tool()
+@mcp.tool(annotations=_RO)
 async def task_get(task_id: str) -> str:
     """Fetch full details of a task by ID, including its chronological comment log.
 
@@ -1030,7 +1042,7 @@ async def task_get(task_id: str) -> str:
     return "\n".join(lines)
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE_IDEM)
 async def task_update(
     task_id: str,
     description: str | None = None,
@@ -1072,7 +1084,7 @@ async def task_update(
 # ── Events ───────────────────────────────────────────────────────────────────
 
 
-@mcp.tool()
+@mcp.tool(annotations=_WRITE)
 async def event_emit(event_type: str, payload: dict | None = None) -> str:
     """Emit a custom event to the Artel event bus.
 

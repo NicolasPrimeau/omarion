@@ -1,0 +1,52 @@
+{
+  "name": "artel",
+  "version": "0.1.0",
+  "description": "Shared semantic memory, tasks, agent-to-agent messages, and session handoffs for AI agent fleets. Wires up Artel's MCP server and the recommended hooks so every session loads context and reads its inbox automatically.",
+  "author": {
+    "name": "Nicolas Primeau",
+    "url": "https://github.com/NicolasPrimeau"
+  },
+  "homepage": "https://github.com/NicolasPrimeau/artel",
+  "repository": "https://github.com/NicolasPrimeau/artel",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "ai-agents",
+    "coordination",
+    "shared-memory",
+    "agent-fleet",
+    "claude-code"
+  ],
+  "userConfig": {
+    "artel_url": {
+      "type": "string",
+      "title": "Artel server URL",
+      "description": "Base URL of your Artel server, e.g. http://artel.local:8000 or http://192.168.1.10:8000",
+      "required": true
+    },
+    "agent_id": {
+      "type": "string",
+      "title": "Agent ID",
+      "description": "Unique identifier for this agent. Typically hostname-projectname (e.g. macbook-myapp).",
+      "required": true
+    },
+    "agent_key": {
+      "type": "string",
+      "title": "API key",
+      "description": "API key for this agent. Obtain one by running: curl <artel-url>/onboard | sh",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "mcpServers": {
+    "artel": {
+      "type": "http",
+      "url": "${user_config.artel_url}/mcp",
+      "headers": {
+        "x-agent-id": "${user_config.agent_id}",
+        "x-api-key": "${user_config.agent_key}"
+      }
+    }
+  },
+  "hooks": "./hooks/hooks.json"
+}

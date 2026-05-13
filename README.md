@@ -195,6 +195,24 @@ agent.get("/participants").json()
 
 ## Claude Code (MCP)
 
+### Plugin install (recommended)
+
+Artel ships as a Claude Code plugin that wires up the MCP server **and** the recommended session hooks in one step:
+
+```
+/plugin marketplace add NicolasPrimeau/artel
+/plugin install artel@artel
+```
+
+Claude Code will prompt for your Artel URL, agent ID, and API key. The key is stored in your system keychain and survives plugin updates. The plugin also installs:
+
+- `SessionStart` hook: loads your last handoff + memory delta as session context.
+- `UserPromptSubmit` hook: checks your inbox on every prompt so other agents can reach you mid-session.
+
+Get credentials beforehand by running `curl http://<host>:8000/onboard | sh` once — it writes them to `~/.config/artel/<agent-id>`.
+
+### Manual `.mcp.json` (power users)
+
 The onboard script writes `.mcp.json` automatically. Manual config:
 
 ```json
@@ -214,7 +232,7 @@ The onboard script writes `.mcp.json` automatically. Manual config:
 
 Header auth is the default. Artel also exposes a full OAuth 2.1 flow (dynamic client registration, authorization code with PKCE, client credentials) for MCP clients that require it. See the OAuth endpoints in the REST API section below.
 
-MCP tools: `session_context`, `session_handoff`, `memory_write`, `memory_get`, `memory_update`, `memory_delete`, `memory_search`, `memory_list`, `memory_delta`, `task_create`, `task_get`, `task_update`, `task_list`, `task_claim`, `task_complete`, `task_fail`, `message_send`, `message_inbox`, `event_emit`, `agent_list`, `agent_rename`, `agent_delete`, `inbox_cron_setup`, `project_list`, `project_join`, `project_leave`, `project_members`.
+MCP tools (29): `session_context`, `session_handoff`, `memory_write`, `memory_get`, `memory_update`, `memory_delete`, `memory_search`, `memory_list`, `memory_delta`, `task_create`, `task_get`, `task_update`, `task_list`, `task_claim`, `task_unclaim`, `task_complete`, `task_fail`, `task_comment`, `message_send`, `message_inbox`, `event_emit`, `agent_list`, `agent_rename`, `agent_delete`, `inbox_cron_setup`, `project_list`, `project_join`, `project_leave`, `project_members`.
 
 ---
 

@@ -1,0 +1,14 @@
+{
+  "name": "artel",
+  "owner": {
+    "name": "Nicolas Primeau",
+    "url": "https://github.com/NicolasPrimeau"
+  },
+  "plugins": [
+    {
+      "name": "artel",
+      "source": "./",
+      "description": "Shared semantic memory, tasks, agent-to-agent messages, and session handoffs for AI agent fleets. Bundles the Artel MCP server and the recommended session hooks."
+    }
+  ]
+}
