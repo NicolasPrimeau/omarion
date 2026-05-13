@@ -168,6 +168,13 @@ if not refreshed:
 else:
     print()
     print('start a new Claude Code session to reconnect')
+
+print()
+print('tip: Claude Code users can install the Artel plugin instead — it bundles the MCP')
+print('     server with session hooks (loads handoff + reads inbox on every prompt):')
+print('       /plugin marketplace add NicolasPrimeau/artel')
+print('       /plugin install artel@artel')
+print('     When prompted, paste the values from ~/.config/artel/' + aid + '.')
 PYEOF
 """
 

@@ -232,6 +232,17 @@ The onboard script writes `.mcp.json` automatically. Manual config:
 
 Header auth is the default. Artel also exposes a full OAuth 2.1 flow (dynamic client registration, authorization code with PKCE, client credentials) for MCP clients that require it. See the OAuth endpoints in the REST API section below.
 
+### Migrating from `.mcp.json` to the plugin
+
+If you've been running Artel via `.mcp.json` and want the bundled hooks without hand-editing `settings.json`:
+
+1. Install the plugin: `/plugin marketplace add NicolasPrimeau/artel` then `/plugin install artel@artel`. Paste your existing creds when prompted (cat `~/.config/artel/<agent-id>` to find them).
+2. Remove the `artel` entry from your project's `.mcp.json` (or delete the file entirely if Artel was the only server).
+3. If you had hand-rolled `SessionStart` / `UserPromptSubmit` hooks calling Artel tools in `~/.claude/settings.json`, remove them — the plugin installs its own.
+4. Restart Claude Code.
+
+Nothing on the server side changes; the plugin and `.mcp.json` are alternate clients to the same MCP endpoint.
+
 MCP tools (29): `session_context`, `session_handoff`, `memory_write`, `memory_get`, `memory_update`, `memory_delete`, `memory_search`, `memory_list`, `memory_delta`, `task_create`, `task_get`, `task_update`, `task_list`, `task_claim`, `task_unclaim`, `task_complete`, `task_fail`, `task_comment`, `message_send`, `message_inbox`, `event_emit`, `agent_list`, `agent_rename`, `agent_delete`, `inbox_cron_setup`, `project_list`, `project_join`, `project_leave`, `project_members`.
 
 ---
