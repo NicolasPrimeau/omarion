@@ -170,11 +170,23 @@ else:
     print('start a new Claude Code session to reconnect')
 
 print()
-print('tip: Claude Code users can install the Artel plugin instead — it bundles the MCP')
-print('     server with session hooks (loads handoff + reads inbox on every prompt):')
+print('tip: Claude Code users can install the Artel plugin instead — it bundles the')
+print('     MCP server with session hooks (loads handoff + reads inbox on every prompt).')
+print()
+print('  In the Claude Code REPL (human-driven, prompts for credentials):')
 print('       /plugin marketplace add NicolasPrimeau/artel')
 print('       /plugin install artel@artel')
-print('     When prompted, paste the values from ~/.config/artel/' + aid + '.')
+print('     The install prompts you for artel_url, agent_id, agent_key. The agent_key')
+print('     is stored in your system keychain. Use the values from ~/.config/artel/' + aid + '.')
+print()
+print('  From a shell (e.g. when scripting or running as an agent):')
+print('       claude plugin marketplace add NicolasPrimeau/artel')
+print('       claude plugin install artel@artel')
+print('     The CLI install does NOT prompt for userConfig. After install, run')
+print('     /plugin config artel in a Claude Code session to set credentials, OR')
+print('     edit ~/.claude/settings.json directly:')
+print('       pluginConfigs.artel.options = {{artel_url: "' + url + '", agent_id: "' + aid + '"}}')
+print('     (the sensitive agent_key still has to come from the slash command or keychain).')
 PYEOF
 """
 
