@@ -82,7 +82,7 @@ async def register_agent(body: AgentRegister, request: Request):
     row = db.execute("SELECT * FROM agents WHERE id=?", (body.agent_id,)).fetchone()
     update_seen(body.agent_id, row["created_at"])
     base_url = settings.public_url or str(request.base_url).rstrip("/")
-    mcp_url = (settings.mcp_url or base_url.replace(":8000", ":8001")).rstrip("/") + "/mcp"
+    mcp_url = (settings.mcp_url or base_url).rstrip("/") + "/mcp"
     return AgentCreated(
         agent_id=row["id"],
         api_key=api_key,

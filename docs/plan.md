@@ -8,7 +8,7 @@
 - [x] Memory endpoints (POST, GET, PATCH, DELETE, search)
 - [x] Semantic search (sqlite-vec embeddings, cosine similarity)
 - [x] Delta endpoint (/memory/delta?since=) for efficient context sync
-- [x] Task endpoints (create, list, claim, complete, fail)
+- [x] Task endpoints (create, list, claim, unclaim, complete, fail, comment)
 - [x] Message endpoints (send, inbox, read)
 - [x] Event endpoints (emit, poll, SSE stream)
 - [x] Session handoff (POST /sessions/handoff, GET /sessions/handoff/:agent_id)
@@ -28,7 +28,7 @@
 ## Phase 3: MCP Adapter
 
 - [x] MCP server wrapping core REST API
-- [x] Tools: memory_write, memory_search, memory_delta, task_create, task_list, task_claim, task_complete, session_context, session_handoff
+- [x] Tools: memory_write, memory_search, memory_delta, task_create, task_list, task_claim, task_unclaim, task_complete, task_fail, task_comment, session_context, session_handoff
 - [x] Claude Code integration — SSE (remote) and stdio (local) transports
 
 ## Phase 4: Client Integrations
