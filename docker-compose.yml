@@ -51,8 +51,11 @@ services:
       artel:
         condition: service_healthy
 
+  # containrrr/watchtower was archived in 2024 — its Docker API (1.25) is below
+  # the 1.40 minimum required by Docker Engine 27+. nickfedor/watchtower is the
+  # community-maintained continuation with the same config and labels.
   watchtower:
-    image: containrrr/watchtower
+    image: nickfedor/watchtower:1.17.0
     restart: unless-stopped
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
