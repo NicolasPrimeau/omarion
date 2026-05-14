@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     registration_key: str = ""
     ui_password: str = ""
     ui_agent_id: str = "nimbus"
+    admin_agents: str = ""
     public_url: str = ""
     mcp_url: str = ""
     jwt_ttl: int = 2592000
@@ -41,6 +42,9 @@ class Settings(BaseSettings):
                         result[agent_id] = parts[2].split(";")
             object.__setattr__(self, "_projects_cache", result)
         return self._projects_cache  # type: ignore[return-value]
+
+    def admin_agents_set(self) -> set[str]:
+        return {a.strip() for a in self.admin_agents.split(",") if a.strip()}
 
     def ui_agent_key(self) -> str:
         for key, agent_id in self.api_keys().items():

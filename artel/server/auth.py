@@ -53,8 +53,22 @@ async def require_registration_key(
         raise HTTPException(status_code=401, detail="invalid registration key")
 
 
+def is_admin(agent_id: str) -> bool:
+    if agent_id in settings.admin_agents_set():
+        return True
+    db = get_db()
+    row = db.execute("SELECT role FROM agents WHERE id=?", (agent_id,)).fetchone()
+    return row is not None and row["role"] == "admin"
+
+
+async def require_admin(agent_id: str = Depends(require_agent)) -> str:
+    if not is_admin(agent_id):
+        raise HTTPException(status_code=403, detail="admin role required")
+    return agent_id
+
+
 def _memberships(agent_id: str) -> list[str] | None:
-    if agent_id == settings.ui_agent_id:
+    if is_admin(agent_id):
         return None
     is_static = agent_id in settings.api_keys().values()
     static = settings.agent_projects().get(agent_id)

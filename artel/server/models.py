@@ -23,6 +23,7 @@ class MemoryWrite(BaseModel):
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     parents: list[str] = []
     tags: list[str] = []
+    for_agent: str | None = None
 
 
 class MemoryPatch(BaseModel):
@@ -149,10 +150,18 @@ class AgentRename(BaseModel):
     new_id: str
 
 
+AgentRole = Literal["admin", "member"]
+
+
+class AgentRoleUpdate(BaseModel):
+    role: AgentRole
+
+
 class AgentCreated(BaseModel):
     agent_id: str
     api_key: str
     project: str | None = None
+    role: AgentRole = "member"
     created_at: str
     mcp_config: dict | None = None
 

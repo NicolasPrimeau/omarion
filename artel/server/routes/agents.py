@@ -4,9 +4,9 @@ import sqlite3
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from ...store.db import get_db
-from ..auth import AgentDep, require_registration_key
+from ..auth import AgentDep, is_admin, require_admin, require_registration_key
 from ..config import settings
-from ..models import AgentCreated, AgentRegister, AgentRename, AgentSelfRegister
+from ..models import AgentCreated, AgentRegister, AgentRename, AgentRoleUpdate, AgentSelfRegister
 from ..presence import update_seen
 
 router = APIRouter(prefix="/agents", tags=["agents"])
@@ -56,8 +56,14 @@ def _row_to_agent(row) -> AgentCreated:
         agent_id=row["id"],
         api_key=row["api_key"],
         project=row["project"],
+        role=row["role"],
         created_at=row["created_at"],
     )
+
+
+def _static_agent(agent_id: str, api_key: str) -> AgentCreated:
+    role = "admin" if is_admin(agent_id) else "member"
+    return AgentCreated(agent_id=agent_id, api_key=api_key, role=role, created_at="static")
 
 
 @router.post(
@@ -132,7 +138,7 @@ async def get_self(agent_id: str = AgentDep):
     if row:
         return _row_to_agent(row)
     key = next((k for k, v in settings.api_keys().items() if v == agent_id), None)
-    return AgentCreated(agent_id=agent_id, api_key=key or "", created_at="static")
+    return _static_agent(agent_id, key or "")
 
 
 @router.patch(
@@ -195,6 +201,30 @@ async def rename_agent(agent_id: str, body: AgentRename):
     return _row_to_agent(db.execute("SELECT * FROM agents WHERE id=?", (new_id,)).fetchone())
 
 
+@router.patch(
+    "/{agent_id}/role",
+    response_model=AgentCreated,
+    summary="Set role for a DB-registered agent (admin only)",
+)
+async def set_agent_role(
+    agent_id: str,
+    body: AgentRoleUpdate,
+    caller: str = Depends(require_admin),
+):
+    if agent_id in settings.api_keys().values():
+        raise HTTPException(
+            status_code=422,
+            detail="static agent roles are set via ADMIN_AGENTS in .env",
+        )
+    db = get_db()
+    row = db.execute("SELECT * FROM agents WHERE id=?", (agent_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="agent not found")
+    with db:
+        db.execute("UPDATE agents SET role=? WHERE id=?", (body.role, agent_id))
+    return _row_to_agent(db.execute("SELECT * FROM agents WHERE id=?", (agent_id,)).fetchone())
+
+
 @router.delete(
     "/{agent_id}",
     status_code=204,
@@ -226,8 +256,5 @@ async def list_agents():
     db = get_db()
     rows = db.execute("SELECT * FROM agents ORDER BY created_at").fetchall()
     dynamic = [_row_to_agent(r) for r in rows]
-    static = [
-        AgentCreated(agent_id=aid, api_key=key, created_at="static")
-        for key, aid in settings.api_keys().items()
-    ]
+    static = [_static_agent(aid, key) for key, aid in settings.api_keys().items()]
     return static + dynamic

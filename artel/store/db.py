@@ -22,12 +22,19 @@ def get_db(path: str = "artel.db") -> sqlite3.Connection:
 
 
 def _migrate(conn: sqlite3.Connection) -> None:
+    import os
+
     agent_cols = {r[1] for r in conn.execute("PRAGMA table_info(agents)").fetchall()}
     if "project" not in agent_cols:
         conn.execute("ALTER TABLE agents ADD COLUMN project TEXT")
         conn.commit()
     if "last_seen_at" not in agent_cols:
         conn.execute("ALTER TABLE agents ADD COLUMN last_seen_at TEXT")
+        conn.commit()
+    if "role" not in agent_cols:
+        conn.execute("ALTER TABLE agents ADD COLUMN role TEXT NOT NULL DEFAULT 'member'")
+        ui_agent_id = os.getenv("UI_AGENT_ID", "nimbus")
+        conn.execute("UPDATE agents SET role='admin' WHERE id=?", (ui_agent_id,))
         conn.commit()
     task_cols = {r[1] for r in conn.execute("PRAGMA table_info(tasks)").fetchall()}
     if "expected_outcome" not in task_cols:

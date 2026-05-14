@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...store.db import get_db
 from ...store.embeddings import embed
-from ..auth import _memberships, project_filter, require_agent
+from ..auth import _memberships, is_admin, project_filter, require_agent
 from ..broadcast import broadcast
 from ..models import EventEntry, MemoryEntry, MemoryPatch, MemoryWrite, new_id
 
@@ -40,6 +40,7 @@ async def write_memory(
         allowed = _memberships(agent_id)
         if allowed is not None and body.project not in allowed:
             raise HTTPException(status_code=403, detail="not a member of this project")
+    stored_agent_id = body.for_agent if (body.for_agent and is_admin(agent_id)) else agent_id
     entry_id = new_id()
     vec = embed(body.content)
 
@@ -51,7 +52,7 @@ async def write_memory(
             (
                 entry_id,
                 body.type,
-                agent_id,
+                stored_agent_id,
                 body.project,
                 body.scope,
                 body.content,
@@ -66,14 +67,14 @@ async def write_memory(
         )
         db.execute(
             "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
-            (event_id, "memory.written", agent_id, json.dumps({"memory_id": entry_id})),
+            (event_id, "memory.written", stored_agent_id, json.dumps({"memory_id": entry_id})),
         )
 
     broadcast(
         EventEntry(
             id=event_id,
             type="memory.written",
-            agent_id=agent_id,
+            agent_id=stored_agent_id,
             payload={"memory_id": entry_id},
             created_at=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
         )
@@ -102,16 +103,27 @@ async def search_memory(
     has_filter = bool(project) or (allowed is not None)
     fetch_k = limit * 5 if has_filter else limit
 
-    rows = db.execute(
-        """SELECT m.*, mv.distance
-           FROM memory_vec mv
-           JOIN memory m ON m.id = mv.id
-           WHERE mv.embedding MATCH ? AND k=?
-             AND m.deleted_at IS NULL
-             AND (m.scope != 'agent' OR m.agent_id = ?)
-           ORDER BY mv.distance""",
-        (json.dumps(vec), fetch_k, agent_id),
-    ).fetchall()
+    if is_admin(agent_id):
+        rows = db.execute(
+            """SELECT m.*, mv.distance
+               FROM memory_vec mv
+               JOIN memory m ON m.id = mv.id
+               WHERE mv.embedding MATCH ? AND k=?
+                 AND m.deleted_at IS NULL
+               ORDER BY mv.distance""",
+            (json.dumps(vec), fetch_k),
+        ).fetchall()
+    else:
+        rows = db.execute(
+            """SELECT m.*, mv.distance
+               FROM memory_vec mv
+               JOIN memory m ON m.id = mv.id
+               WHERE mv.embedding MATCH ? AND k=?
+                 AND m.deleted_at IS NULL
+                 AND (m.scope != 'agent' OR m.agent_id = ?)
+               ORDER BY mv.distance""",
+            (json.dumps(vec), fetch_k, agent_id),
+        ).fetchall()
 
     if project:
         if allowed is not None and project not in allowed:
@@ -136,6 +148,7 @@ async def list_memory(
     type: str | None = Query(default=None),
     tag: str | None = Query(default=None),
     agent: str | None = Query(default=None),
+    scope: str | None = Query(default=None),
     project: str | None = Query(default=None),
     confidence_min: float | None = Query(default=None, ge=0.0, le=1.0),
     updated_before: str | None = Query(default=None),
@@ -145,19 +158,26 @@ async def list_memory(
     agent_id: str = Depends(require_agent),
 ):
     db = get_db()
-    clauses = ["deleted_at IS NULL", "(scope != 'agent' OR agent_id = ?)"]
-    params: list = [agent_id]
+    if is_admin(agent_id):
+        clauses = ["deleted_at IS NULL"]
+        params: list = []
+    else:
+        clauses = ["deleted_at IS NULL", "(scope != 'agent' OR agent_id = ?)"]
+        params = [agent_id]
     if project:
         allowed = _memberships(agent_id)
         if allowed is not None and project not in allowed:
             return []
         clauses.append("project = ?")
         params.append(project)
-    else:
+    elif not is_admin(agent_id):
         pf_clause, pf_params = project_filter(agent_id)
         if pf_clause:
             clauses.append(pf_clause)
             params.extend(pf_params)
+    if scope:
+        clauses.append("scope = ?")
+        params.append(scope)
     if type:
         clauses.append("type = ?")
         params.append(type)
@@ -194,27 +214,38 @@ async def memory_delta(
     since: str = Query(...),
     agent: str | None = Query(default=None),
     project: str | None = Query(default=None),
+    scope: str | None = Query(default=None),
     type: str | None = Query(default=None),
     agent_id: str = Depends(require_agent),
 ):
     db = get_db()
-    pf_clause, pf_params = project_filter(agent_id)
-    sql = """SELECT * FROM memory
-             WHERE updated_at > ? AND deleted_at IS NULL
-               AND (scope != 'agent' OR agent_id = ?)"""
-    params: list = [since, agent_id]
+    if is_admin(agent_id):
+        sql = "SELECT * FROM memory WHERE updated_at > ? AND deleted_at IS NULL"
+        params: list = [since]
+    else:
+        pf_clause, pf_params = project_filter(agent_id)
+        sql = """SELECT * FROM memory
+                 WHERE updated_at > ? AND deleted_at IS NULL
+                   AND (scope != 'agent' OR agent_id = ?)"""
+        params = [since, agent_id]
+        if project:
+            allowed = _memberships(agent_id)
+            if allowed is not None and project not in allowed:
+                return []
+            sql += " AND project = ?"
+            params.append(project)
+        elif pf_clause:
+            sql += f" AND {pf_clause}"
+            params.extend(pf_params)
+    if is_admin(agent_id) and project:
+        sql += " AND project = ?"
+        params.append(project)
     if agent:
         sql += " AND agent_id = ?"
         params.append(agent)
-    if project:
-        allowed = _memberships(agent_id)
-        if allowed is not None and project not in allowed:
-            return []
-        sql += " AND project = ?"
-        params.append(project)
-    elif pf_clause:
-        sql += f" AND {pf_clause}"
-        params.extend(pf_params)
+    if scope:
+        sql += " AND scope = ?"
+        params.append(scope)
     if type:
         sql += " AND type = ?"
         params.append(type)
@@ -234,12 +265,13 @@ async def get_memory(
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
-    if row["scope"] == "agent" and row["agent_id"] != agent_id:
-        raise HTTPException(status_code=403, detail="forbidden")
-    if row["project"]:
-        allowed = _memberships(agent_id)
-        if allowed is not None and row["project"] not in allowed:
-            raise HTTPException(status_code=403, detail="not a member of this project")
+    if not is_admin(agent_id):
+        if row["scope"] == "agent" and row["agent_id"] != agent_id:
+            raise HTTPException(status_code=403, detail="forbidden")
+        if row["project"]:
+            allowed = _memberships(agent_id)
+            if allowed is not None and row["project"] not in allowed:
+                raise HTTPException(status_code=403, detail="not a member of this project")
     return _row_to_entry(row)
 
 
@@ -258,7 +290,7 @@ async def patch_memory(
     if not row:
         raise HTTPException(status_code=404, detail="not found")
 
-    is_owner = row["agent_id"] == agent_id
+    is_owner = row["agent_id"] == agent_id or is_admin(agent_id)
     wants_owner_fields = any(
         f is not None for f in (body.content, body.tags, body.scope, body.project)
     )
@@ -321,7 +353,7 @@ async def delete_memory(
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
-    if row["agent_id"] != agent_id:
+    if row["agent_id"] != agent_id and not is_admin(agent_id):
         raise HTTPException(status_code=403, detail="forbidden")
     with db:
         db.execute(

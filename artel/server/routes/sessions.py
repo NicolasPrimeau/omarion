@@ -3,7 +3,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 
 from ...store.db import get_db
-from ..auth import project_filter, require_agent
+from ..auth import is_admin, project_filter, require_agent
 from ..models import HandoffPost, HandoffResponse, new_id
 from .memory import _row_to_entry
 
@@ -41,7 +41,7 @@ async def get_handoff(
     target_agent_id: str,
     agent_id: str = Depends(require_agent),
 ):
-    if target_agent_id != agent_id:
+    if target_agent_id != agent_id and not is_admin(agent_id):
         raise HTTPException(status_code=403, detail="forbidden")
     db = get_db()
     row = db.execute(

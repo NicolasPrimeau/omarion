@@ -289,9 +289,12 @@ async def ui(request: Request):
         row = get_db().execute("SELECT api_key FROM agents WHERE id=?", (aid,)).fetchone()
         if row:
             akey = row["api_key"]
+    from .auth import is_admin
+
     regkey = settings.registration_key
+    is_admin_flag = is_admin(aid)
     html = _UI.read_text().replace(
         "/*CREDS*/",
-        f"window._aid={json.dumps(aid)};window._akey={json.dumps(akey)};window._regkey={json.dumps(regkey)};",
+        f"window._aid={json.dumps(aid)};window._akey={json.dumps(akey)};window._regkey={json.dumps(regkey)};window._isAdmin={json.dumps(is_admin_flag)};",
     )
     return HTMLResponse(html)

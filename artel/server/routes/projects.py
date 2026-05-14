@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from ...store.db import get_db
-from ..auth import require_agent
+from ..auth import is_admin, require_agent
 from ..config import settings
 from ..models import ProjectInfo
 
@@ -90,7 +90,8 @@ async def list_projects(agent_id: str = Depends(require_agent)):
         "WHERE project IS NOT NULL AND deleted_at IS NULL GROUP BY project, agent_id"
     ).fetchall():
         p = _ensure(row["project"])
-        p["agents"].add(row["agent_id"])
+        if not is_admin(row["agent_id"]):
+            p["agents"].add(row["agent_id"])
         p["memory_count"] += row["cnt"]
         if not p["last_activity"] or row["last"] > p["last_activity"]:
             p["last_activity"] = row["last"]
@@ -100,7 +101,8 @@ async def list_projects(agent_id: str = Depends(require_agent)):
         "WHERE project IS NOT NULL GROUP BY project, created_by"
     ).fetchall():
         p = _ensure(row["project"])
-        p["agents"].add(row["created_by"])
+        if not is_admin(row["created_by"]):
+            p["agents"].add(row["created_by"])
         p["task_count"] += row["cnt"]
         if not p["last_activity"] or row["last"] > p["last_activity"]:
             p["last_activity"] = row["last"]

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS agents (
     id            TEXT PRIMARY KEY,
     api_key       TEXT NOT NULL UNIQUE,
     project       TEXT,
+    role          TEXT NOT NULL DEFAULT 'member',
     created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     last_seen_at  TEXT
 );
