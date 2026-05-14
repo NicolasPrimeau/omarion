@@ -345,6 +345,12 @@ uv run pytest tests/ -v
 
 ---
 
+## Support
+
+Found a bug or have a question? [Open a GitHub issue](https://github.com/NicolasPrimeau/artel/issues). Feature requests welcome too.
+
+---
+
 ## License
 
 MIT. See [LICENSE.md](LICENSE.md).
