@@ -27,7 +27,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "curl -sS --max-time 5 -H \"x-agent-id: ${user_config.agent_id}\" -H \"x-api-key: ${user_config.agent_key}\" \"${user_config.artel_url}/messages/inbox\" 2>/dev/null | python3 -c \"import json,sys; msgs=json.load(sys.stdin); [print('[artel] '+m['from_agent']+': '+m['body']) for m in msgs]\" 2>/dev/null || true",
+            "command": "[ -z \"${user_config.artel_url}\" ] && exit 0; curl -sS --max-time 5 -H \"x-agent-id: ${user_config.agent_id}\" -H \"x-api-key: ${user_config.agent_key}\" \"${user_config.artel_url}/messages/inbox\" 2>/dev/null | python3 -c \"import json,sys; msgs=json.load(sys.stdin); [print('[artel] '+m['from_agent']+': '+m['body']) for m in msgs]\" 2>/dev/null || true",
             "timeout": 7
           }
         ]
