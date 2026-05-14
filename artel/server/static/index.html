@@ -39,6 +39,11 @@
   --r:      4px;
   --hh:     44px;
   --nh:     36px;
+  --header-h: 44px;
+  --header-bg: rgba(7,15,23,.97);
+  --nav-bg:    rgba(7,15,23,.93);
+  --modal-bg:  rgba(7,15,23,.85);
+  --dot:       rgba(215,153,33,.04);
   --shadow: 0 2px 12px rgba(0,0,0,.4);
   --shadow-hover: 0 4px 20px rgba(0,0,0,.5);
 }
@@ -49,17 +54,17 @@ body{
   background:var(--bg);
   color:var(--t1);
   min-height:100%;
-  background-image:radial-gradient(circle,rgba(215,153,33,.04) 1px,transparent 1px);
+  background-image:radial-gradient(circle,var(--dot) 1px,transparent 1px);
   background-size:24px 24px;
 }
 
 /* ── Header ───────────────────────────── */
+.sticky-shell{position:sticky;top:0;z-index:200}
 header{
   display:flex;align-items:center;gap:12px;
   padding:0 18px;height:var(--hh);
-  background:rgba(7,15,23,.97);
+  background:var(--header-bg);
   border-bottom:1px solid var(--b1);
-  position:sticky;top:0;z-index:200;
   backdrop-filter:blur(12px);
 }
 .logo{
@@ -108,19 +113,19 @@ header{
 .h-logout:hover{color:var(--t2);border-color:var(--b1)}
 .h-icon-btn{
   background:transparent;border:1px solid transparent;color:var(--t3);
-  font-size:20px;line-height:1;padding:4px 10px;border-radius:var(--r);
+  font-size:26px;line-height:1;padding:2px 8px;border-radius:var(--r);
   cursor:pointer;flex-shrink:0;
   transition:color .15s,border-color .15s,background .15s;
 }
 .h-icon-btn:hover{color:var(--accent);border-color:var(--b2);background:var(--a-bg)}
 .h-connect{position:relative;flex-shrink:0}
 .h-connect-btn{
-  background:transparent;border:1px solid var(--b2);color:var(--t3);
-  font:11px var(--mono);padding:4px 10px;border-radius:var(--r);
-  cursor:pointer;letter-spacing:.4px;
-  transition:color .15s,border-color .15s,background .15s;
+  background:transparent;border:1px solid var(--b1);color:var(--t4);
+  font:10px var(--mono);padding:3px 6px;border-radius:var(--r);
+  cursor:pointer;letter-spacing:.4px;outline:none;
+  transition:color .15s,border-color .15s;
 }
-.h-connect-btn:hover{color:var(--accent);border-color:var(--accent);background:var(--a-bg)}
+.h-connect-btn:hover,.h-connect-btn:focus,.h-connect-btn:active{color:var(--t2);border-color:var(--b2)}
 .h-connect-drop{
   display:none;position:absolute;top:calc(100% + 8px);right:0;
   background:var(--s2);border:1px solid var(--b2);border-radius:6px;
@@ -145,10 +150,9 @@ header{
 /* ── Nav ──────────────────────────────── */
 nav{
   display:flex;
-  background:rgba(7,15,23,.93);
+  background:var(--nav-bg);
   border-bottom:1px solid var(--b1);
   overflow-x:auto;scrollbar-width:none;
-  position:sticky;top:var(--hh);z-index:199;
   backdrop-filter:blur(12px);
   padding:0 6px;
 }
@@ -304,6 +308,7 @@ button.icon-btn{width:24px;height:24px;padding:0;font-size:12px}
 .pill.scratch{background:var(--s3);color:var(--t3);border:1px solid var(--b2)}
 .pill.private{background:var(--r-bg);color:var(--red);border:1px solid var(--r-bord)}
 .pill.project{background:var(--o-bg);color:var(--orange);border:1px solid var(--o-bord)}
+.pill.admin{background:var(--a-bg);color:var(--accent);border:1px solid var(--a-bord)}
 .tag{
   padding:2px 7px;border-radius:3px;
   font:11px var(--mono);color:var(--t3);
@@ -489,15 +494,17 @@ pre{
 /* ── Modal ────────────────────────────── */
 .modal-backdrop{
   display:none;position:fixed;inset:0;
-  background:rgba(7,15,23,.85);
+  background:var(--modal-bg);
   backdrop-filter:blur(4px);
   z-index:500;align-items:center;justify-content:center;
+  padding:16px;overflow-y:auto;
 }
 .modal-backdrop.open{display:flex;animation:fadeIn .15s ease}
 .modal{
   background:var(--s1);border:1px solid var(--b2);border-radius:6px;
   padding:20px;width:min(500px,95vw);
   box-shadow:0 8px 40px rgba(0,0,0,.7);
+  max-height:calc(100vh - 32px);overflow-y:auto;
 }
 .modal-header{
   display:flex;align-items:center;justify-content:space-between;
@@ -520,19 +527,241 @@ pre{
 
 /* ── Mobile ───────────────────────────── */
 @media(max-width:600px){
-  header{padding:0 12px;gap:8px}
-  .h-select{max-width:110px}
-  .panel{padding:12px 14px}
+  :root{--header-h:82px}
+
+  /* Header wraps to two rows: logo+actions on top, selects below */
+  header{
+    height:auto;padding:6px 10px;gap:6px;
+    flex-wrap:wrap;align-items:center;
+  }
+  .h-div{display:none}
+  .logo{order:1}
+  .spacer{order:2}
+  .h-stat{order:3}
+  .h-connect{order:4}
+  .h-icon-btn{order:5}
+  #h-agent-sel{order:10;flex:1;min-width:0;max-width:none}
+  #h-project{order:11;flex:1;min-width:0;max-width:none}
+
+  /* Connect dropdown anchored below header+nav on mobile */
+  .h-connect-drop{
+    position:fixed;
+    left:10px;right:10px;top:122px;
+    min-width:0;width:auto;
+  }
+
+  /* Bigger nav tap targets */
+  nav{padding:0 2px}
+  .nav-btn{padding:0 12px;height:42px;font-size:12px;letter-spacing:.4px}
+
+  .panel{padding:10px 12px}
   .agent-grid,.proj-grid{grid-template-columns:1fr}
-  input,select,textarea,button{font-size:14px}
-  button{height:38px}
-  button.sm{height:28px}
+
+  input,select,textarea,button:not(.theme-swatch){font-size:14px}
+  button.sm{font-size:11px;padding:0 10px}
+  button.icon-btn{width:32px;height:32px;padding:0}
+  .theme-swatch{font-size:10px;height:auto}
+
+  /* Toolbars wrap and stack */
+  .toolbar{flex-wrap:wrap;gap:6px}
+  .toolbar input{flex:1;min-width:0}
+
+  /* Card actions stretch on mobile */
+  .card-actions{gap:6px;flex-wrap:wrap}
+  .card-actions button.sm{flex:1;min-width:80px}
+
+  /* Write box */
+  .write-box{padding:10px}
+
+  /* Toast stack full-width at bottom */
+  #toast-stack{left:10px;right:10px;bottom:16px;align-items:stretch}
+  .toast{max-width:none}
+
+  /* Modal: full-width, scroll from top */
+  .modal-backdrop{align-items:flex-start;padding:10px}
+  .modal{width:100%;max-height:none;padding:14px;border-radius:6px}
+
+  .h-connect-btn{padding:4px 10px;font-size:11px}
+  button:not(.theme-swatch){height:36px}
+  button.sm:not(.theme-swatch){height:28px}
+  .ac{padding:10px 12px}
+  .ac-meta{margin-bottom:6px}
+}
+
+.wb-toggle{display:none}
+@media(max-width:600px){
+  .wb-toggle{
+    display:flex;width:100%;justify-content:center;
+    margin-bottom:8px;color:var(--t4);border-color:var(--b1);
+    font-size:12px;height:28px;
+  }
+  .write-box.wb-collapsed{display:none}
+}
+
+/* ── Themes ───────────────────────────── */
+[data-theme="gruvbox-light"]{
+  --bg:#f9f5d7;--s1:#f2e5bc;--s2:#ebdbb2;--s3:#d5c4a1;
+  --b1:#bdae93;--b2:#a89984;
+  --t1:#3c3836;--t2:#504945;--t3:#665c54;--t4:#7c6f64;
+  --accent:#b57614;--a-bg:rgba(181,118,20,.12);--a-bord:rgba(181,118,20,.4);
+  --green:#79740e;--g-bg:rgba(121,116,14,.12);--g-bord:rgba(121,116,14,.4);
+  --red:#9d0006;--r-bg:rgba(157,0,6,.12);--r-bord:rgba(157,0,6,.4);
+  --orange:#af3a03;--o-bg:rgba(175,58,3,.12);--o-bord:rgba(175,58,3,.4);
+  --purple:#8f3f71;--p-bg:rgba(143,63,113,.12);--p-bord:rgba(143,63,113,.4);
+  --header-bg:rgba(235,219,178,.97);--nav-bg:rgba(235,219,178,.93);--modal-bg:rgba(60,56,54,.75);
+  --dot:rgba(181,118,20,.06);
+  --shadow:0 2px 12px rgba(0,0,0,.12);--shadow-hover:0 4px 20px rgba(0,0,0,.18);
+}
+[data-theme="dracula"]{
+  --bg:#282a36;--s1:#21222c;--s2:#2a2c3e;--s3:#363847;
+  --b1:#44475a;--b2:#6272a4;
+  --t1:#f8f8f2;--t2:#e2dff5;--t3:#a8afc8;--t4:#6272a4;
+  --accent:#bd93f9;--a-bg:rgba(189,147,249,.1);--a-bord:rgba(189,147,249,.35);
+  --green:#50fa7b;--g-bg:rgba(80,250,123,.1);--g-bord:rgba(80,250,123,.35);
+  --red:#ff5555;--r-bg:rgba(255,85,85,.1);--r-bord:rgba(255,85,85,.35);
+  --orange:#ffb86c;--o-bg:rgba(255,184,108,.1);--o-bord:rgba(255,184,108,.35);
+  --purple:#ff79c6;--p-bg:rgba(255,121,198,.1);--p-bord:rgba(255,121,198,.35);
+  --header-bg:rgba(17,18,25,.97);--nav-bg:rgba(17,18,25,.93);--modal-bg:rgba(17,18,25,.88);
+  --dot:rgba(189,147,249,.04);
+}
+[data-theme="nord"]{
+  --bg:#2e3440;--s1:#3b4252;--s2:#434c5e;--s3:#4c566a;
+  --b1:#4c566a;--b2:#616e88;
+  --t1:#eceff4;--t2:#e5e9f0;--t3:#d8dee9;--t4:#9099ae;
+  --accent:#88c0d0;--a-bg:rgba(136,192,208,.1);--a-bord:rgba(136,192,208,.35);
+  --green:#a3be8c;--g-bg:rgba(163,190,140,.1);--g-bord:rgba(163,190,140,.35);
+  --red:#bf616a;--r-bg:rgba(191,97,106,.1);--r-bord:rgba(191,97,106,.35);
+  --orange:#d08770;--o-bg:rgba(208,135,112,.1);--o-bord:rgba(208,135,112,.35);
+  --purple:#b48ead;--p-bg:rgba(180,142,173,.1);--p-bord:rgba(180,142,173,.35);
+  --header-bg:rgba(30,35,45,.97);--nav-bg:rgba(30,35,45,.93);--modal-bg:rgba(30,35,45,.88);
+  --dot:rgba(136,192,208,.04);
+}
+[data-theme="tokyo-night"]{
+  --bg:#1a1b26;--s1:#1f2335;--s2:#24283b;--s3:#2f3548;
+  --b1:#3b4261;--b2:#545c7e;
+  --t1:#c0caf5;--t2:#a9b1d6;--t3:#787c99;--t4:#565f89;
+  --accent:#7aa2f7;--a-bg:rgba(122,162,247,.1);--a-bord:rgba(122,162,247,.35);
+  --green:#9ece6a;--g-bg:rgba(158,206,106,.1);--g-bord:rgba(158,206,106,.35);
+  --red:#f7768e;--r-bg:rgba(247,118,142,.1);--r-bord:rgba(247,118,142,.35);
+  --orange:#ff9e64;--o-bg:rgba(255,158,100,.1);--o-bord:rgba(255,158,100,.35);
+  --purple:#bb9af7;--p-bg:rgba(187,154,247,.1);--p-bord:rgba(187,154,247,.35);
+  --header-bg:rgba(12,13,20,.97);--nav-bg:rgba(12,13,20,.93);--modal-bg:rgba(12,13,20,.88);
+  --dot:rgba(122,162,247,.04);
+}
+[data-theme="solarized"]{
+  --bg:#002b36;--s1:#073642;--s2:#0d3c47;--s3:#1a4855;
+  --b1:#2a5560;--b2:#3d6b78;
+  --t1:#fdf6e3;--t2:#eee8d5;--t3:#93a1a1;--t4:#657b83;
+  --accent:#268bd2;--a-bg:rgba(38,139,210,.1);--a-bord:rgba(38,139,210,.35);
+  --green:#859900;--g-bg:rgba(133,153,0,.1);--g-bord:rgba(133,153,0,.35);
+  --red:#dc322f;--r-bg:rgba(220,50,47,.1);--r-bord:rgba(220,50,47,.35);
+  --orange:#cb4b16;--o-bg:rgba(203,75,22,.1);--o-bord:rgba(203,75,22,.35);
+  --purple:#6c71c4;--p-bg:rgba(108,113,196,.1);--p-bord:rgba(108,113,196,.35);
+  --header-bg:rgba(0,18,22,.97);--nav-bg:rgba(0,18,22,.93);--modal-bg:rgba(0,18,22,.88);
+  --dot:rgba(38,139,210,.05);
+}
+
+[data-theme="everforest"]{
+  --bg:#272e33;--s1:#1d2327;--s2:#2e383c;--s3:#374247;
+  --b1:#4a555b;--b2:#5c6a72;
+  --t1:#d3c6aa;--t2:#c2b89a;--t3:#859289;--t4:#6d7a75;
+  --accent:#a7c080;--a-bg:rgba(167,192,128,.1);--a-bord:rgba(167,192,128,.35);
+  --green:#a7c080;--g-bg:rgba(167,192,128,.1);--g-bord:rgba(167,192,128,.35);
+  --red:#e67e80;--r-bg:rgba(230,126,128,.1);--r-bord:rgba(230,126,128,.35);
+  --orange:#e69875;--o-bg:rgba(230,152,117,.1);--o-bord:rgba(230,152,117,.35);
+  --purple:#d699b6;--p-bg:rgba(214,153,182,.1);--p-bord:rgba(214,153,182,.35);
+  --header-bg:rgba(13,17,18,.97);--nav-bg:rgba(13,17,18,.93);--modal-bg:rgba(13,17,18,.88);
+  --dot:rgba(167,192,128,.05);
+}
+[data-theme="catppuccin"]{
+  --bg:#1e1e2e;--s1:#181825;--s2:#313244;--s3:#45475a;
+  --b1:#45475a;--b2:#585b70;
+  --t1:#cdd6f4;--t2:#bac2de;--t3:#a6adc8;--t4:#7f849c;
+  --accent:#cba6f7;--a-bg:rgba(203,166,247,.1);--a-bord:rgba(203,166,247,.35);
+  --green:#a6e3a1;--g-bg:rgba(166,227,161,.1);--g-bord:rgba(166,227,161,.35);
+  --red:#f38ba8;--r-bg:rgba(243,139,168,.1);--r-bord:rgba(243,139,168,.35);
+  --orange:#fab387;--o-bg:rgba(250,179,135,.1);--o-bord:rgba(250,179,135,.35);
+  --purple:#cba6f7;--p-bg:rgba(203,166,247,.1);--p-bord:rgba(203,166,247,.35);
+  --header-bg:rgba(10,10,20,.97);--nav-bg:rgba(10,10,20,.93);--modal-bg:rgba(10,10,20,.88);
+  --dot:rgba(203,166,247,.04);
+}
+[data-theme="rose-pine"]{
+  --bg:#191724;--s1:#1f1d2e;--s2:#26233a;--s3:#2a2837;
+  --b1:#403d52;--b2:#524f67;
+  --t1:#e0def4;--t2:#c9c7da;--t3:#908caa;--t4:#6e6a86;
+  --accent:#c4a7e7;--a-bg:rgba(196,167,231,.1);--a-bord:rgba(196,167,231,.35);
+  --green:#9ccfd8;--g-bg:rgba(156,207,216,.1);--g-bord:rgba(156,207,216,.35);
+  --red:#eb6f92;--r-bg:rgba(235,111,146,.1);--r-bord:rgba(235,111,146,.35);
+  --orange:#f6c177;--o-bg:rgba(246,193,119,.1);--o-bord:rgba(246,193,119,.35);
+  --purple:#c4a7e7;--p-bg:rgba(196,167,231,.1);--p-bord:rgba(196,167,231,.35);
+  --header-bg:rgba(10,9,16,.97);--nav-bg:rgba(10,9,16,.93);--modal-bg:rgba(10,9,16,.88);
+  --dot:rgba(196,167,231,.04);
+}
+
+[data-theme="hacker"]{
+  --bg:#0d0d0d;--s1:#0a0a0a;--s2:#111;--s3:#1a1a1a;
+  --b1:#1a2e1a;--b2:#255225;
+  --t1:#00ff41;--t2:#00cc33;--t3:#009926;--t4:#006617;
+  --accent:#00ff41;--a-bg:rgba(0,255,65,.08);--a-bord:rgba(0,255,65,.3);
+  --green:#00ff41;--g-bg:rgba(0,255,65,.08);--g-bord:rgba(0,255,65,.3);
+  --red:#ff0000;--r-bg:rgba(255,0,0,.1);--r-bord:rgba(255,0,0,.35);
+  --orange:#ffaa00;--o-bg:rgba(255,170,0,.1);--o-bord:rgba(255,170,0,.35);
+  --purple:#00ffff;--p-bg:rgba(0,255,255,.08);--p-bord:rgba(0,255,255,.3);
+  --header-bg:rgba(0,0,0,.99);--nav-bg:rgba(0,0,0,.99);--modal-bg:rgba(0,0,0,.92);
+  --dot:rgba(0,255,65,.03);
+  --shadow:0 2px 12px rgba(0,255,65,.08);--shadow-hover:0 4px 20px rgba(0,255,65,.12);
+}
+[data-theme="monokai"]{
+  --bg:#272822;--s1:#1e1f1c;--s2:#2d2e2a;--s3:#3e3d32;
+  --b1:#49483e;--b2:#75715e;
+  --t1:#f8f8f2;--t2:#e2dfcc;--t3:#75715e;--t4:#5c5947;
+  --accent:#fd971f;--a-bg:rgba(253,151,31,.1);--a-bord:rgba(253,151,31,.35);
+  --green:#a6e22e;--g-bg:rgba(166,226,46,.1);--g-bord:rgba(166,226,46,.35);
+  --red:#f92672;--r-bg:rgba(249,38,114,.1);--r-bord:rgba(249,38,114,.35);
+  --orange:#fd971f;--o-bg:rgba(253,151,31,.1);--o-bord:rgba(253,151,31,.35);
+  --purple:#ae81ff;--p-bg:rgba(174,129,255,.1);--p-bord:rgba(174,129,255,.35);
+  --header-bg:rgba(12,13,10,.97);--nav-bg:rgba(12,13,10,.93);--modal-bg:rgba(12,13,10,.88);
+  --dot:rgba(253,151,31,.04);
+}
+[data-theme="cobalt"]{
+  --bg:#193549;--s1:#0e2030;--s2:#1f4462;--s3:#255070;
+  --b1:#2d5879;--b2:#3d6d8a;
+  --t1:#ffffff;--t2:#e1efff;--t3:#8abfd8;--t4:#5a92b2;
+  --accent:#ffc600;--a-bg:rgba(255,198,0,.1);--a-bord:rgba(255,198,0,.35);
+  --green:#3ad900;--g-bg:rgba(58,217,0,.1);--g-bord:rgba(58,217,0,.35);
+  --red:#ff2600;--r-bg:rgba(255,38,0,.1);--r-bord:rgba(255,38,0,.35);
+  --orange:#ff9d00;--o-bg:rgba(255,157,0,.1);--o-bord:rgba(255,157,0,.35);
+  --purple:#e6beff;--p-bg:rgba(230,190,255,.1);--p-bord:rgba(230,190,255,.35);
+  --header-bg:rgba(6,15,24,.97);--nav-bg:rgba(6,15,24,.93);--modal-bg:rgba(6,15,24,.9);
+  --dot:rgba(255,198,0,.04);
+}
+
+/* ── Theme picker ─────────────────────── */
+.theme-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px 6px}
+.theme-swatch{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:8px 4px;border-radius:6px;cursor:pointer;
+  border:1px solid transparent;background:transparent;
+  overflow:hidden;
+  transition:background .15s,border-color .15s;
+}
+.theme-swatch:hover{background:var(--s3);border-color:var(--b1)}
+.theme-swatch.active{background:var(--a-bg);border-color:var(--a-bord)}
+.swatch-dot{
+  width:28px;height:28px;border-radius:50%;
+  border:3px solid;display:block;flex-shrink:0;
+}
+.swatch-label{
+  font:10px var(--mono);color:var(--t3);
+  white-space:nowrap;text-transform:none;letter-spacing:0;
+  text-align:center;overflow:hidden;text-overflow:ellipsis;width:100%;
 }
 </style>
 </head>
 <body>
 <script>/*CREDS*/</script>
 
+<div class="sticky-shell">
 <header>
   <div class="logo"><svg class="logo-mark" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polygon points="32,4 60,32 32,60 4,32" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/><circle cx="32" cy="32" r="6" fill="currentColor"/></svg> artel</div>
   <span class="h-div">·</span>
@@ -568,6 +797,7 @@ pre{
   <button class="nav-btn" onclick="tab('agents',this)">agents</button>
   <button class="nav-btn" onclick="tab('sessions',this)">sessions</button>
 </nav>
+</div>
 
 <div id="toast-stack"></div>
 
@@ -584,7 +814,8 @@ pre{
     <button onclick="search()">search</button>
     <button onclick="$('q').value='';$('q-type').value='';loadMem()">all</button>
   </div>
-  <div class="write-box">
+  <button class="wb-toggle sm" data-label="new entry" onclick="toggleWB(this,'mc-wb')">＋ new entry</button>
+  <div class="write-box" id="mc-wb">
     <textarea id="mc" placeholder="write a memory entry… (ctrl+enter to save)" rows="3"></textarea>
     <div class="write-row">
       <input id="mtags" placeholder="tags (comma-separated)" style="flex:1">
@@ -610,7 +841,8 @@ pre{
     <button onclick="loadTasks()">refresh</button>
     <span class="toolbar-label" id="task-count" style="display:none"></span>
   </div>
-  <div class="write-box">
+  <button class="wb-toggle sm" data-label="new task" onclick="toggleWB(this,'tc-wb')">＋ new task</button>
+  <div class="write-box" id="tc-wb">
     <div class="write-row" style="margin-bottom:8px">
       <input id="ttitle" placeholder="title" style="flex:2">
       <input id="tdesc" placeholder="description (optional)" style="flex:3">
@@ -626,7 +858,8 @@ pre{
 
 <!-- MESSAGES -->
 <div id="panel-messages" class="panel">
-  <div class="write-box">
+  <button class="wb-toggle sm" data-label="compose" onclick="toggleWB(this,'ms-wb')">＋ compose</button>
+  <div class="write-box" id="ms-wb">
     <div class="write-row" style="margin-bottom:8px">
       <input id="mto" placeholder="to…" style="flex:1" list="agent-list-dl">
       <datalist id="agent-list-dl"></datalist>
@@ -665,20 +898,25 @@ pre{
 </div>
 
 <!-- PROJECTS -->
-<!-- PROJECTS / SETTINGS MODAL -->
+<!-- SETTINGS MODAL -->
 <div id="projects-modal" class="modal-backdrop">
   <div class="modal" style="max-width:720px;width:90vw">
     <div class="modal-header">
-      <span class="modal-title">manage projects</span>
+      <span class="modal-title">settings</span>
       <button class="modal-close" onclick="closeProjectsModal()" title="close">✕</button>
     </div>
+    <div class="section-label" style="margin-bottom:8px">projects</div>
     <div class="toolbar" style="margin-bottom:12px">
       <input id="new-proj" placeholder="create or join project…" style="flex:1;min-width:0" onkeydown="if(event.key==='Enter')joinProjectByInput()">
       <button class="p" onclick="joinProjectByInput()">join / create</button>
       <button onclick="loadProjects()">refresh</button>
     </div>
     <div id="pjlist"></div>
-    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--b1);display:flex;justify-content:flex-end">
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--b1)">
+      <div class="section-label" style="margin-bottom:10px">appearance</div>
+      <div class="theme-row" id="theme-row"></div>
+    </div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--b1);display:flex;justify-content:flex-end">
       <a class="h-logout" href="/ui/logout">logout</a>
     </div>
   </div>
@@ -740,6 +978,34 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 const hdrs=()=>({'content-type':'application/json','x-agent-id':window._aid,'x-api-key':window._akey});
 let _sseAbort=null, _agents=[], _projects=[], _myProjects=new Set(), _editTaskId=null, _taskData={};
+
+// ── Themes ────────────────────────────────────────────────────────────
+const _THEMES=[
+  {id:'gruvbox-dark',  label:'Gruvbox',      bg:'#1d2021',ac:'#d79921'},
+  {id:'gruvbox-light', label:'Gruvbox ☀',    bg:'#f9f5d7',ac:'#b57614'},
+  {id:'everforest',    label:'Everforest',   bg:'#272e33',ac:'#a7c080'},
+  {id:'dracula',       label:'Dracula',      bg:'#282a36',ac:'#bd93f9'},
+  {id:'catppuccin',    label:'Catppuccin',   bg:'#1e1e2e',ac:'#cba6f7'},
+  {id:'rose-pine',     label:'Rosé Pine',    bg:'#191724',ac:'#c4a7e7'},
+  {id:'nord',          label:'Nord',         bg:'#2e3440',ac:'#88c0d0'},
+  {id:'tokyo-night',   label:'Tokyo Night',  bg:'#1a1b26',ac:'#7aa2f7'},
+  {id:'solarized',     label:'Solarized',    bg:'#002b36',ac:'#268bd2'},
+  {id:'hacker',        label:'Hacker',       bg:'#0d0d0d',ac:'#00ff41'},
+  {id:'monokai',       label:'Monokai',      bg:'#272822',ac:'#fd971f'},
+  {id:'cobalt',        label:'Cobalt',       bg:'#193549',ac:'#ffc600'},
+];
+(function(){const t=localStorage.getItem('artel-theme');if(t&&t!=='gruvbox-dark')document.documentElement.setAttribute('data-theme',t);})();
+function setTheme(id){
+  if(id==='gruvbox-dark')document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme',id);
+  localStorage.setItem('artel-theme',id);
+  document.querySelectorAll('.theme-swatch').forEach(b=>b.classList.toggle('active',b.dataset.theme===id));
+}
+function renderThemePicker(){
+  const row=$('theme-row');if(!row)return;
+  const cur=localStorage.getItem('artel-theme')||'gruvbox-dark';
+  row.innerHTML=_THEMES.map(t=>`<button class="theme-swatch${t.id===cur?' active':''}" data-theme="${t.id}" onclick="setTheme('${t.id}')" title="${t.label}"><span class="swatch-dot" style="background:${t.bg};border-color:${t.ac}"></span><span class="swatch-label">${esc(t.label)}</span></button>`).join('');
+}
 
 // ── Toast system ──────────────────────────────────────────────────────
 function toast(msg, type='info', dur=3000){
@@ -811,6 +1077,7 @@ function tab(name,btn){
 function openProjectsModal(){
   $('projects-modal').classList.add('open');
   loadProjects();
+  renderThemePicker();
 }
 function closeProjectsModal(){
   $('projects-modal').classList.remove('open');
@@ -836,7 +1103,16 @@ function onAgentChange(){
   if(n==='events'&&_sseAbort)startSSE();
 }
 
+function toggleWB(btn,id){
+  const wb=$(id);
+  const collapsed=wb.classList.toggle('wb-collapsed');
+  btn.textContent=collapsed?'＋ '+btn.dataset.label:'－ '+btn.dataset.label;
+}
+
 async function init(){
+  if(window.innerWidth<=600){
+    document.querySelectorAll('.write-box').forEach(wb=>{wb.classList.add('wb-collapsed');});
+  }
   await Promise.all([loadProjectsHeader(),loadAgentsGlobal()]);
   loadMem();checkInbox();setInterval(checkInbox,30000);
 }
@@ -1227,10 +1503,19 @@ function appendEvent(e){
 async function loadAgents(){
   loading('alist',4);
   try{
-    const [participants,projects]=await Promise.all([
+    const fetches=[
       req('GET','/participants'),
       req('GET','/projects').catch(()=>[]),
-    ]);
+    ];
+    if(window._regkey)fetches.push(adminReq('GET','/agents').catch(()=>[]));
+    const results=await Promise.all(fetches);
+    const [participants,projects,agentsList=[]]=results;
+    const roleMap={};
+    const staticSet=new Set();
+    agentsList.forEach(a=>{
+      roleMap[a.agent_id]=a.role||'member';
+      if(a.created_at==='static')staticSet.add(a.agent_id);
+    });
     const agentProjects={};
     projects.forEach(p=>p.agents.forEach(a=>{(agentProjects[a]||(agentProjects[a]=[])).push(p.name)}));
     const lbl=$('agent-count-label');
@@ -1250,8 +1535,19 @@ async function loadAgents(){
       const active=seenMs&&(now-seenMs)<300000;
       const projs=(agentProjects[p.agent_id]||[]).map(n=>`<span class="pill project">${esc(n)}</span>`).join(' ');
       const isSelf=p.agent_id===window._aid;
+      const role=roleMap[p.agent_id]||'member';
+      const isStatic=staticSet.has(p.agent_id);
+      const adminBadge=role==='admin'?` <span class="pill admin">admin</span>`:'';
+      let roleBtn='';
+      if(window._isAdmin&&!isStatic){
+        if(role==='admin'){
+          roleBtn=`<button class="sm" onclick="setAgentRole('${esc(p.agent_id)}','member')">demote</button>`;
+        }else{
+          roleBtn=`<button class="sm" onclick="setAgentRole('${esc(p.agent_id)}','admin')">make admin</button>`;
+        }
+      }
       return `<div class="ac${active?' active':''}">
-        <div class="ac-name"><span class="dot"></span>${esc(p.agent_id)}${isSelf?` <span style="color:var(--t4);font-size:10px">(you)</span>`:''}</div>
+        <div class="ac-name"><span class="dot"></span>${esc(p.agent_id)}${isSelf?` <span style="color:var(--t4);font-size:10px">(you)</span>`:''}${adminBadge}</div>
         <div class="ac-meta">
           <span title="${p.last_seen||''}">last seen ${relTime(p.last_seen)}</span>
           ${projs?`<span style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${projs}</span>`:''}
@@ -1259,6 +1555,7 @@ async function loadAgents(){
         <div class="card-actions" style="margin-top:0">
           <button class="sm" onclick="renameAgent('${esc(p.agent_id)}')">rename</button>
           <button class="sm danger" onclick="deleteAgent('${esc(p.agent_id)}')">delete</button>
+          ${roleBtn}
         </div>
       </div>`;
     }).join('')+'</div>';
@@ -1280,6 +1577,13 @@ async function renameAgent(id){
     toast('Agent renamed','ok');
   }catch(e){toast('Failed: '+e.message,'err');return;}
   await Promise.all([loadAgents(),loadAgentsGlobal()]);
+}
+async function setAgentRole(id,role){
+  try{
+    await req('PATCH',`/agents/${id}/role`,{role});
+    toast(`${id} is now ${role}`,'ok');
+    await Promise.all([loadAgents(),loadAgentsGlobal()]);
+  }catch(e){toast('Failed: '+e.message,'err');}
 }
 
 // ── Projects ─────────────────────────────────────────────────────────
