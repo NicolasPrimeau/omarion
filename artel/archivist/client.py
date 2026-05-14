@@ -65,20 +65,21 @@ class ArtelClient:
         parents: list[str] | None = None,
         confidence: float = 1.0,
         project: str | None = None,
+        scope: str = "project",
+        for_agent: str | None = None,
     ) -> dict:
-        r = await self._request(
-            "POST",
-            "/memory",
-            json={
-                "content": content,
-                "type": type,
-                "scope": "project",
-                "tags": tags or [],
-                "parents": parents or [],
-                "confidence": confidence,
-                "project": project,
-            },
-        )
+        body: dict = {
+            "content": content,
+            "type": type,
+            "scope": scope,
+            "tags": tags or [],
+            "parents": parents or [],
+            "confidence": confidence,
+            "project": project,
+        }
+        if for_agent:
+            body["for_agent"] = for_agent
+        r = await self._request("POST", "/memory", json=body)
         return r.json()
 
     async def patch_memory(self, entry_id: str, **fields) -> dict:
@@ -91,6 +92,9 @@ class ArtelClient:
     async def list_entries(
         self,
         type: str | None = None,
+        scope: str | None = None,
+        agent: str | None = None,
+        project: str | None = None,
         updated_before: str | None = None,
         created_before: str | None = None,
         min_version: int | None = None,
@@ -99,6 +103,12 @@ class ArtelClient:
         params: dict = {"limit": limit}
         if type:
             params["type"] = type
+        if scope:
+            params["scope"] = scope
+        if agent:
+            params["agent"] = agent
+        if project:
+            params["project"] = project
         if updated_before:
             params["updated_before"] = updated_before
         if created_before:
@@ -108,8 +118,21 @@ class ArtelClient:
         r = await self._request("GET", "/memory", params=params)
         return r.json()
 
-    async def get_delta(self, since: str) -> list[dict]:
-        r = await self._request("GET", "/memory/delta", params={"since": since})
+    async def get_delta(
+        self,
+        since: str,
+        scope: str | None = None,
+        agent: str | None = None,
+        project: str | None = None,
+    ) -> list[dict]:
+        params: dict = {"since": since}
+        if scope:
+            params["scope"] = scope
+        if agent:
+            params["agent"] = agent
+        if project:
+            params["project"] = project
+        r = await self._request("GET", "/memory/delta", params=params)
         return r.json()
 
     async def get_task(self, task_id: str) -> dict:
@@ -127,7 +150,7 @@ class ArtelClient:
         self,
         title: str,
         description: str | None = None,
-        priority: str = "medium",
+        priority: str = "normal",
         project: str | None = None,
     ) -> dict:
         r = await self._request(
