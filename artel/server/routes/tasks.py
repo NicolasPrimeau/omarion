@@ -225,8 +225,6 @@ async def update_task(task_id: str, body: TaskUpdate, agent_id: str = Depends(re
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
-    if row["status"] in ("completed", "failed"):
-        raise HTTPException(status_code=409, detail="task is terminal and cannot be modified")
     set_parts: list[str] = []
     params: list = []
     if body.description is not None:
@@ -254,6 +252,38 @@ async def update_task(task_id: str, body: TaskUpdate, agent_id: str = Depends(re
         with db:
             db.execute(f"UPDATE tasks SET {', '.join(set_parts)} WHERE id=?", params)
             _emit_event(db, "task.updated", agent_id, {"task_id": task_id})
+    row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+    return _row_to_task(row)
+
+
+@router.post(
+    "/{task_id}/reopen",
+    response_model=TaskEntry,
+    summary="Reopen a completed or failed task (creator or admin)",
+)
+async def reopen_task(
+    task_id: str,
+    body: TaskAction = Body(default_factory=TaskAction),
+    agent_id: str = Depends(require_agent),
+):
+    from ..auth import is_admin
+
+    db = get_db()
+    row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="not found")
+    if row["status"] not in ("completed", "failed"):
+        raise HTTPException(status_code=409, detail="task is not in a terminal state")
+    if row["created_by"] != agent_id and not is_admin(agent_id):
+        raise HTTPException(status_code=403, detail="forbidden")
+    with db:
+        db.execute(
+            """UPDATE tasks SET status='open', assigned_to=NULL,
+               updated_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id=?""",
+            (task_id,),
+        )
+        _add_comment(db, task_id, agent_id, "reopen", body.body)
+        _emit_event(db, "task.reopened", agent_id, {"task_id": task_id})
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     return _row_to_task(row)
 

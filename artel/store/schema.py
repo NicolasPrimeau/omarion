@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS task_comments (
     id          TEXT PRIMARY KEY,
     task_id     TEXT NOT NULL,
     agent_id    TEXT NOT NULL,
-    kind        TEXT NOT NULL DEFAULT 'comment' CHECK (kind IN ('comment','claim','unclaim','complete','fail')),
+    kind        TEXT NOT NULL DEFAULT 'comment' CHECK (kind IN ('comment','claim','unclaim','complete','fail','reopen')),
     body        TEXT NOT NULL DEFAULT '',
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
