@@ -13,6 +13,7 @@ cat > .env <<'EOF'
 REGISTRATION_KEY=changeme
 UI_PASSWORD=changeme
 UI_AGENT_ID=nimbus
+PUBLIC_URL=http://localhost:8000
 EOF
 
 # 3. Start the server
@@ -41,7 +42,7 @@ curl http://localhost:8000/onboard | sh
 
 ## MCP Configuration
 
-After the server is running and you have credentials, add this to `cline_mcp_settings.json`:
+After the server is running and you have credentials, add this to `cline_mcp_settings.json` (VS Code) or `.mcp.json` in your working directory (Claude Code / terminal):
 
 ```json
 {
