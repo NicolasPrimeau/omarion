@@ -84,6 +84,16 @@ class AgentHandle:
         r.raise_for_status()
         return r.json()
 
+    async def unclaim_task(self, task_id: str) -> dict:
+        r = await self._http.post(f"/tasks/{task_id}/unclaim")
+        r.raise_for_status()
+        return r.json()
+
+    async def reopen_task(self, task_id: str, body: str = "") -> dict:
+        r = await self._http.post(f"/tasks/{task_id}/reopen", json={"body": body})
+        r.raise_for_status()
+        return r.json()
+
     async def update_task(self, task_id: str, **kwargs) -> dict:
         r = await self._http.patch(f"/tasks/{task_id}", json=kwargs)
         r.raise_for_status()

@@ -34,6 +34,13 @@ class Scenario:
             self._agents[agent_id] = AgentHandle(agent_id, http)
         return self._agents[agent_id]
 
+    async def promote_admin(self, agent_id: str) -> None:
+        from artel.store.db import get_db
+
+        db = get_db()
+        db.execute("UPDATE agents SET role='admin' WHERE id=?", (agent_id,))
+        db.commit()
+
     async def admin_delete(self, agent_id: str) -> None:
         r = await self._admin.delete(f"/agents/{agent_id}")
         r.raise_for_status()

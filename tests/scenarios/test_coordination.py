@@ -3249,33 +3249,34 @@ async def test_send_message_to_self(scenario):
 # ── Task PATCH guards ─────────────────────────────────────────────────────────
 
 
-async def test_patch_completed_task_rejected(scenario):
-    """Patching a completed task returns 409 — terminal tasks are immutable."""
+async def test_patch_completed_task_allowed(scenario):
+    """Patching a completed task is allowed — metadata is always editable."""
     creator = await scenario.agent("creator")
     worker = await scenario.agent("worker")
 
-    task = await creator.create_task("Immutable after completion", description="Original")
+    task = await creator.create_task("Completed but annotatable", description="Original")
     await worker.claim_task(task["id"])
     await worker.complete_task(task["id"])
 
-    r = await creator._http.patch(f"/tasks/{task['id']}", json={"description": "Attempted rewrite"})
-    assert r.status_code == 409
+    r = await creator._http.patch(
+        f"/tasks/{task['id']}", json={"description": "Added context post-completion"}
+    )
+    assert r.status_code == 200
+    assert r.json()["description"] == "Added context post-completion"
 
-    unchanged = await creator.get_task(task["id"])
-    assert unchanged["description"] == "Original"
 
-
-async def test_patch_failed_task_rejected(scenario):
-    """Patching a failed task returns 409."""
+async def test_patch_failed_task_allowed(scenario):
+    """Patching a failed task is allowed."""
     creator = await scenario.agent("creator")
     worker = await scenario.agent("worker")
 
-    task = await creator.create_task("Will fail and stay failed")
+    task = await creator.create_task("Will fail then get annotated")
     await worker.claim_task(task["id"])
     await worker.fail_task(task["id"])
 
-    r = await creator._http.patch(f"/tasks/{task['id']}", json={"title": "New title"})
-    assert r.status_code == 409
+    r = await creator._http.patch(f"/tasks/{task['id']}", json={"title": "Updated title"})
+    assert r.status_code == 200
+    assert r.json()["title"] == "Updated title"
 
 
 async def test_patch_task_empty_body_is_noop(scenario):
@@ -4171,3 +4172,167 @@ async def test_broadcast_read_per_recipient(scenario):
     assert any(m["id"] == msg["id"] for m in inbox_b)
     inbox_a = await reader_a.inbox()
     assert not any(m["id"] == msg["id"] for m in inbox_a)
+
+
+# ---------------------------------------------------------------------------
+# Task reopen
+# ---------------------------------------------------------------------------
+
+
+async def test_reopen_completed_task_by_creator(scenario):
+    """Creator can reopen a completed task; status returns to open."""
+    creator = await scenario.agent("creator")
+    worker = await scenario.agent("worker")
+
+    task = await creator.create_task("Will be reopened")
+    await worker.claim_task(task["id"])
+    await worker.complete_task(task["id"])
+
+    reopened = await creator.reopen_task(task["id"], body="Needs more work")
+    assert reopened["status"] == "open"
+    assert reopened["assigned_to"] is None
+
+
+async def test_reopen_failed_task_by_creator(scenario):
+    """Creator can reopen a failed task."""
+    creator = await scenario.agent("creator")
+    worker = await scenario.agent("worker")
+
+    task = await creator.create_task("Failed, then reopened")
+    await worker.claim_task(task["id"])
+    await worker.fail_task(task["id"])
+
+    reopened = await creator.reopen_task(task["id"])
+    assert reopened["status"] == "open"
+
+
+async def test_reopen_task_by_admin(scenario):
+    """An admin can reopen any terminal task regardless of creator."""
+    creator = await scenario.agent("creator")
+    worker = await scenario.agent("worker")
+    admin = await scenario.agent("admin")
+    await scenario.promote_admin("admin")
+
+    task = await creator.create_task("Admin will reopen this")
+    await worker.claim_task(task["id"])
+    await worker.complete_task(task["id"])
+
+    reopened = await admin.reopen_task(task["id"])
+    assert reopened["status"] == "open"
+
+
+async def test_reopen_task_forbidden_for_non_creator(scenario):
+    """A non-creator, non-admin agent cannot reopen someone else's task."""
+    creator = await scenario.agent("creator")
+    worker = await scenario.agent("worker")
+    bystander = await scenario.agent("bystander")
+
+    task = await creator.create_task("Not yours to reopen")
+    await worker.claim_task(task["id"])
+    await worker.complete_task(task["id"])
+
+    r = await bystander._http.post(f"/tasks/{task['id']}/reopen", json={})
+    assert r.status_code == 403
+
+
+async def test_reopen_open_task_rejected(scenario):
+    """Reopening a task that is already open returns 409."""
+    agent = await scenario.agent("agent")
+    task = await agent.create_task("Still open")
+
+    r = await agent._http.post(f"/tasks/{task['id']}/reopen", json={})
+    assert r.status_code == 409
+
+
+async def test_reopen_emits_event(scenario):
+    """Reopening a task emits a task.reopened event."""
+    creator = await scenario.agent("creator")
+    worker = await scenario.agent("worker")
+
+    sentinel = await creator.emit_event("sentinel", {})
+    task = await creator.create_task("Event on reopen")
+    await worker.claim_task(task["id"])
+    await worker.complete_task(task["id"])
+    await creator.reopen_task(task["id"])
+
+    events = await creator.poll_events(since=sentinel["created_at"], type="task.reopened")
+    assert any(e["payload"].get("task_id") == task["id"] for e in events)
+
+
+# ---------------------------------------------------------------------------
+# RBAC — admin role
+# ---------------------------------------------------------------------------
+
+
+async def test_admin_can_write_memory_for_another_agent(scenario):
+    """Admin can write a memory entry attributed to another agent via for_agent."""
+    admin = await scenario.agent("admin")
+    await scenario.promote_admin("admin")
+
+    r = await admin._http.post(
+        "/memory",
+        json={
+            "content": "Written by admin on behalf of target",
+            "scope": "agent",
+            "for_agent": "target",
+        },
+    )
+    assert r.status_code == 201
+    entry = r.json()
+    assert entry["agent_id"] == "target"
+
+
+async def test_non_admin_cannot_use_for_agent(scenario):
+    """A regular agent's for_agent field is silently ignored — entry is attributed to themselves."""
+    agent = await scenario.agent("agent")
+
+    r = await agent._http.post(
+        "/memory",
+        json={"content": "Trying to impersonate other", "for_agent": "other"},
+    )
+    assert r.status_code == 201
+    assert r.json()["agent_id"] == "agent"
+
+
+async def test_admin_can_read_any_agent_scope_memory(scenario):
+    """Admin can retrieve a private (scope=agent) memory entry belonging to another agent."""
+    owner = await scenario.agent("owner")
+    admin = await scenario.agent("admin")
+    await scenario.promote_admin("admin")
+
+    entry = await owner.write_memory("Private thought", scope="agent")
+
+    r = await admin._http.get(f"/memory/{entry['id']}")
+    assert r.status_code == 200
+    assert r.json()["id"] == entry["id"]
+
+
+async def test_non_admin_cannot_read_other_agent_scope_memory(scenario):
+    """A regular agent cannot access another agent's private (scope=agent) memory."""
+    owner = await scenario.agent("owner")
+    spy = await scenario.agent("spy")
+
+    entry = await owner.write_memory("Private thought", scope="agent")
+
+    r = await spy._http.get(f"/memory/{entry['id']}")
+    assert r.status_code == 403
+
+
+async def test_admin_role_endpoint_promotes_agent(scenario):
+    """PATCH /{agent_id}/role sets the role; requires an admin caller."""
+    admin = await scenario.agent("admin")
+    target = await scenario.agent("member")
+    await scenario.promote_admin("admin")
+
+    r = await admin._http.patch(f"/agents/{target.id}/role", json={"role": "admin"})
+    assert r.status_code == 200
+    assert r.json()["role"] == "admin"
+
+
+async def test_non_admin_cannot_set_role(scenario):
+    """A member agent cannot call the role endpoint."""
+    caller = await scenario.agent("caller")
+    subject = await scenario.agent("subject")
+
+    r = await caller._http.patch(f"/agents/{subject.id}/role", json={"role": "admin"})
+    assert r.status_code == 403
