@@ -71,3 +71,19 @@ async def test_latest_handoff_returned(client):
 
     r = await client.get(f"/sessions/handoff/{TEST_AGENT}", headers=HEADERS)
     assert r.json()["last_handoff"]["summary"] == "second"
+
+
+async def test_admin_can_read_other_agent_handoff(client):
+    r = await client.post("/sessions/handoff", json={"summary": "agent1 session"}, headers=HEADERS)
+    assert r.status_code == 201
+
+    from artel.store.db import get_db
+    from tests.conftest import HEADERS2, TEST_AGENT
+
+    db = get_db()
+    db.execute("UPDATE agents SET role='admin' WHERE id=?", (HEADERS2["x-agent-id"],))
+    db.commit()
+
+    r2 = await client.get(f"/sessions/handoff/{TEST_AGENT}", headers=HEADERS2)
+    assert r2.status_code == 200
+    assert r2.json()["last_handoff"]["summary"] == "agent1 session"

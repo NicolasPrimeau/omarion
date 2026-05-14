@@ -100,3 +100,40 @@ async def test_project_list_includes_members(client):
     projects = {p["name"]: p for p in r.json()}
     assert "alpha" in projects
     assert TEST_AGENT in projects["alpha"]["agents"]
+
+
+async def test_admin_agent_excluded_from_project_members(client):
+    from artel.store.db import get_db
+
+    db = get_db()
+    db.execute("UPDATE agents SET role='admin' WHERE id=?", (HEADERS["x-agent-id"],))
+    db.commit()
+
+    await client.post(
+        "/memory",
+        json={
+            "content": "admin wrote this",
+            "scope": "project",
+            "type": "memory",
+            "project": "proj-x",
+        },
+        headers=HEADERS,
+    )
+    await client.post("/projects/proj-x/join", headers=HEADERS2)
+    await client.post(
+        "/memory",
+        json={
+            "content": "member wrote this",
+            "scope": "project",
+            "type": "memory",
+            "project": "proj-x",
+        },
+        headers=HEADERS2,
+    )
+
+    r = await client.get("/projects", headers=HEADERS2)
+    assert r.status_code == 200
+    proj = next((p for p in r.json() if p["name"] == "proj-x"), None)
+    assert proj is not None
+    assert HEADERS["x-agent-id"] not in proj["agents"]
+    assert HEADERS2["x-agent-id"] in proj["agents"]

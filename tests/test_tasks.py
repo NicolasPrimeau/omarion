@@ -277,3 +277,59 @@ async def test_task_lifecycle(client):
     await client.post(f"/tasks/{tid}/complete", headers=HEADERS)
     r_list3 = await client.get("/tasks", params={"status": "completed"}, headers=HEADERS)
     assert any(t["id"] == tid for t in r_list3.json())
+
+
+async def test_reopen_completed_task(client):
+    r = await client.post("/tasks", json={"title": "to reopen"}, headers=HEADERS)
+    task_id = r.json()["id"]
+    await client.post(f"/tasks/{task_id}/claim", headers=HEADERS)
+    await client.post(f"/tasks/{task_id}/complete", headers=HEADERS)
+
+    r = await client.post(f"/tasks/{task_id}/reopen", json={}, headers=HEADERS)
+    assert r.status_code == 200
+    assert r.json()["status"] == "open"
+    assert r.json()["assigned_to"] is None
+
+
+async def test_reopen_then_claim(client):
+    r = await client.post("/tasks", json={"title": "reopen then claim"}, headers=HEADERS)
+    task_id = r.json()["id"]
+    await client.post(f"/tasks/{task_id}/claim", headers=HEADERS)
+    await client.post(f"/tasks/{task_id}/complete", headers=HEADERS)
+    await client.post(f"/tasks/{task_id}/reopen", json={}, headers=HEADERS)
+
+    r = await client.post(f"/tasks/{task_id}/claim", headers=HEADERS2)
+    assert r.status_code == 200
+    assert r.json()["status"] == "claimed"
+    assert r.json()["assigned_to"] == HEADERS2["x-agent-id"]
+
+
+async def test_reopen_non_terminal_rejected(client):
+    r = await client.post("/tasks", json={"title": "still open"}, headers=HEADERS)
+    task_id = r.json()["id"]
+
+    r = await client.post(f"/tasks/{task_id}/reopen", json={}, headers=HEADERS)
+    assert r.status_code == 409
+
+
+async def test_reopen_forbidden_for_non_creator(client):
+    r = await client.post("/tasks", json={"title": "not yours"}, headers=HEADERS)
+    task_id = r.json()["id"]
+    await client.post(f"/tasks/{task_id}/claim", headers=HEADERS)
+    await client.post(f"/tasks/{task_id}/complete", headers=HEADERS)
+
+    r = await client.post(f"/tasks/{task_id}/reopen", json={}, headers=HEADERS2)
+    assert r.status_code == 403
+
+
+async def test_patch_completed_task_allowed(client):
+    r = await client.post("/tasks", json={"title": "done task"}, headers=HEADERS)
+    task_id = r.json()["id"]
+    await client.post(f"/tasks/{task_id}/claim", headers=HEADERS)
+    await client.post(f"/tasks/{task_id}/complete", headers=HEADERS)
+
+    r = await client.patch(
+        f"/tasks/{task_id}", json={"description": "post-completion note"}, headers=HEADERS
+    )
+    assert r.status_code == 200
+    assert r.json()["description"] == "post-completion note"

@@ -113,3 +113,138 @@ class TestPassiveMode:
             await conflict.check_and_merge("a", artel_client)
             artel_client.write_memory = AsyncMock()
             artel_client.write_memory.assert_not_called()
+
+
+class TestThreePassOrchestration:
+    """run_synthesis routes delta entries to the correct per-scope passes."""
+
+    def _entry(self, agent_id="agent-a", scope="project", project=None):
+        return {
+            "id": "e1",
+            "agent_id": agent_id,
+            "type": "memory",
+            "content": "x",
+            "scope": scope,
+            "project": project,
+        }
+
+    @pytest.fixture
+    def client(self):
+        c = MagicMock()
+        c.get_delta = AsyncMock(return_value=[])
+        c.list_entries = AsyncMock(return_value=[])
+        c.write_memory = AsyncMock(return_value={"id": "new"})
+        c.patch_memory = AsyncMock()
+        c.get_memory = AsyncMock(return_value=None)
+        c.search_memory = AsyncMock(return_value=[])
+        c.list_tasks = AsyncMock(return_value=[])
+        return c
+
+    async def test_no_active_agents_or_projects_still_runs_global(self, client):
+        client.get_delta = AsyncMock(return_value=[])
+        with (
+            patch("artel.archivist.synthesis.is_configured", return_value=True),
+            patch(
+                "artel.archivist.synthesis._run_global_synthesis", new_callable=AsyncMock
+            ) as mock_global,
+            patch(
+                "artel.archivist.synthesis._run_agent_synthesis", new_callable=AsyncMock
+            ) as mock_agent,
+            patch(
+                "artel.archivist.synthesis._run_project_synthesis", new_callable=AsyncMock
+            ) as mock_proj,
+        ):
+            await synthesis.run_synthesis(client)
+            mock_global.assert_called_once()
+            mock_agent.assert_not_called()
+            mock_proj.assert_not_called()
+
+    async def test_agent_scope_entry_triggers_agent_pass(self, client):
+        client.get_delta = AsyncMock(return_value=[self._entry(agent_id="alice", scope="agent")])
+        with (
+            patch("artel.archivist.synthesis.is_configured", return_value=True),
+            patch(
+                "artel.archivist.synthesis._run_agent_synthesis", new_callable=AsyncMock
+            ) as mock_agent,
+            patch("artel.archivist.synthesis._run_project_synthesis", new_callable=AsyncMock),
+            patch("artel.archivist.synthesis._run_global_synthesis", new_callable=AsyncMock),
+        ):
+            await synthesis.run_synthesis(client)
+            mock_agent.assert_called_once_with("alice", client)
+
+    async def test_project_entry_triggers_project_pass(self, client):
+        client.get_delta = AsyncMock(return_value=[self._entry(scope="project", project="my-proj")])
+        with (
+            patch("artel.archivist.synthesis.is_configured", return_value=True),
+            patch("artel.archivist.synthesis._run_agent_synthesis", new_callable=AsyncMock),
+            patch(
+                "artel.archivist.synthesis._run_project_synthesis", new_callable=AsyncMock
+            ) as mock_proj,
+            patch("artel.archivist.synthesis._run_global_synthesis", new_callable=AsyncMock),
+        ):
+            await synthesis.run_synthesis(client)
+            mock_proj.assert_called_once_with("my-proj", client)
+
+    async def test_multiple_agents_each_get_own_pass(self, client):
+        client.get_delta = AsyncMock(
+            return_value=[
+                self._entry(agent_id="alice", scope="agent"),
+                self._entry(agent_id="bob", scope="agent"),
+            ]
+        )
+        with (
+            patch("artel.archivist.synthesis.is_configured", return_value=True),
+            patch(
+                "artel.archivist.synthesis._run_agent_synthesis", new_callable=AsyncMock
+            ) as mock_agent,
+            patch("artel.archivist.synthesis._run_project_synthesis", new_callable=AsyncMock),
+            patch("artel.archivist.synthesis._run_global_synthesis", new_callable=AsyncMock),
+        ):
+            await synthesis.run_synthesis(client)
+            called_with = {call.args[0] for call in mock_agent.call_args_list}
+            assert called_with == {"alice", "bob"}
+
+    async def test_archivist_entries_excluded_from_passes(self, client):
+        with patch("artel.archivist.synthesis.settings") as s:
+            s.archivist_id = "archivist"
+            s.decay_window_days = 7
+            s.decay_floor = 0.1
+            s.decay_rate = 0.9
+            client.get_delta = AsyncMock(
+                return_value=[self._entry(agent_id="archivist", scope="agent")]
+            )
+            with (
+                patch("artel.archivist.synthesis.is_configured", return_value=True),
+                patch(
+                    "artel.archivist.synthesis._run_agent_synthesis", new_callable=AsyncMock
+                ) as mock_agent,
+                patch("artel.archivist.synthesis._run_project_synthesis", new_callable=AsyncMock),
+                patch("artel.archivist.synthesis._run_global_synthesis", new_callable=AsyncMock),
+            ):
+                await synthesis.run_synthesis(client)
+                mock_agent.assert_not_called()
+
+    async def test_failed_pass_does_not_abort_remaining(self, client):
+        client.get_delta = AsyncMock(
+            return_value=[
+                self._entry(agent_id="alice", scope="agent"),
+                self._entry(scope="project", project="proj-a"),
+            ]
+        )
+        with (
+            patch("artel.archivist.synthesis.is_configured", return_value=True),
+            patch(
+                "artel.archivist.synthesis._run_agent_synthesis",
+                new_callable=AsyncMock,
+                side_effect=RuntimeError("boom"),
+            ),
+            patch(
+                "artel.archivist.synthesis._run_project_synthesis", new_callable=AsyncMock
+            ) as mock_proj,
+            patch(
+                "artel.archivist.synthesis._run_global_synthesis", new_callable=AsyncMock
+            ) as mock_global,
+        ):
+            await synthesis.run_synthesis(client)
+            mock_proj.assert_called_once()
+            mock_global.assert_called_once()

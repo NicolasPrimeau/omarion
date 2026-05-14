@@ -398,3 +398,114 @@ async def test_soft_delete_not_in_list(client, mem_payload):
 
     r2 = await client.get("/memory", headers=HEADERS)
     assert not any(e["id"] == eid for e in r2.json())
+
+
+async def test_admin_sees_all_scopes_in_list(client):
+    from artel.store.db import get_db
+
+    db = get_db()
+    db.execute("UPDATE agents SET role='admin' WHERE id=?", (HEADERS["x-agent-id"],))
+    db.commit()
+
+    await client.post(
+        "/memory", json={"content": "private", "scope": "agent", "type": "memory"}, headers=HEADERS2
+    )
+
+    r = await client.get("/memory", headers=HEADERS)
+    assert r.status_code == 200
+    contents = [e["content"] for e in r.json()]
+    assert "private" in contents
+
+
+async def test_admin_scope_filter_in_list(client):
+    from artel.store.db import get_db
+
+    db = get_db()
+    db.execute("UPDATE agents SET role='admin' WHERE id=?", (HEADERS["x-agent-id"],))
+    db.commit()
+
+    await client.post(
+        "/memory",
+        json={"content": "project-entry", "scope": "project", "type": "memory"},
+        headers=HEADERS2,
+    )
+    await client.post(
+        "/memory",
+        json={"content": "agent-entry", "scope": "agent", "type": "memory"},
+        headers=HEADERS2,
+    )
+
+    r = await client.get("/memory", params={"scope": "agent"}, headers=HEADERS)
+    assert r.status_code == 200
+    assert all(e["scope"] == "agent" for e in r.json())
+
+
+async def test_delta_agent_filter(client):
+    await client.post(
+        "/memory",
+        json={"content": "from-agent1", "scope": "project", "type": "memory"},
+        headers=HEADERS,
+    )
+    await client.post(
+        "/memory",
+        json={"content": "from-agent2", "scope": "project", "type": "memory"},
+        headers=HEADERS2,
+    )
+
+    r = await client.get(
+        "/memory/delta",
+        params={"since": "1970-01-01T00:00:00.000Z", "agent": HEADERS["x-agent-id"]},
+        headers=HEADERS,
+    )
+    assert r.status_code == 200
+    assert all(e["agent_id"] == HEADERS["x-agent-id"] for e in r.json())
+
+
+async def test_delta_scope_filter(client):
+    from artel.store.db import get_db
+
+    db = get_db()
+    db.execute("UPDATE agents SET role='admin' WHERE id=?", (HEADERS["x-agent-id"],))
+    db.commit()
+
+    await client.post(
+        "/memory",
+        json={"content": "project-mem", "scope": "project", "type": "memory"},
+        headers=HEADERS2,
+    )
+    await client.post(
+        "/memory",
+        json={"content": "agent-mem", "scope": "agent", "type": "memory"},
+        headers=HEADERS2,
+    )
+
+    r = await client.get(
+        "/memory/delta",
+        params={"since": "1970-01-01T00:00:00.000Z", "scope": "agent"},
+        headers=HEADERS,
+    )
+    assert r.status_code == 200
+    assert all(e["scope"] == "agent" for e in r.json())
+    contents = [e["content"] for e in r.json()]
+    assert "agent-mem" in contents
+    assert "project-mem" not in contents
+
+
+async def test_delta_project_filter(client):
+    await client.post("/projects/myproj/join", headers=HEADERS)
+    await client.post(
+        "/memory",
+        json={"content": "in-proj", "scope": "project", "type": "memory", "project": "myproj"},
+        headers=HEADERS,
+    )
+    await client.post("/memory", json={"content": "no-proj", "type": "memory"}, headers=HEADERS)
+
+    r = await client.get(
+        "/memory/delta",
+        params={"since": "1970-01-01T00:00:00.000Z", "project": "myproj"},
+        headers=HEADERS,
+    )
+    assert r.status_code == 200
+    contents = [e["content"] for e in r.json()]
+    assert "in-proj" in contents
+    assert "no-proj" not in contents
