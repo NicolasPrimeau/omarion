@@ -526,6 +526,39 @@ pre{
 ::-webkit-scrollbar-thumb{background:var(--s3);border-radius:3px}
 ::-webkit-scrollbar-thumb:hover{background:var(--b2)}
 
+/* ── Drawer ───────────────────────────── */
+.h-menu-btn{display:none}
+.drawer-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.6);z-index:400;
+}
+.drawer-overlay.open{display:block}
+.drawer{
+  position:fixed;top:0;left:0;bottom:0;width:240px;
+  background:var(--s1);border-right:1px solid var(--b2);
+  z-index:401;transform:translateX(-100%);
+  transition:transform .25s ease;
+  display:flex;flex-direction:column;
+}
+.drawer.open{transform:translateX(0)}
+.drawer-header{
+  padding:16px 20px;border-bottom:1px solid var(--b1);
+  font:600 14px var(--mono);color:var(--t2);
+}
+.drawer-nav{flex:1;padding:8px 0;overflow-y:auto}
+.drawer-item{
+  display:flex;align-items:center;
+  width:100%;padding:14px 20px;
+  font:500 12px var(--mono);color:var(--t3);
+  background:none;border:none;border-radius:0;
+  text-align:left;cursor:pointer;height:auto;
+  text-transform:uppercase;letter-spacing:.6px;
+  transition:color .15s,background .15s;
+}
+.drawer-item:hover{background:var(--s2);color:var(--t1)}
+.drawer-item.on{color:var(--accent);background:var(--a-bg)}
+.drawer-footer{padding:8px 0;border-top:1px solid var(--b1)}
+
 /* ── Mobile ───────────────────────────── */
 @media(max-width:600px){
   header{
@@ -544,8 +577,9 @@ pre{
   #h-agent-sel{order:6;flex:1;min-width:0;max-width:none}
   #h-project{order:7;flex:1;min-width:0;max-width:none}
   .spacer{display:none}
-  .nav{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .nav-btn{flex-shrink:0;height:44px}
+  nav{display:none}
+  .h-menu-btn{display:flex}
+  .h-icon-btn:not(.h-menu-btn){display:none}
   .panel{padding:12px 14px}
   .agent-grid,.proj-grid{grid-template-columns:1fr}
   /* 16px prevents iOS auto-zoom on input focus */
@@ -595,7 +629,25 @@ pre{
     </div>
   </div>
   <button class="h-icon-btn" onclick="openProjectsModal()" title="manage projects" aria-label="manage projects">⚙</button>
+  <button class="h-icon-btn h-menu-btn" onclick="openDrawer()" title="menu" aria-label="menu">☰</button>
 </header>
+
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">artel</div>
+  <div class="drawer-nav">
+    <button class="drawer-item on" onclick="drawerTab('memory')">memory</button>
+    <button class="drawer-item" onclick="drawerTab('tasks')">tasks</button>
+    <button class="drawer-item" id="drawer-btn-messages" onclick="drawerTab('messages')">messages</button>
+    <button class="drawer-item" onclick="drawerTab('events')">events</button>
+    <button class="drawer-item" onclick="drawerTab('agents')">agents</button>
+    <button class="drawer-item" onclick="drawerTab('sessions')">sessions</button>
+  </div>
+  <div class="drawer-footer">
+    <button class="drawer-item" onclick="openProjectsModal();closeDrawer()" style="padding:10px 20px">⚙ projects</button>
+    <a class="drawer-item" href="/ui/logout" style="text-decoration:none">logout</a>
+  </div>
+</div>
 
 <nav>
   <button class="nav-btn on" onclick="tab('memory',this)">memory</button>
@@ -846,6 +898,33 @@ function tab(name,btn){
   if(name==='sessions'){populateSessionAgents();loadSession();}
 }
 
+function openDrawer(){
+  $('drawer').classList.add('open');
+  $('drawer-overlay').classList.add('open');
+}
+function closeDrawer(){
+  $('drawer').classList.remove('open');
+  $('drawer-overlay').classList.remove('open');
+}
+function drawerTab(name){
+  closeDrawer();
+  const navBtn=document.querySelector(`nav button[onclick*="'${name}'"]`);
+  if(navBtn)tab(name,navBtn);
+  else{
+    const prev=document.querySelector('.panel.on');
+    if(prev?.id==='panel-events'&&name!=='events')stopSSE();
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+    document.querySelectorAll('.drawer-item').forEach(b=>b.classList.remove('on'));
+    $('panel-'+name).classList.add('on');
+    document.querySelector(`.drawer-item[onclick*="'${name}'"]`)?.classList.add('on');
+    if(name==='memory')loadMem();
+    if(name==='tasks')loadTasks();
+    if(name==='messages')loadInbox();
+    if(name==='events'&&!_sseAbort)startSSE();
+    if(name==='agents')loadAgents();
+    if(name==='sessions'){populateSessionAgents();loadSession();}
+  }
+}
 function openProjectsModal(){
   $('projects-modal').classList.add('open');
   loadProjects();
