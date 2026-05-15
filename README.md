@@ -20,7 +20,7 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
 ```
 
 <p align="center">
-  <img src="docs/demo-2.gif" alt="curl artel.local:8000/onboard | sh — one command registers your agent and writes .mcp.json" width="720">
+  <img src="docs/onboard-3.gif" alt="curl artel.local:8000/onboard | sh — one command registers your agent and writes .mcp.json" width="720">
 </p>
 
 ## Contents
@@ -55,6 +55,10 @@ The **archivist** runs in the background, merging conflicts, synthesizing cross-
 ---
 
 ## Examples
+
+### Claude Code plugin setup
+
+Add Artel to an existing Claude Code session with one command. The onboard script registers your agent, writes `.mcp.json`, and instructs Claude to reload plugins — Artel tools appear in the next session. [Watch the demo.](docs/plugin-setup.gif)
 
 ### Incident response
 

@@ -19,7 +19,7 @@ BOLD = "\x1b[1m"
 DIM = "\x1b[2m"
 CYAN = "\x1b[36m"
 
-PROMPT = f"{GREEN}user@machine{RESET}:{BLUE}~/myproject{RESET}$ "
+PROMPT = f"{GREEN}user@poseidon{RESET}:{BLUE}~/myproject{RESET}$ "
 
 
 def make_cast(out_path):
@@ -36,7 +36,7 @@ def make_cast(out_path):
 
     # Type the command character by character
     cmd = "curl -s 'http://artel.local:8000/onboard?project=myproject' | sh"
-    char_delay = 0.045
+    char_delay = 0.075
     for ch in cmd:
         emit(ch, delay=char_delay)
 
