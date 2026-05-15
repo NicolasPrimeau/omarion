@@ -1,0 +1,43 @@
+app = "artel-sandbox"
+primary_region = "yyz"
+
+[build]
+  image = "ghcr.io/nicolasprimeau/artel:edge"
+
+[env]
+  DB_PATH = "/data/artel.db"
+  FASTEMBED_CACHE_PATH = "/data/fastembed_cache"
+  HF_HUB_DISABLE_XET_DOWNLOAD = "1"
+  PUBLIC_URL = "https://artel-sandbox.fly.dev"
+  UI_PASSWORD = "artel"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 100
+    soft_limit = 80
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+[[mounts]]
+  source = "artel_data"
+  destination = "/data"
+  initial_size = "3gb"
+
+[checks]
+  [checks.health]
+    grace_period = "30s"
+    interval = "10s"
+    method = "GET"
+    path = "/health"
+    port = 8000
+    timeout = "5s"
+    type = "http"
