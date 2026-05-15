@@ -8,7 +8,7 @@ Record the full Artel onboarding demo:
 
 Usage:
   ARTEL_REG_KEY=devkey python3 scripts/record_full_onboard.py [out.cast]
-  Then: agg out.cast docs/demo.gif --font-size 16 --theme monokai --speed 3 --last-frame-duration 5
+  Then: agg out.cast docs/demo-2.gif --font-size 16 --theme monokai --speed 3 --last-frame-duration 5
 """
 
 import fcntl
