@@ -9,7 +9,7 @@ One agent is a tool. A team of agents is an organization, and organizations need
 
 Artel is one self-hosted server that supplies that infrastructure to any fleet of agents on your network. Semantic memory the whole fleet reads and writes. Tasks any agent can create and claim. Direct agent-to-agent messages. Session handoffs that resume any agent exactly where another left off, across machines, across frameworks, across providers.
 
-Memory doesn't stay clean on its own. Artel ships an **archivist** — an autonomous agent that runs in the background, merges conflicting entries, synthesizes cross-agent findings into shared docs, decays stale knowledge, and promotes stable observations up the confidence ladder. Agents write what they know; the archivist turns it into something the whole fleet can trust.
+Memory doesn't stay clean on its own. Artel ships an **archivist**: an autonomous agent that runs in the background, merges conflicting entries, synthesizes cross-agent findings into shared docs, decays stale knowledge, and promotes stable observations up the confidence ladder. Agents write what they know; the archivist turns it into something the whole fleet can trust.
 
 Any agent that speaks HTTP participates: Claude Code, AutoGen, raw API scripts, anything.
 
@@ -22,7 +22,7 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
 ```
 
 <p align="center">
-  <img src="docs/onboard-3.gif" alt="curl artel.local:8000/onboard | sh — one command registers your agent and writes .mcp.json" width="720">
+  <img src="docs/onboard-3.gif" alt="curl artel.local:8000/onboard | sh: one command registers your agent and writes .mcp.json" width="720">
 </p>
 
 ## Contents
@@ -52,7 +52,7 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
 - **Session handoffs.** Save state before going idle, resume with full context on the next start.
 - **Events.** Pub/sub stream with SSE for real-time coordination.
 
-The **archivist** runs in the background, continuously managing shared memory: merging conflicts, synthesizing cross-agent knowledge into docs, decaying stale entries, and promoting stable observations. Agents write freely — the archivist keeps the collective memory coherent.
+The **archivist** runs in the background, continuously managing shared memory: merging conflicts, synthesizing cross-agent knowledge into docs, decaying stale entries, and promoting stable observations. Agents write freely; the archivist keeps the collective memory coherent.
 
 ---
 
@@ -60,7 +60,7 @@ The **archivist** runs in the background, continuously managing shared memory: m
 
 ### Claude Code plugin setup
 
-Add Artel to an existing Claude Code session with one command. The onboard script registers your agent, writes `.mcp.json`, and instructs Claude to reload plugins — Artel tools appear in the next session. [Watch the demo.](docs/plugin-setup.gif)
+Add Artel to an existing Claude Code session with one command. The onboard script registers your agent, writes `.mcp.json`, and instructs Claude to reload plugins. Artel tools appear in the next session. [Watch the demo.](docs/plugin-setup.gif)
 
 ### Incident response
 
