@@ -159,9 +159,36 @@ nav{
   background:var(--s1);
   border-right:1px solid var(--b1);
   z-index:190;
-  overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
+  overflow:hidden;
 }
-nav::-webkit-scrollbar{display:none}
+.nav-scroll{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.nav-scroll::-webkit-scrollbar{display:none}
+.nav-footer{flex-shrink:0;border-top:1px solid var(--b1)}
+/* ── Side panel sections (shared by nav + drawer) ── */
+.panel-section{padding:12px 0;border-top:1px solid var(--b1)}
+.panel-section-lbl{
+  display:block;font:10px var(--mono);color:var(--t4);
+  text-transform:uppercase;letter-spacing:.5px;
+  padding:0 18px;margin-bottom:8px;
+}
+.panel-proj-row{display:flex;gap:4px;padding:0 12px;margin-bottom:6px}
+.panel-proj-row input{flex:1;min-width:0;height:28px;padding:0 8px;font-size:11px}
+.panel-proj-row button{height:28px;padding:0 8px}
+.nav-pj{
+  display:flex;align-items:center;gap:4px;
+  padding:4px 12px;font:11px var(--mono);color:var(--t4);
+}
+.nav-pj.mine{color:var(--t2)}
+.nav-pj-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+.nav-pj-name:hover{color:var(--accent)}
+.nav-pj-btn{height:20px;padding:0 6px;font-size:10px;flex-shrink:0}
+.panel-theme-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:6px;padding:0 14px;
+}
+.drawer .panel-theme-grid{grid-template-columns:repeat(4,1fr)}
+.drawer-scroll{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.drawer-scroll::-webkit-scrollbar{display:none}
 .nav-logo{
   display:flex;align-items:center;gap:8px;
   padding:0 18px;height:var(--hh);
@@ -776,23 +803,35 @@ pre{
       </div>
     </div>
   </div>
-  <button class="h-icon-btn" onclick="openProjectsModal()" title="manage projects" aria-label="manage projects">⚙</button>
   <button class="h-icon-btn h-menu-btn" onclick="openDrawer()" title="menu" aria-label="menu">☰</button>
 </header>
 
 <div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
   <div class="drawer-header">artel</div>
-  <div class="drawer-nav">
-    <button class="drawer-item on" onclick="drawerTab('memory')">memory</button>
-    <button class="drawer-item" onclick="drawerTab('tasks')">tasks</button>
-    <button class="drawer-item" id="drawer-btn-messages" onclick="drawerTab('messages')">messages</button>
-    <button class="drawer-item" onclick="drawerTab('events')">events</button>
-    <button class="drawer-item" onclick="drawerTab('agents')">agents</button>
-    <button class="drawer-item" onclick="drawerTab('sessions')">sessions</button>
+  <div class="drawer-scroll">
+    <div class="drawer-nav">
+      <button class="drawer-item on" onclick="drawerTab('memory')">memory</button>
+      <button class="drawer-item" onclick="drawerTab('tasks')">tasks</button>
+      <button class="drawer-item" id="drawer-btn-messages" onclick="drawerTab('messages')">messages</button>
+      <button class="drawer-item" onclick="drawerTab('events')">events</button>
+      <button class="drawer-item" onclick="drawerTab('agents')">agents</button>
+      <button class="drawer-item" onclick="drawerTab('sessions')">sessions</button>
+    </div>
+    <div class="panel-section">
+      <span class="panel-section-lbl">projects</span>
+      <div class="panel-proj-row">
+        <input id="drawer-proj-input" placeholder="join or create…" onkeydown="if(event.key==='Enter')panelJoinProject('drawer-proj-input')">
+        <button class="sm p" onclick="panelJoinProject('drawer-proj-input')">+</button>
+      </div>
+      <div id="drawer-pjlist"></div>
+    </div>
+    <div class="panel-section">
+      <span class="panel-section-lbl">appearance</span>
+      <div class="panel-theme-grid" id="drawer-theme-row"></div>
+    </div>
   </div>
   <div class="drawer-footer">
-    <button class="drawer-item" onclick="openProjectsModal();closeDrawer()">⚙ settings</button>
     <a class="drawer-item" href="/ui/logout" style="text-decoration:none">logout</a>
   </div>
 </div>
@@ -802,13 +841,30 @@ pre{
     <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polygon points="32,4 60,32 32,60 4,32" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/><circle cx="32" cy="32" r="6" fill="currentColor"/></svg>
     artel
   </div>
-  <div class="nav-items">
-    <button class="nav-btn on" onclick="tab('memory',this)">memory</button>
-    <button class="nav-btn" onclick="tab('tasks',this)">tasks</button>
-    <button class="nav-btn" onclick="tab('messages',this)" id="btn-messages">messages</button>
-    <button class="nav-btn" onclick="tab('events',this)">events</button>
-    <button class="nav-btn" onclick="tab('agents',this)">agents</button>
-    <button class="nav-btn" onclick="tab('sessions',this)">sessions</button>
+  <div class="nav-scroll">
+    <div class="nav-items">
+      <button class="nav-btn on" onclick="tab('memory',this)">memory</button>
+      <button class="nav-btn" onclick="tab('tasks',this)">tasks</button>
+      <button class="nav-btn" onclick="tab('messages',this)" id="btn-messages">messages</button>
+      <button class="nav-btn" onclick="tab('events',this)">events</button>
+      <button class="nav-btn" onclick="tab('agents',this)">agents</button>
+      <button class="nav-btn" onclick="tab('sessions',this)">sessions</button>
+    </div>
+    <div class="panel-section">
+      <span class="panel-section-lbl">projects</span>
+      <div class="panel-proj-row">
+        <input id="sidebar-proj-input" placeholder="join or create…" onkeydown="if(event.key==='Enter')panelJoinProject('sidebar-proj-input')">
+        <button class="sm p" onclick="panelJoinProject('sidebar-proj-input')">+</button>
+      </div>
+      <div id="sidebar-pjlist"></div>
+    </div>
+    <div class="panel-section">
+      <span class="panel-section-lbl">appearance</span>
+      <div class="panel-theme-grid" id="sidebar-theme-row"></div>
+    </div>
+  </div>
+  <div class="nav-footer">
+    <a class="nav-btn" href="/ui/logout" style="text-decoration:none">logout</a>
   </div>
 </nav>
 
@@ -908,29 +964,6 @@ pre{
   <div id="alist"></div>
 </div>
 
-<!-- SETTINGS MODAL -->
-<div id="projects-modal" class="modal-backdrop">
-  <div class="modal" style="max-width:720px;width:90vw">
-    <div class="modal-header">
-      <span class="modal-title">settings</span>
-      <button class="modal-close" onclick="closeProjectsModal()" title="close">✕</button>
-    </div>
-    <div class="section-label" style="margin-bottom:8px">projects</div>
-    <div class="toolbar" style="margin-bottom:12px">
-      <input id="new-proj" placeholder="create or join project…" style="flex:1;min-width:0" onkeydown="if(event.key==='Enter')joinProjectByInput()">
-      <button class="p" onclick="joinProjectByInput()">join / create</button>
-      <button onclick="loadProjects()">refresh</button>
-    </div>
-    <div id="pjlist"></div>
-    <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--b1)">
-      <div class="section-label" style="margin-bottom:10px">appearance</div>
-      <div class="theme-row" id="theme-row"></div>
-    </div>
-    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--b1);display:flex;justify-content:flex-end">
-      <a class="h-logout" href="/ui/logout">logout</a>
-    </div>
-  </div>
-</div>
 
 <!-- SESSIONS -->
 <div id="panel-sessions" class="panel">
@@ -1104,18 +1137,14 @@ function setTheme(id){
   localStorage.setItem('artel-theme',id);
   document.querySelectorAll('.theme-swatch').forEach(b=>b.classList.toggle('active',b.dataset.theme===id));
 }
-function renderThemePicker(){
-  const row=$('theme-row');if(!row)return;
+function renderThemePickers(){
   const cur=localStorage.getItem('artel-theme')||'gruvbox-dark';
-  row.innerHTML=_THEMES.map(t=>`<button class="theme-swatch${t.id===cur?' active':''}" data-theme="${t.id}" onclick="setTheme('${t.id}')" title="${t.label}"><span class="swatch-dot" style="background:${t.bg};border-color:${t.ac}"></span><span class="swatch-label">${esc(t.label)}</span></button>`).join('');
+  const html=_THEMES.map(t=>`<button class="theme-swatch${t.id===cur?' active':''}" data-theme="${t.id}" onclick="setTheme('${t.id}')" title="${t.label}"><span class="swatch-dot" style="background:${t.bg};border-color:${t.ac}"></span><span class="swatch-label">${esc(t.label)}</span></button>`).join('');
+  ['sidebar-theme-row','drawer-theme-row'].forEach(id=>{if($(id))$(id).innerHTML=html;});
 }
-function openProjectsModal(){
-  $('projects-modal').classList.add('open');
-  loadProjects();
-  renderThemePicker();
-}
-function closeProjectsModal(){
-  $('projects-modal').classList.remove('open');
+async function panelJoinProject(inputId){
+  const name=$(inputId).value.trim();if(!name)return;
+  await joinProject(name);$(inputId).value='';
 }
 let _swipeStartX=0,_swipeStartY=0;
 document.addEventListener('touchstart',e=>{
@@ -1159,6 +1188,7 @@ async function init(){
   }
   await Promise.all([loadProjectsHeader(),loadAgentsGlobal()]);
   loadMem();checkInbox();setInterval(checkInbox,30000);
+  loadProjects();renderThemePickers();
 }
 
 async function loadProjectsHeader(){
@@ -1611,39 +1641,24 @@ async function renameAgent(id){
 // ── Projects ─────────────────────────────────────────────────────────
 
 async function loadProjects(){
-  loading('pjlist',3);
   try{
     const [ps,mine]=await Promise.all([
       req('GET','/projects'),
       req('GET','/projects/mine').catch(()=>[]),
     ]);
     _myProjects=new Set(mine.map(p=>p.project_id));
-    if(!ps.length&&!mine.length){
-      $('pjlist').innerHTML=emptyState('◫','no projects — type a name above and join');return;
-    }
-    const byName=Object.fromEntries(ps.map(p=>[p.name,p]));
-    const rows=[...mine.map(p=>p.project_id),...ps.map(p=>p.name).filter(n=>!_myProjects.has(n))];
-    $('pjlist').innerHTML='<div class="proj-grid">'+[...new Set(rows)].map(name=>{
-      const p=byName[name],isMine=_myProjects.has(name);
-      const last=p?.last_activity?relTime(p.last_activity):'—';
-      const lastFull=p?.last_activity?p.last_activity.slice(0,16):'';
-      return `<div class="pj${isMine?' mine':''}">
-        <div class="pj-name">${esc(name)}${isMine?` <span style="color:var(--green);font-size:10px">●</span>`:''}</div>
-        <div class="pj-agents">${(p?.agents||[]).join(', ')||'no members yet'}</div>
-        <div class="pj-stats">
-          <span><span class="pj-stat-val">${p?.memory_count??0}</span> mem</span>
-          <span><span class="pj-stat-val">${p?.task_count??0}</span> tasks</span>
-          <span title="${lastFull}">last <span class="pj-stat-val">${last}</span></span>
-        </div>
-        <div class="card-actions" style="margin-top:10px">
-          <button class="sm" onclick="selectProject('${esc(name)}')">set active</button>
-          ${isMine
-            ?`<button class="sm danger" onclick="leaveProject('${esc(name)}')">leave</button>`
-            :`<button class="sm p" onclick="joinProject('${esc(name)}')">join</button>`}
-        </div>
+    const rows=[...new Set([...mine.map(p=>p.project_id),...ps.map(p=>p.name)])];
+    const html=rows.length?rows.map(name=>{
+      const isMine=_myProjects.has(name);
+      return `<div class="nav-pj${isMine?' mine':''}">
+        <span class="nav-pj-name" title="${esc(name)}" onclick="selectProject('${esc(name)}')">${esc(name)}</span>
+        ${isMine
+          ?`<button class="nav-pj-btn sm danger" onclick="leaveProject('${esc(name)}')">×</button>`
+          :`<button class="nav-pj-btn sm p" onclick="joinProject('${esc(name)}')">join</button>`}
       </div>`;
-    }).join('')+'</div>';
-  }catch(e){$('pjlist').innerHTML=emptyState('⚠','Error: '+e.message);}
+    }).join(''):`<div style="padding:2px 18px;font:10px var(--mono);color:var(--t4)">none yet</div>`;
+    ['sidebar-pjlist','drawer-pjlist'].forEach(id=>{if($(id))$(id).innerHTML=html;});
+  }catch(e){['sidebar-pjlist','drawer-pjlist'].forEach(id=>{if($(id))$(id).innerHTML=`<div style="padding:2px 18px;font:10px var(--mono);color:var(--red)">${esc(e.message)}</div>`;});}
 }
 
 function selectProject(name){$('h-project').value=name;onProjectChange()}
@@ -1664,8 +1679,8 @@ async function leaveProject(name){
   }catch(e){toast('Failed: '+e.message,'err');}
 }
 async function joinProjectByInput(){
-  const name=$('new-proj').value.trim();if(!name)return;
-  await joinProject(name);$('new-proj').value='';
+  const name=($('sidebar-proj-input')||$('drawer-proj-input'))?.value.trim();if(!name)return;
+  await joinProject(name);
 }
 
 // ── Sessions ─────────────────────────────────────────────────────────
