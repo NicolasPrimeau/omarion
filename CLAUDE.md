@@ -8,7 +8,7 @@ Artel is a self-hosted server that acts as the shared brain for a fleet of AI ag
 
 ## Stack
 
-- Python 3.13, FastAPI, SQLite (WAL mode), sqlite-vec (embeddings)
+- Python 3.11+ (CI tests 3.11/3.12/3.13), FastAPI, SQLite (WAL mode), sqlite-vec (embeddings)
 - MCP adapter on top of core REST API
 - Self-hosted, accessible from all machines
 

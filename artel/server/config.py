@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     agent_keys: str = ""
     registration_key: str = ""
     ui_password: str = ""
-    ui_agent_id: str = "nimbus"
+    ui_agent_id: str = "artel-ui"
     public_url: str = ""
     mcp_url: str = ""
     jwt_ttl: int = 2592000

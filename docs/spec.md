@@ -76,12 +76,18 @@ Task {
 
 **Endpoints:**
 ```
-POST   /tasks               create task
-GET    /tasks?status=&agent= list tasks
-POST   /tasks/:id/claim     claim a task
-POST   /tasks/:id/complete  mark complete
-POST   /tasks/:id/fail      mark failed
+POST   /tasks                 create task
+GET    /tasks?status=&agent=  list tasks
+GET    /tasks/:id             get task with comment log
+POST   /tasks/:id/claim       claim a task            (optional body comment)
+POST   /tasks/:id/unclaim     release back to open    (optional body comment)
+POST   /tasks/:id/complete    mark complete           (optional body comment)
+POST   /tasks/:id/fail        mark failed             (optional body comment)
+POST   /tasks/:id/comments    append a comment
+GET    /tasks/:id/comments    list comments
 ```
+
+Lifecycle ops accept an optional `body` field that is recorded as a kind-tagged entry in the task's comment log (`kind=claim|unclaim|complete|fail|comment`).
 
 ---
 
