@@ -136,7 +136,7 @@ GET    /events?since=       poll recent events
 
 ## Archivist
 
-An async Claude agent running on server. Two modes:
+An async Claude agent. Two modes:
 
 **Immediate** (triggered by write events):
 - Conflict detection: new entry vs existing entries via embedding similarity
@@ -159,7 +159,7 @@ At session end, any agent can POST a handoff:
 POST /sessions/handoff
 {
   "agent_id": "nimbus",
-  "host": "server",
+  "host": "host-1",
   "summary": "...",
   "in_progress": ["task_id_1", "task_id_2"],
   "next_steps": ["..."],
@@ -184,4 +184,4 @@ MVP: static API keys in config. Each agent has its own key tied to its `agent_id
 
 ## Self-Hosting
 
-Single binary / `uv run` on server. SQLite WAL mode handles concurrent reads/writes safely. No cloud dependency.
+Single binary / `uv run`. SQLite WAL mode handles concurrent reads/writes safely. No cloud dependency.

@@ -13,7 +13,7 @@
 - [x] Event endpoints (emit, poll, SSE stream)
 - [x] Session handoff (POST /sessions/handoff, GET /sessions/handoff/:agent_id)
 - [x] .env setup + agent key seeding script (scripts/seed_keys.py)
-- [x] Docker deployment on server (Dockerfile + docker-compose.yml)
+- [x] Docker deployment (Dockerfile + docker-compose.yml)
 
 ## Phase 2: Archivist
 
@@ -36,7 +36,7 @@
 - [x] MCP config documented for Claude Code (README — Option A SSE, Option B stdio)
 - [x] Nimbus .mcp.json wired to artel MCP (SSE transport)
 - [x] Steward agent pre-registered, ready to connect via .mcp.json
-- [x] Session handoff replacing server-sync skill
+- [x] Session handoff replacing legacy host-sync skill
 
 ## Phase 5: Open Source Prep
 

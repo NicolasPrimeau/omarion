@@ -11,7 +11,12 @@ wheels/
 
 # Secrets
 .env
+.env.meta.json
 .mcp.json
+
+# Personal dev scripts (kept local, not part of project)
+scripts/claude-start.sh
+scripts/sync_env_secrets.py
 
 # SQLite
 *.db
