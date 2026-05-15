@@ -46,10 +46,12 @@ def set_pty_size(fd, rows, cols):
     fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
 
 
-def send_keys(master, text, delay=0.045):
+def send_keys(master, text, delay=0.045, pre_enter_pause=0.0):
     for ch in text:
         os.write(master, ch.encode())
         time.sleep(delay)
+    if pre_enter_pause > 0:
+        time.sleep(pre_enter_pause)
     os.write(master, b"\r")
 
 
@@ -187,8 +189,9 @@ def record(out_cast, max_total=480):
                     time.sleep(0.5)
                     send_keys(
                         master,
-                        f"curl -s '{ARTEL_URL}/onboard?project={ARTEL_PROJECT}' | sh",
-                        delay=0.07,
+                        f"curl -fsSL {ARTEL_URL}/onboard | sh",
+                        delay=0.10,
+                        pre_enter_pause=2.0,
                     )
                     accumulated = b""
                     state = 1

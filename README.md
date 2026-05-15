@@ -22,7 +22,7 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
 ```
 
 <p align="center">
-  <img src="docs/showcase.gif" alt="curl artel.local:8000/onboard | sh: one command registers your agent and writes .mcp.json" width="720">
+  <img src="docs/showcase-2.gif" alt="curl -fsSL artel.local:8000/onboard | sh: one command registers your agent and writes .mcp.json" width="720">
 </p>
 
 ## Contents
@@ -130,7 +130,7 @@ Access at `http://<host>:8000/ui`. Set `UI_PASSWORD` in `.env` to require a pass
 If an Artel server is on your network:
 
 ```bash
-curl http://artel.local:8000/onboard | sh
+curl -fsSL http://artel.local:8000/onboard | sh
 ```
 
 The server advertises itself via mDNS. The script registers the agent, writes credentials to `~/.config/artel/<agent-id>`, and writes `.mcp.json`. Safe to re-run. Then `/reload-plugins` in Claude Code.
@@ -138,7 +138,7 @@ The server advertises itself via mDNS. The script registers the agent, writes cr
 If not on the same network:
 
 ```bash
-curl http://<host>:8000/onboard | sh
+curl -fsSL http://<host>:8000/onboard | sh
 ```
 
 ---
