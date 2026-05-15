@@ -544,18 +544,23 @@ pre{
   #h-project{order:7;flex:1;min-width:0;max-width:none}
   .spacer{display:none}
   .nav{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .nav-btn{flex-shrink:0}
+  .nav-btn{flex-shrink:0;height:44px}
   .panel{padding:12px 14px}
   .agent-grid,.proj-grid{grid-template-columns:1fr}
-  input,select,textarea,button{font-size:14px}
-  button{height:38px}
-  button.sm{height:28px}
+  /* 16px prevents iOS auto-zoom on input focus */
+  input,select,textarea{font-size:16px}
+  button{font-size:14px;height:44px}
+  button.sm{height:36px;min-width:44px}
+  button.icon-btn{width:44px;height:44px}
+  .h-icon-btn{min-width:44px;min-height:44px}
   .meta-time{margin-left:0;white-space:normal}
   .pill{flex-shrink:1;min-width:0}
   .pill.owner,.pill.directive{flex-shrink:0}
   #toast-stack{right:12px;left:12px;align-items:stretch}
   .toast{max-width:100%}
   .toolbar > input{flex-basis:100%}
+  .write-row > input,.write-row > select{min-width:0}
+  pre{overflow-x:auto}
 }
 </style>
 </head>
