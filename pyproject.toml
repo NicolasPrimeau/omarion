@@ -29,6 +29,7 @@ dependencies = [
     "uvicorn[standard]>=0.46.0",
     "zeroconf>=0.136.0",
     "python-jose>=3.3.0",
+    "feedparser>=6.0.12",
 ]
 
 [project.urls]

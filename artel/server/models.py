@@ -165,6 +165,28 @@ class ProjectInfo(BaseModel):
     last_activity: str | None
 
 
+class FeedCreate(BaseModel):
+    url: str
+    name: str
+    project: str
+    tags: list[str] = []
+    interval_min: int = Field(default=30, ge=1, le=1440)
+    max_per_poll: int = Field(default=20, ge=1, le=100)
+
+
+class FeedEntry(BaseModel):
+    id: str
+    agent_id: str
+    project: str
+    url: str
+    name: str
+    tags: list[str]
+    interval_min: int
+    max_per_poll: int
+    last_fetched_at: str | None
+    created_at: str
+
+
 class HandoffPost(BaseModel):
     host: str = ""
     summary: str

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import secrets
 import time
@@ -17,10 +18,12 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from ..mcp.server import mcp as mcp_server
 from ..store.db import get_db
 from .config import settings
+from .feed_poller import run_poller
 from .jwt_utils import verify_token
 from .mdns import MDNSService
 from .routes.agents import router as agents_router
 from .routes.events import router as events_router
+from .routes.feeds import router as feeds_router
 from .routes.memory import router as memory_router
 from .routes.messages import router as messages_router
 from .routes.oauth import router as oauth_router
@@ -87,8 +90,11 @@ async def lifespan(app: FastAPI):
         await mdns.start()
     except Exception:
         pass
+    poller = asyncio.create_task(run_poller())
     async with _mcp_asgi.router.lifespan_context(_mcp_asgi):
         yield
+    poller.cancel()
+    await asyncio.gather(poller, return_exceptions=True)
     try:
         await mdns.stop()
     except Exception:
@@ -185,6 +191,7 @@ app.include_router(events_router)
 app.include_router(sessions_router)
 app.include_router(participants_router)
 app.include_router(projects_router)
+app.include_router(feeds_router)
 
 
 @app.get("/.well-known/oauth-protected-resource", include_in_schema=False)

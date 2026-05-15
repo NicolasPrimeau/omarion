@@ -1163,3 +1163,96 @@ async def event_emit(event_type: str, payload: dict | None = None) -> str:
         return _err(e)
     ev = r.json()
     return f"emitted [{ev['id']}] {ev['type']}"
+
+
+# ── Feeds ─────────────────────────────────────────────────────────────────────
+
+
+@mcp.tool()
+async def feed_subscribe(
+    url: str,
+    name: str,
+    project: str,
+    tags: list[str] | None = None,
+    interval_min: int = 30,
+    max_per_poll: int = 20,
+) -> str:
+    """Subscribe to an RSS or Atom feed. New items are written to memory automatically.
+
+    Each item is written with confidence=0.5 and tagged 'feed-item' + 'unprocessed'.
+    The archivist will synthesize and clean up over time. Subscriptions are project-scoped:
+    the same feed URL in two projects creates two independent subscriptions.
+
+    Args:
+        url: RSS or Atom feed URL.
+        name: Human-readable name shown in each memory entry (e.g. "Claude Code releases").
+        project: Project to write feed memories into. Required.
+        tags: Additional tags applied to every memory entry from this feed.
+        interval_min: How often to poll in minutes (default 30, max 1440).
+        max_per_poll: Max new items to ingest per poll cycle (default 20, max 100).
+    """
+    c = _http()
+    try:
+        r = await c.post(
+            "/feeds",
+            json={
+                "url": url,
+                "name": name,
+                "project": settings.resolve_project(project),
+                "tags": tags or [],
+                "interval_min": interval_min,
+                "max_per_poll": max_per_poll,
+            },
+        )
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    f = r.json()
+    return (
+        f"subscribed [{f['id']}] {f['name']} → project={f['project']} every {f['interval_min']}min"
+    )
+
+
+@mcp.tool()
+async def feed_list(project: str | None = None) -> str:
+    """List active feed subscriptions visible to you.
+
+    Args:
+        project: Filter by project. Omit to list all accessible feeds.
+    """
+    c = _http()
+    try:
+        r = await c.get("/feeds")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    feeds = r.json()
+    if project:
+        feeds = [f for f in feeds if f["project"] == project]
+    if not feeds:
+        return "No feed subscriptions."
+    lines = []
+    for f in feeds:
+        tags = ", ".join(f["tags"]) if f["tags"] else "—"
+        last = (f["last_fetched_at"] or "never")[:16]
+        lines.append(
+            f"[{f['id']}] {f['name']} | {f['url']} | project={f['project']}"
+            f" | every {f['interval_min']}min | last={last} | tags={tags}"
+        )
+    return "\n".join(lines)
+
+
+@mcp.tool()
+async def feed_unsubscribe(feed_id: str) -> str:
+    """Unsubscribe from a feed. Removes the subscription and its seen-item history.
+
+    Args:
+        feed_id: ID from feed_list().
+    """
+    c = _http()
+    try:
+        r = await c.delete(f"/feeds/{feed_id}")
+        r.raise_for_status()
+    except _HTTPX_ERRORS as e:
+        return _err(e)
+    return f"unsubscribed [{feed_id}]"

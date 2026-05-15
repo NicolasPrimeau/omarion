@@ -130,6 +130,28 @@ CREATE TABLE IF NOT EXISTS ui_sessions (
 
 CREATE INDEX IF NOT EXISTS idx_ui_sessions_last_seen ON ui_sessions (last_seen_at);
 
+CREATE TABLE IF NOT EXISTS feed_subscriptions (
+    id           TEXT PRIMARY KEY,
+    agent_id     TEXT NOT NULL,
+    project      TEXT NOT NULL,
+    url          TEXT NOT NULL,
+    name         TEXT NOT NULL,
+    tags         TEXT NOT NULL DEFAULT '[]',
+    interval_min INTEGER NOT NULL DEFAULT 30,
+    max_per_poll INTEGER NOT NULL DEFAULT 20,
+    last_fetched_at TEXT,
+    created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_feed_subs_agent ON feed_subscriptions (agent_id);
+CREATE INDEX IF NOT EXISTS idx_feed_subs_fetch ON feed_subscriptions (last_fetched_at);
+
+CREATE TABLE IF NOT EXISTS feed_items_seen (
+    feed_id    TEXT NOT NULL,
+    item_guid  TEXT NOT NULL,
+    seen_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    PRIMARY KEY (feed_id, item_guid)
+);
+
 CREATE TABLE IF NOT EXISTS mcp_notification_queue (
     id          TEXT PRIMARY KEY,
     agent_id    TEXT NOT NULL,
