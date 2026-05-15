@@ -42,6 +42,7 @@
   --r:      4px;
   --hh:     44px;
   --nh:     36px;
+  --sb:     200px;
   --shadow: 0 2px 12px rgba(0,0,0,.4);
   --shadow-hover: 0 4px 20px rgba(0,0,0,.5);
 }
@@ -64,7 +65,9 @@ header{
   border-bottom:1px solid var(--b1);
   position:sticky;top:0;z-index:200;
   backdrop-filter:blur(12px);
+  margin-left:var(--sb);
 }
+.logo{display:none}
 .logo{
   font:600 15px var(--mono);
   color:var(--t1);
@@ -73,7 +76,7 @@ header{
   display:flex;align-items:center;gap:8px;
 }
 .logo-mark{color:var(--accent);width:22px;height:22px;flex-shrink:0;display:block}
-.h-div{color:var(--b2);font-size:10px;flex-shrink:0;user-select:none}
+.h-div{display:none}
 .h-select{
   background:transparent;
   border:1px solid var(--b1);
@@ -145,30 +148,38 @@ header{
 }
 .h-copy-btn:hover{color:var(--accent);border-color:var(--accent);background:var(--a-bg)}
 
-/* ── Nav ──────────────────────────────── */
+/* ── Sidebar nav (desktop) ─────────────── */
 nav{
-  display:flex;
-  background:rgba(7,15,23,.93);
-  border-bottom:1px solid var(--b1);
-  overflow-x:auto;scrollbar-width:none;
-  position:sticky;top:var(--hh);z-index:199;
-  backdrop-filter:blur(12px);
-  padding:0 6px;
+  position:fixed;left:0;top:0;bottom:0;
+  width:var(--sb);
+  display:flex;flex-direction:column;align-items:stretch;
+  background:var(--s1);
+  border-right:1px solid var(--b1);
+  z-index:190;
+  overflow-y:auto;overflow-x:hidden;scrollbar-width:none;
 }
 nav::-webkit-scrollbar{display:none}
+.nav-logo{
+  display:flex;align-items:center;gap:8px;
+  padding:0 18px;height:var(--hh);
+  font:600 14px var(--mono);color:var(--t1);letter-spacing:-.5px;
+  border-bottom:1px solid var(--b1);flex-shrink:0;
+}
+.nav-logo svg{color:var(--accent);width:18px;height:18px;flex-shrink:0}
+.nav-items{flex:1;padding:8px 0}
 .nav-btn{
-  flex-shrink:0;border:none;background:none;
-  padding:0 14px;height:var(--nh);
+  display:block;width:100%;border:none;background:none;
+  padding:10px 18px;height:auto;
   font:500 11px var(--mono);
   color:var(--t4);
   letter-spacing:.6px;text-transform:uppercase;
-  cursor:pointer;white-space:nowrap;
+  cursor:pointer;white-space:nowrap;text-align:left;
   position:relative;
-  border-bottom:2px solid transparent;
-  transition:color .15s;
+  border-left:2px solid transparent;
+  transition:color .15s,background .15s;
 }
-.nav-btn:hover{color:var(--t2)}
-.nav-btn.on{color:var(--accent);border-bottom-color:var(--accent)}
+.nav-btn:hover{color:var(--t2);background:var(--s2)}
+.nav-btn.on{color:var(--accent);border-left-color:var(--accent);background:var(--a-bg)}
 .badge{
   position:absolute;top:5px;right:2px;
   background:var(--red);color:#fff;
@@ -177,7 +188,7 @@ nav::-webkit-scrollbar{display:none}
 }
 
 /* ── Panels ───────────────────────────── */
-.panel{display:none;padding:20px;max-width:1100px;margin:0 auto}
+.panel{display:none;padding:20px;max-width:960px;margin-left:var(--sb)}
 .panel.on{display:block;animation:fadeIn .15s ease}
 
 /* ── Toolbar ──────────────────────────── */
@@ -240,7 +251,7 @@ button.p{
   background:var(--a-bg);color:var(--accent);
   border-color:var(--a-bord);
 }
-button.p:hover{background:rgba(0,212,255,.14);border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,212,255,.08)}
+button.p:hover{background:var(--a-bg);border-color:var(--accent);box-shadow:0 0 0 3px var(--a-bord)}
 button.danger{color:var(--t4)}
 button.danger:hover{background:var(--r-bg);color:var(--red);border-color:var(--r-bord)}
 button.sm{height:24px;font-size:10px;padding:0 8px}
@@ -571,10 +582,12 @@ pre{
 
 /* ── Mobile ───────────────────────────── */
 @media(max-width:600px){
-  header{
-    flex-wrap:wrap;height:auto;
-    padding:6px 12px;gap:6px;
-  }
+  /* Undo sidebar offsets */
+  header{margin-left:0;flex-wrap:wrap;height:auto;padding:6px 12px;gap:6px}
+  .panel{margin-left:0;padding:12px 14px}
+  /* Restore logo in header */
+  .logo{display:flex}
+  nav{display:none}
   /* Row 1: ☰ · logo · stat · connect · ⚙ */
   .h-menu-btn{order:0;display:flex;flex-shrink:0}
   .logo{order:1;flex-shrink:0}
@@ -588,13 +601,9 @@ pre{
   #h-agent-sel{order:6;flex:1;min-width:0;max-width:none}
   #h-project{order:7;flex:1;min-width:0;max-width:none}
   .spacer{display:none}
-  nav{display:none}
-  .panel{padding:12px 14px}
   .agent-grid,.proj-grid{grid-template-columns:1fr}
   /* 16px prevents iOS auto-zoom on input focus */
   input,select,textarea{font-size:16px}
-  /* Match surrounding chrome to 16px inputs */
-  .nav-btn{font-size:12px}
   button{font-size:12px;height:40px}
   button.sm{height:32px;min-width:40px}
   button.icon-btn{width:40px;height:40px}
@@ -669,12 +678,18 @@ pre{
 </div>
 
 <nav>
-  <button class="nav-btn on" onclick="tab('memory',this)">memory</button>
-  <button class="nav-btn" onclick="tab('tasks',this)">tasks</button>
-  <button class="nav-btn" onclick="tab('messages',this)" id="btn-messages">messages</button>
-  <button class="nav-btn" onclick="tab('events',this)">events</button>
-  <button class="nav-btn" onclick="tab('agents',this)">agents</button>
-  <button class="nav-btn" onclick="tab('sessions',this)">sessions</button>
+  <div class="nav-logo">
+    <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><polygon points="32,4 60,32 32,60 4,32" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/><circle cx="32" cy="32" r="6" fill="currentColor"/></svg>
+    artel
+  </div>
+  <div class="nav-items">
+    <button class="nav-btn on" onclick="tab('memory',this)">memory</button>
+    <button class="nav-btn" onclick="tab('tasks',this)">tasks</button>
+    <button class="nav-btn" onclick="tab('messages',this)" id="btn-messages">messages</button>
+    <button class="nav-btn" onclick="tab('events',this)">events</button>
+    <button class="nav-btn" onclick="tab('agents',this)">agents</button>
+    <button class="nav-btn" onclick="tab('sessions',this)">sessions</button>
+  </div>
 </nav>
 
 <div id="toast-stack"></div>
