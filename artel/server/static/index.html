@@ -550,10 +550,12 @@ pre{
   .agent-grid,.proj-grid{grid-template-columns:1fr}
   /* 16px prevents iOS auto-zoom on input focus */
   input,select,textarea{font-size:16px}
-  button{font-size:14px;height:44px}
-  button.sm{height:36px;min-width:44px}
-  button.icon-btn{width:44px;height:44px}
-  .h-icon-btn{min-width:44px;min-height:44px}
+  /* Match surrounding chrome to 16px inputs */
+  .nav-btn{font-size:12px}
+  button{font-size:12px;height:40px}
+  button.sm{height:32px;min-width:40px}
+  button.icon-btn{width:40px;height:40px}
+  .h-icon-btn{min-width:40px;min-height:40px}
   .meta-time{margin-left:0;white-space:normal}
   .pill{flex-shrink:1;min-width:0}
   .pill.owner,.pill.directive{flex-shrink:0}
@@ -561,7 +563,7 @@ pre{
   .toast{max-width:100%}
   .toolbar-search{flex-basis:100%;min-width:0}
   .write-row > input,.write-row > select{min-width:0}
-  pre{overflow-x:auto}
+  pre{overflow-x:auto;font-size:13px}
 }
 </style>
 </head>
