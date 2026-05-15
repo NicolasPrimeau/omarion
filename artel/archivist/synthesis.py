@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import math
 from datetime import UTC, datetime, timedelta
@@ -8,6 +9,8 @@ from .config import settings
 from .llm import complete, is_configured
 
 log = logging.getLogger(__name__)
+
+_KNOWN_OPS = {"merge", "promote", "prune", "tag", "adjust_confidence", "task"}
 
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -74,6 +77,127 @@ async def _check_directive_conflicts(directives: list[dict], client: ArtelClient
 
 def _utc_ago(hours: int) -> str:
     return (datetime.now(UTC) - timedelta(hours=hours)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+
+def _parse_operations(text: str) -> list[dict]:
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        lines = stripped.splitlines()
+        end = len(lines) - 1
+        while end > 0 and not lines[end].strip().startswith("```"):
+            end -= 1
+        stripped = "\n".join(lines[1:end]).strip()
+    try:
+        parsed = json.loads(stripped)
+    except Exception as e:
+        log.warning("could not parse synthesis operations JSON: %s", e)
+        return []
+    if not isinstance(parsed, list):
+        log.warning("synthesis operations is not a JSON array")
+        return []
+    ops = []
+    for item in parsed:
+        if not isinstance(item, dict):
+            continue
+        op_name = item.get("op")
+        if op_name not in _KNOWN_OPS:
+            log.warning("skipping unknown synthesis op: %s", op_name)
+            continue
+        ops.append(item)
+    return ops
+
+
+async def _execute_operations(ops: list[dict], client: ArtelClient, entries: list[dict]) -> None:
+    valid_ids = {e["id"] for e in entries}
+    entries_by_id = {e["id"]: e for e in entries}
+
+    for op in ops:
+        op_name = op.get("op")
+        try:
+            if op_name == "merge":
+                ids = op.get("entries", [])
+                if len(ids) < 2:
+                    log.warning("merge op requires at least 2 entries, got %d", len(ids))
+                    continue
+                if any(eid not in valid_ids for eid in ids):
+                    log.warning("merge op references hallucinated IDs: %s", ids)
+                    continue
+                merged_content = op.get("merged_content", "")
+                if not merged_content:
+                    log.warning("merge op missing merged_content")
+                    continue
+                source_entries = [entries_by_id[eid] for eid in ids]
+                primary = max(source_entries, key=lambda e: e.get("confidence", 1.0))
+                entry_type = primary.get("type", "memory")
+                merged_tags = list({tag for e in source_entries for tag in e.get("tags", [])})
+                projects = {e.get("project") for e in source_entries}
+                merged_project = projects.pop() if len(projects) == 1 else None
+                await client.write_memory(
+                    content=merged_content,
+                    type=entry_type,
+                    tags=merged_tags,
+                    parents=ids,
+                    project=merged_project,
+                )
+                for eid in ids:
+                    await client.delete_memory(eid)
+                log.info("archivist merged entries %s", ids)
+
+            elif op_name == "promote":
+                eid = op.get("entry")
+                if eid not in valid_ids:
+                    log.warning("promote op references hallucinated ID: %s", eid)
+                    continue
+                await client.patch_memory(eid, type="doc")
+                log.info("archivist promoted entry %s", eid)
+
+            elif op_name == "prune":
+                eid = op.get("entry")
+                if eid not in valid_ids:
+                    log.warning("prune op references hallucinated ID: %s", eid)
+                    continue
+                await client.delete_memory(eid)
+                log.info("archivist pruned entry %s", eid)
+
+            elif op_name == "tag":
+                eid = op.get("entry")
+                if eid not in valid_ids:
+                    log.warning("tag op references hallucinated ID: %s", eid)
+                    continue
+                add_tags = op.get("add_tags", [])
+                current_entry = await client.get_memory(eid)
+                existing_tags = current_entry.get("tags", [])
+                merged_tags = list(set(existing_tags) | set(add_tags))
+                await client.patch_memory(eid, tags=merged_tags)
+                log.info("archivist tagged entry %s with %s", eid, add_tags)
+
+            elif op_name == "adjust_confidence":
+                eid = op.get("entry")
+                if eid not in valid_ids:
+                    log.warning("adjust_confidence op references hallucinated ID: %s", eid)
+                    continue
+                confidence = max(0.0, min(1.0, float(op.get("confidence", 1.0))))
+                await client.patch_memory(eid, confidence=confidence)
+                log.info("archivist adjusted confidence of %s to %s", eid, confidence)
+
+            elif op_name == "task":
+                title = op.get("title", "")
+                if not title:
+                    log.warning("task op missing title")
+                    continue
+                priority = op.get("priority", "normal")
+                if priority not in ("low", "normal", "high"):
+                    priority = "normal"
+                await client.create_task(
+                    title=title,
+                    description=op.get("description"),
+                    priority=priority,
+                    project=op.get("project"),
+                )
+                log.info("archivist created task: %s", title[:60])
+
+        except Exception as e:
+            log.warning("synthesis op %s failed: %s", op_name, e)
 
 
 async def on_task_completed(task_id: str, agent_id: str, client: ArtelClient) -> None:
@@ -191,7 +315,8 @@ async def run_synthesis(client: ArtelClient) -> None:
         log.warning("could not fetch recent tasks for synthesis: %s", e)
 
     memory_block = "\n\n".join(
-        f"[{e['id'][:8]}] agent={e['agent_id']} type={e['type']}\n{e['content']}" for e in entries
+        f"[{e['id']}] agent={e['agent_id']} type={e['type']} conf={e.get('confidence', 1.0)} tags={e.get('tags', [])}\n{e['content']}"
+        for e in entries
     )
 
     task_block = ""
@@ -207,7 +332,7 @@ async def run_synthesis(client: ArtelClient) -> None:
     if conflict_warning:
         preamble = conflict_warning + "\n\n" + preamble if preamble else conflict_warning
 
-    system_prompt = "You are the Artel archivist. Your role is to surface what no individual agent can see by synthesizing knowledge across the entire fleet."
+    system_prompt = "You are the Artel archivist — an invisible curator of project memory. Your only job is to keep the memory store clean, non-redundant, and high-signal by issuing precise operations. You do not write reports. You act."
     if preamble:
         system_prompt = preamble + "\n\n" + system_prompt
 
@@ -217,23 +342,18 @@ async def run_synthesis(client: ArtelClient) -> None:
             text = await complete(
                 system=system_prompt,
                 user=(
-                    f"Agent memory activity (last 24h):\n\n{memory_block}"
+                    f"Memory entries written or updated in the last 24h:\n\n{memory_block}"
                     f"{task_block}\n\n"
-                    "Write a synthesis document with these sections. Omit any section with nothing relevant.\n\n"
-                    "### Connections\n"
-                    "Meaningful relationships between entries from different agents. Cite entry IDs like [id].\n\n"
-                    "### Contradictions\n"
-                    'Conflicting information between agents. Format: "Agent X states [Y]; Agent Z states [W]."\n\n'
-                    "### Patterns\n"
-                    "Recurring themes, repeated issues, or trends across entries and tasks.\n\n"
-                    "### Gaps\n"
-                    "What appears unknown or underinvestigated. What questions remain unanswered?\n\n"
-                    "### Recommended Actions\n"
-                    "Specific tasks or investigations that should happen. One per line, starting with `- `.\n\n"
-                    "### Suggested Directives\n"
-                    "If you notice patterns or principles that warrant a standing directive, emit them as:\n"
-                    "DIRECTIVE SUGGESTION: <text of the directive>\n"
-                    "Only suggest directives for clear, persistent, fleet-wide behavioral rules. Omit this section if nothing warrants it."
+                    "Directives are in the system prompt. Follow them above all else.\n\n"
+                    "Issue a JSON array of operations to perform on this memory. Available ops: merge, promote, prune, tag, adjust_confidence, task.\n\n"
+                    "Rules:\n"
+                    "- Merge entries that are redundant or say the same thing from different agents. Write merged_content that synthesizes both.\n"
+                    "- Promote entries that are stable, high-signal, and likely to remain true.\n"
+                    "- Prune entries that are superseded, low-signal, or contradicted by higher-confidence entries.\n"
+                    "- Use tag/adjust_confidence to surface connections or correct signal strength.\n"
+                    "- Create tasks ONLY for work requiring an external agent — never for memory operations.\n"
+                    "- When in doubt about an operation, omit it. Conservatism is correct.\n"
+                    "- Output ONLY the JSON array. No prose, no explanation, no markdown fences."
                 ),
                 max_tokens=2048,
             )
@@ -249,43 +369,8 @@ async def run_synthesis(client: ArtelClient) -> None:
     if not text:
         return
 
-    tags = list({e.get("project") for e in entries if e.get("project")} | {"synthesis"})
-    await client.write_memory(content=text, type="doc", tags=tags)
-
-    await _act_on_synthesis(text, entries, client)
-
-
-async def _act_on_synthesis(text: str, entries: list[dict], client: ArtelClient) -> None:
-    actions_section = ""
-    in_actions = False
-    for line in text.splitlines():
-        if line.strip().startswith("### Recommended Actions"):
-            in_actions = True
-            continue
-        if in_actions:
-            if line.startswith("### "):
-                break
-            if line.strip().startswith("- "):
-                actions_section += line.strip()[2:].strip() + "\n"
-
-    if not actions_section.strip():
-        return
-
-    project = next((e.get("project") for e in entries if e.get("project")), None)
-    for line in actions_section.strip().splitlines():
-        action = line.strip()
-        if not action:
-            continue
-        try:
-            await client.create_task(
-                title=action[:120],
-                description="Identified by archivist synthesis. Review synthesis doc in shared memory.",
-                priority="medium",
-                project=project,
-            )
-            log.info("archivist created task from synthesis: %s", action[:60])
-        except Exception as e:
-            log.warning("could not create synthesis action task: %s", e)
+    ops = _parse_operations(text)
+    await _execute_operations(ops, client, entries)
 
 
 async def decay_confidence(client: ArtelClient) -> None:
