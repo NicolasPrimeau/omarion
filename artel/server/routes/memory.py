@@ -47,12 +47,14 @@ async def write_memory(
     confidence = 1.0 if body.type == "directive" else body.confidence
     entry_id = new_id()
     vec = embed(body.content)
+    now = datetime.now(UTC).isoformat()
 
     event_id = new_id()
     with db:
         db.execute(
             """INSERT INTO memory (id, type, agent_id, project, scope, content,
-               confidence, parents, tags, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?)""",
+               confidence, parents, tags, expires_at, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 entry_id,
                 body.type,
@@ -64,6 +66,8 @@ async def write_memory(
                 json.dumps(body.parents),
                 json.dumps(body.tags),
                 body.expires_at,
+                now,
+                now,
             ),
         )
         db.execute(
