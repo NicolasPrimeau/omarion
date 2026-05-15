@@ -531,16 +531,18 @@ pre{
     flex-wrap:wrap;height:auto;
     padding:6px 12px;gap:6px;
   }
+  /* Row 1: logo · stat · connect · icon */
+  .logo{order:1;flex-shrink:0}
   .h-div{display:none}
-  .h-select{max-width:none;flex:1;min-width:0}
+  .h-stat{order:2;margin-left:auto;flex-shrink:0}
+  .h-connect{order:3;flex-shrink:0}
+  .h-icon-btn{order:4;flex-shrink:0}
+  /* Force line break before selects */
+  header::after{content:'';order:5;flex-basis:100%;height:0}
+  /* Row 2: selects full width */
+  #h-agent-sel{order:6;flex:1;min-width:0;max-width:none}
+  #h-project{order:7;flex:1;min-width:0;max-width:none}
   .spacer{display:none}
-  .h-stat{order:10;margin-left:auto}
-  .h-connect{order:11;margin-left:auto}
-  .h-icon-btn{order:12}
-  .logo,.h-div,#h-agent-sel,#h-project{width:auto}
-  #h-agent-sel,#h-project{flex:1 1 120px}
-  .h-stat,.h-connect,.h-icon-btn{flex-shrink:0}
-  .logo{flex-shrink:0}
   .nav{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .nav-btn{flex-shrink:0}
   .panel{padding:12px 14px}
@@ -554,7 +556,6 @@ pre{
   #toast-stack{right:12px;left:12px;align-items:stretch}
   .toast{max-width:100%}
   .toolbar > input{flex-basis:100%}
-  .h-connect-btn{max-width:110px;overflow:hidden;text-overflow:ellipsis}
 }
 </style>
 </head>
