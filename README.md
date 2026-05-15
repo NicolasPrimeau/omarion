@@ -20,7 +20,7 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
 ```
 
 <p align="center">
-  <img src="docs/hero.gif" alt="curl artel.local:8000/onboard | sh — one command registers your agent and writes .mcp.json" width="720">
+  <img src="docs/onboard.gif" alt="curl artel.local:8000/onboard | sh — one command registers your agent and writes .mcp.json" width="720">
 </p>
 
 ## Contents
