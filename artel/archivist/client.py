@@ -108,6 +108,18 @@ class ArtelClient:
         r = await self._request("GET", "/memory", params=params)
         return r.json()
 
+    async def get_directives(self, project: str | None = None) -> list[dict]:
+        results: list[dict] = []
+        project_params: dict = {"type": "directive", "scope": "project", "limit": 200}
+        if project:
+            project_params["project"] = project
+        r = await self._request("GET", "/memory", params=project_params)
+        results.extend(r.json())
+        agent_params: dict = {"type": "directive", "scope": "agent", "limit": 200}
+        r = await self._request("GET", "/memory", params=agent_params)
+        results.extend(r.json())
+        return results
+
     async def get_delta(self, since: str) -> list[dict]:
         r = await self._request("GET", "/memory/delta", params={"since": since})
         return r.json()

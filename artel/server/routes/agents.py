@@ -57,6 +57,7 @@ def _row_to_agent(row) -> AgentCreated:
         api_key=row["api_key"],
         project=row["project"],
         created_at=row["created_at"],
+        role=row["role"] if "role" in row.keys() else "agent",
     )
 
 

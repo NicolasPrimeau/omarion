@@ -81,10 +81,11 @@ async def lifespan(app: FastAPI):
     row = db.execute("SELECT 1 FROM agents WHERE id=?", (settings.ui_agent_id,)).fetchone()
     if not row:
         db.execute(
-            "INSERT INTO agents (id, api_key) VALUES (?, ?)",
+            "INSERT INTO agents (id, api_key, role) VALUES (?, ?, 'owner')",
             (settings.ui_agent_id, secrets.token_urlsafe(32)),
         )
-        db.commit()
+    db.execute("UPDATE agents SET role='owner' WHERE id=?", (settings.ui_agent_id,))
+    db.commit()
     mdns = MDNSService(settings.port)
     try:
         await mdns.start()
@@ -292,13 +293,13 @@ async def ui(request: Request):
         return RedirectResponse("/ui/login")
     aid = settings.ui_agent_id
     akey = settings.ui_agent_key()
-    if not akey:
-        row = get_db().execute("SELECT api_key FROM agents WHERE id=?", (aid,)).fetchone()
-        if row:
-            akey = row["api_key"]
+    agent_row = get_db().execute("SELECT api_key, role FROM agents WHERE id=?", (aid,)).fetchone()
+    if not akey and agent_row:
+        akey = agent_row["api_key"]
+    agent_role = agent_row["role"] if agent_row else "agent"
     regkey = settings.registration_key
     html = _UI.read_text().replace(
         "/*CREDS*/",
-        f"window._aid={json.dumps(aid)};window._akey={json.dumps(akey)};window._regkey={json.dumps(regkey)};",
+        f"window._aid={json.dumps(aid)};window._akey={json.dumps(akey)};window._regkey={json.dumps(regkey)};window._ui_agent_id={json.dumps(aid)};window._agent_role={json.dumps(agent_role)};",
     )
     return HTMLResponse(html)

@@ -26,8 +26,10 @@ async def list_participants(agent_id: str = Depends(require_agent)):
             last_seen[row["agent_id"]] = max(row["ts"], prev) if prev else row["ts"]
 
     projects: dict[str, str | None] = {}
-    for row in db.execute("SELECT id, project FROM agents").fetchall():
+    roles: dict[str, str] = {}
+    for row in db.execute("SELECT id, project, role FROM agents").fetchall():
         projects[row["id"]] = row["project"]
+        roles[row["id"]] = row["role"]
     for key, aid in settings.api_keys().items():
         if aid not in projects:
             parts = key.split(":")
@@ -43,6 +45,7 @@ async def list_participants(agent_id: str = Depends(require_agent)):
             last_seen=ts,
             project=projects.get(aid),
             active_task_id=active_tasks.get(aid),
+            role=roles.get(aid, "agent"),
         )
         for aid, ts in sorted(last_seen.items())
     ]

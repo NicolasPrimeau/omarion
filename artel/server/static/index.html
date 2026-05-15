@@ -35,6 +35,9 @@
   --purple: #d3869b;
   --p-bg:   rgba(211,134,155,.10);
   --p-bord: rgba(211,134,155,.30);
+  --blue:   #83a598;
+  --bl-bg:  rgba(131,165,152,.10);
+  --bl-bord:rgba(131,165,152,.30);
   --mono:   'JetBrains Mono',ui-monospace,'Cascadia Code','Fira Code',monospace;
   --r:      4px;
   --hh:     44px;
@@ -283,6 +286,8 @@ button.icon-btn{width:24px;height:24px;padding:0;font-size:12px}
 .card.red:hover{box-shadow:0 2px 12px rgba(255,77,106,.1)}
 .card.purple{border-left-color:var(--purple)}
 .card.purple:hover{box-shadow:0 2px 12px rgba(160,122,255,.1)}
+.card.blue  {border-left-color:var(--blue)}
+.card.blue:hover{box-shadow:0 2px 12px rgba(131,165,152,.15)}
 
 /* ── Meta row ─────────────────────────── */
 .meta{
@@ -299,11 +304,13 @@ button.icon-btn{width:24px;height:24px;padding:0;font-size:12px}
   font:600 10px var(--mono);letter-spacing:.3px;
   text-transform:uppercase;flex-shrink:0;
 }
-.pill.memory {background:var(--a-bg);color:var(--accent);border:1px solid var(--a-bord)}
-.pill.doc    {background:var(--p-bg);color:var(--purple);border:1px solid var(--p-bord)}
-.pill.scratch{background:var(--s3);color:var(--t3);border:1px solid var(--b2)}
-.pill.private{background:var(--r-bg);color:var(--red);border:1px solid var(--r-bord)}
-.pill.project{background:var(--o-bg);color:var(--orange);border:1px solid var(--o-bord)}
+.pill.memory   {background:var(--a-bg);color:var(--accent);border:1px solid var(--a-bord)}
+.pill.doc      {background:var(--p-bg);color:var(--purple);border:1px solid var(--p-bord)}
+.pill.directive{background:var(--bl-bg);color:var(--blue);border:1px solid var(--bl-bord)}
+.pill.scratch  {background:var(--s3);color:var(--t3);border:1px solid var(--b2)}
+.pill.private  {background:var(--r-bg);color:var(--red);border:1px solid var(--r-bord)}
+.pill.project  {background:var(--o-bg);color:var(--orange);border:1px solid var(--o-bord)}
+.pill.owner    {background:var(--a-bg);color:var(--accent);border:1px solid var(--a-bord)}
 .tag{
   padding:2px 7px;border-radius:3px;
   font:11px var(--mono);color:var(--t3);
@@ -579,6 +586,7 @@ pre{
       <option value="">all types</option>
       <option>memory</option>
       <option>doc</option>
+      <option>directive</option>
       <option>scratch</option>
     </select>
     <button onclick="search()">search</button>
@@ -588,7 +596,7 @@ pre{
     <textarea id="mc" placeholder="write a memory entry… (ctrl+enter to save)" rows="3"></textarea>
     <div class="write-row">
       <input id="mtags" placeholder="tags (comma-separated)" style="flex:1">
-      <select id="mtype"><option>memory</option><option>doc</option><option>scratch</option></select>
+      <select id="mtype"><option>memory</option><option>doc</option></select>
       <select id="mscope"><option value="project">project</option><option value="agent">private</option></select>
       <button class="p" onclick="writeMem()">write</button>
     </div>
@@ -837,6 +845,11 @@ function onAgentChange(){
 }
 
 async function init(){
+  if(window._agent_role==='owner'){
+    const opt=document.createElement('option');
+    opt.value='directive';opt.textContent='directive';
+    $('mtype').appendChild(opt);
+  }
   await Promise.all([loadProjectsHeader(),loadAgentsGlobal()]);
   loadMem();checkInbox();setInterval(checkInbox,30000);
 }
@@ -914,6 +927,8 @@ async function search(){
 
 function confClass(c){return c<0.4?'very-low':c<0.7?'low':''}
 
+function _typeOrder(t){return t==='directive'?0:t==='doc'?1:2}
+
 function renderMem(es,isSearch=false){
   const hdr=$('mem-section-header'),cnt=$('mem-count');
   if(!es.length){
@@ -924,17 +939,20 @@ function renderMem(es,isSearch=false){
   hdr.style.display='flex';
   hdr.querySelector('.section-label').textContent=isSearch?'results':'entries';
   cnt.textContent=es.length;
-  $('mlist').innerHTML=es.map(e=>{
+  const sorted=[...es].sort((a,b)=>_typeOrder(a.type)-_typeOrder(b.type));
+  $('mlist').innerHTML=sorted.map(e=>{
     const pct=Math.round(e.confidence*100);
     const cc=confClass(e.confidence);
     const scope=e.scope==='agent'?`<span class="pill private">private</span>`:'';
     const tags=e.tags.map(t=>`<span class="tag">${esc(t)}</span>`).join(' ');
     const proj=e.project?`<span class="pill project">${esc(e.project)}</span>`:'';
-    const accent=e.type==='doc'?'purple':e.type==='scratch'?'':'accent';
+    const isDirective=e.type==='directive';
+    const cardClass=isDirective?'blue':e.type==='doc'?'purple':e.type==='scratch'?'':'accent';
+    const headerPrefix=isDirective?'🔒 ':'';
     const isLong=e.content.length>500;
-    return `<div class="card ${accent}" id="mc-${e.id}">
+    return `<div class="card ${cardClass}" id="mc-${e.id}">
       <div class="meta">
-        <span class="meta-agent">${esc(e.agent_id)}</span>
+        <span class="meta-agent">${headerPrefix}${esc(e.agent_id)}</span>
         <span class="pill ${e.type}">${e.type}</span>
         ${proj}${scope}${tags}
         <span class="meta-time" title="${e.updated_at}">${relTime(e.updated_at)}</span>
@@ -948,11 +966,11 @@ function renderMem(es,isSearch=false){
           <button class="sm" onclick="cancelEditMem('${e.id}')">cancel</button>
         </div>
       </div>
-      <div class="conf-row">
+      ${isDirective?'':`<div class="conf-row">
         <div class="conf-bar"><div class="conf-fill ${cc}" style="width:${pct}%"></div></div>
         <span class="conf-label">${pct}% conf${e.version>1?` · v${e.version}`:''}${e.parents?.length?` · ${e.parents.length} parent${e.parents.length>1?'s':''}`:''}
         </span>
-      </div>
+      </div>`}
       <div class="card-actions">
         ${isLong?`<button class="sm" id="mexp-${e.id}" onclick="toggleMemExpand('${e.id}')">show more</button>`:''}
         <button class="sm" onclick="startEditMem('${e.id}')">edit</button>
@@ -1250,8 +1268,9 @@ async function loadAgents(){
       const active=seenMs&&(now-seenMs)<300000;
       const projs=(agentProjects[p.agent_id]||[]).map(n=>`<span class="pill project">${esc(n)}</span>`).join(' ');
       const isSelf=p.agent_id===window._aid;
+      const ownerPill=p.role==='owner'?` <span class="pill owner">owner</span>`:'';
       return `<div class="ac${active?' active':''}">
-        <div class="ac-name"><span class="dot"></span>${esc(p.agent_id)}${isSelf?` <span style="color:var(--t4);font-size:10px">(you)</span>`:''}</div>
+        <div class="ac-name"><span class="dot"></span>${esc(p.agent_id)}${ownerPill}${isSelf?` <span style="color:var(--t4);font-size:10px">(you)</span>`:''}</div>
         <div class="ac-meta">
           <span title="${p.last_seen||''}">last seen ${relTime(p.last_seen)}</span>
           ${projs?`<span style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${projs}</span>`:''}

@@ -426,6 +426,7 @@ async def memory_write(
     Types:
     - memory: default — use this for everything
     - doc: stable reference material; normally written by the archivist, not agents
+    - directive: a standing instruction that governs archivist behavior fleet-wide; requires elevated permission (the UI agent has it by default); confidence is always forced to 1.0
 
     Scopes:
     - project: visible to all members of this project (default)

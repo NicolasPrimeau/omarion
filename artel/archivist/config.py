@@ -14,6 +14,7 @@ class ArchivistSettings(BaseSettings):
     archivist_base_url: str = ""
     synthesis_interval: int = 3600
     conflict_threshold: float = 0.92
+    directive_conflict_threshold: float = 0.85
     decay_rate: float = 0.9
     decay_floor: float = 0.05
     decay_window_days: int = 7

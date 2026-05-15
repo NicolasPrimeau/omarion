@@ -33,6 +33,15 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if "expected_outcome" not in task_cols:
         conn.execute("ALTER TABLE tasks ADD COLUMN expected_outcome TEXT NOT NULL DEFAULT ''")
         conn.commit()
+    mem_cols = {r[1] for r in conn.execute("PRAGMA table_info(memory)").fetchall()}
+    if "expires_at" not in mem_cols:
+        conn.execute("ALTER TABLE memory ADD COLUMN expires_at TEXT")
+        conn.commit()
+    if "role" not in agent_cols:
+        conn.execute(
+            "ALTER TABLE agents ADD COLUMN role TEXT NOT NULL DEFAULT 'agent' CHECK (role IN ('owner', 'agent'))"
+        )
+        conn.commit()
 
 
 def _init_vec_table(conn: sqlite3.Connection) -> None:

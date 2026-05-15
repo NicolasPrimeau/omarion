@@ -8,7 +8,7 @@ def new_id() -> str:
     return str(uuid.uuid4())
 
 
-EntryType = Literal["memory", "doc"]
+EntryType = Literal["memory", "doc", "directive"]
 Scope = Literal["agent", "project"]
 TaskStatus = Literal["open", "claimed", "completed", "failed"]
 TaskCommentKind = Literal["comment", "claim", "unclaim", "complete", "fail"]
@@ -23,6 +23,7 @@ class MemoryWrite(BaseModel):
     confidence: float = Field(default=1.0, ge=0.0, le=1.0)
     parents: list[str] = []
     tags: list[str] = []
+    expires_at: str | None = None
 
 
 class MemoryPatch(BaseModel):
@@ -47,6 +48,7 @@ class MemoryEntry(BaseModel):
     created_at: str
     updated_at: str
     version: int
+    expires_at: str | None = None
 
 
 class TaskCreate(BaseModel):
@@ -133,6 +135,7 @@ class Participant(BaseModel):
     last_seen: str | None
     project: str | None = None
     active_task_id: str | None = None
+    role: str = "agent"
 
 
 class AgentRegister(BaseModel):
@@ -154,6 +157,7 @@ class AgentCreated(BaseModel):
     api_key: str
     project: str | None = None
     created_at: str
+    role: str = "agent"
     mcp_config: dict | None = None
 
 

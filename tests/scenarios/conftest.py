@@ -34,6 +34,26 @@ class Scenario:
             self._agents[agent_id] = AgentHandle(agent_id, http)
         return self._agents[agent_id]
 
+    async def owner_agent(self) -> AgentHandle:
+        import artel.server.config as cfg_mod
+        import artel.store.db as db_mod
+
+        uid = cfg_mod.settings.ui_agent_id
+        if uid not in self._agents:
+            r = await self._admin.post("/agents/register", json={"agent_id": uid})
+            r.raise_for_status()
+            api_key = r.json()["api_key"]
+            db = db_mod.get_db()
+            db.execute("UPDATE agents SET role='owner' WHERE id=?", (uid,))
+            db.commit()
+            http = AsyncClient(
+                transport=self._transport,
+                base_url="http://test",
+                headers={"x-agent-id": uid, "x-api-key": api_key},
+            )
+            self._agents[uid] = AgentHandle(uid, http)
+        return self._agents[uid]
+
     async def admin_delete(self, agent_id: str) -> None:
         r = await self._admin.delete(f"/agents/{agent_id}")
         r.raise_for_status()

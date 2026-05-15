@@ -18,6 +18,9 @@ async def check_and_merge(entry_id: str, client: ArtelClient) -> None:
     if entry.get("agent_id") == settings.archivist_id:
         return
 
+    if entry.get("type") == "directive":
+        return
+
     similar = await client.search_memory(entry["content"], limit=6, max_distance=_MAX_DISTANCE)
 
     conflicts = [

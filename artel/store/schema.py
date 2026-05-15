@@ -7,12 +7,13 @@ CREATE TABLE IF NOT EXISTS agents (
     api_key       TEXT NOT NULL UNIQUE,
     project       TEXT,
     created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
-    last_seen_at  TEXT
+    last_seen_at  TEXT,
+    role          TEXT NOT NULL DEFAULT 'agent' CHECK (role IN ('owner', 'agent'))
 );
 
 CREATE TABLE IF NOT EXISTS memory (
     id          TEXT PRIMARY KEY,
-    type        TEXT NOT NULL CHECK (type IN ('memory','doc')),
+    type        TEXT NOT NULL CHECK (type IN ('memory','doc','directive')),
     agent_id    TEXT NOT NULL,
     project     TEXT,
     scope       TEXT NOT NULL DEFAULT 'project' CHECK (scope IN ('agent','project')),
@@ -23,7 +24,8 @@ CREATE TABLE IF NOT EXISTS memory (
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     version     INTEGER NOT NULL DEFAULT 1,
-    deleted_at  TEXT
+    deleted_at  TEXT,
+    expires_at  TEXT
 );
 
 CREATE TABLE IF NOT EXISTS tasks (

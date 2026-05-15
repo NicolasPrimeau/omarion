@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import math
 from datetime import UTC, datetime, timedelta
 
 from .client import ArtelClient
@@ -7,6 +8,68 @@ from .config import settings
 from .llm import complete, is_configured
 
 log = logging.getLogger(__name__)
+
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    mag_a = math.sqrt(sum(x * x for x in a))
+    mag_b = math.sqrt(sum(x * x for x in b))
+    if mag_a == 0.0 or mag_b == 0.0:
+        return 0.0
+    return dot / (mag_a * mag_b)
+
+
+def _build_directive_preamble(directives: list[dict]) -> str:
+    if not directives:
+        return ""
+    lines = ["--- STANDING DIRECTIVES ---"]
+    for i, d in enumerate(directives, 1):
+        scope_label = (
+            "agent-private"
+            if d.get("scope") == "agent"
+            else f"project: {d.get('project') or 'global'}"
+        )
+        lines.append(f"[{i}] ({scope_label}) {d['content']}")
+    lines.append("--- END DIRECTIVES ---")
+    return "\n".join(lines)
+
+
+async def _check_directive_conflicts(directives: list[dict], client: ArtelClient) -> str | None:
+    if len(directives) < 2:
+        return None
+    threshold = settings.directive_conflict_threshold
+    from artel.store.embeddings import embed
+
+    embeddings = []
+    for d in directives:
+        try:
+            embeddings.append(embed(d["content"]))
+        except Exception:
+            embeddings.append([0.0] * 384)
+    for i in range(len(directives)):
+        for j in range(i + 1, len(directives)):
+            sim = _cosine_similarity(embeddings[i], embeddings[j])
+            if sim >= threshold:
+                warning = (
+                    f"WARNING: Directives [{i + 1}] and [{j + 1}] may conflict "
+                    f"(similarity={sim:.2f}). Review and reconcile."
+                )
+                try:
+                    from artel.server.config import settings as server_settings
+
+                    await client.send_message(
+                        to=server_settings.ui_agent_id,
+                        subject="Directive conflict detected",
+                        body=(
+                            f"Two standing directives have high similarity ({sim:.2f}) and may conflict:\n\n"
+                            f"[{i + 1}] {directives[i]['content']}\n\n"
+                            f"[{j + 1}] {directives[j]['content']}"
+                        ),
+                    )
+                except Exception as e:
+                    log.warning("could not send directive conflict message: %s", e)
+                return warning
+    return None
 
 
 def _utc_ago(hours: int) -> str:
@@ -92,8 +155,25 @@ async def run_synthesis(client: ArtelClient) -> None:
     if not is_configured():
         return
 
+    directives: list[dict] = []
+    try:
+        directives = await client.get_directives()
+    except Exception as e:
+        log.warning("could not load directives for synthesis: %s", e)
+
+    conflict_warning: str | None = None
+    if directives:
+        try:
+            conflict_warning = await _check_directive_conflicts(directives, client)
+        except Exception as e:
+            log.warning("directive conflict check failed: %s", e)
+
     entries = await client.get_delta(_utc_ago(24))
-    entries = [e for e in entries if e["agent_id"] != settings.archivist_id]
+    entries = [
+        e
+        for e in entries
+        if e["agent_id"] != settings.archivist_id and e.get("type") != "directive"
+    ]
 
     if len(entries) < 2:
         return
@@ -123,14 +203,19 @@ async def run_synthesis(client: ArtelClient) -> None:
         ]
         task_block = "\n\nCompleted tasks (last 24h):\n" + "\n".join(task_lines)
 
+    preamble = _build_directive_preamble(directives)
+    if conflict_warning:
+        preamble = conflict_warning + "\n\n" + preamble if preamble else conflict_warning
+
+    system_prompt = "You are the Artel archivist. Your role is to surface what no individual agent can see by synthesizing knowledge across the entire fleet."
+    if preamble:
+        system_prompt = preamble + "\n\n" + system_prompt
+
     text = None
     for attempt in range(3):
         try:
             text = await complete(
-                system=(
-                    "You are the Artel archivist. Your role is to surface what no individual agent "
-                    "can see by synthesizing knowledge across the entire fleet."
-                ),
+                system=system_prompt,
                 user=(
                     f"Agent memory activity (last 24h):\n\n{memory_block}"
                     f"{task_block}\n\n"
@@ -144,7 +229,11 @@ async def run_synthesis(client: ArtelClient) -> None:
                     "### Gaps\n"
                     "What appears unknown or underinvestigated. What questions remain unanswered?\n\n"
                     "### Recommended Actions\n"
-                    "Specific tasks or investigations that should happen. One per line, starting with `- `."
+                    "Specific tasks or investigations that should happen. One per line, starting with `- `.\n\n"
+                    "### Suggested Directives\n"
+                    "If you notice patterns or principles that warrant a standing directive, emit them as:\n"
+                    "DIRECTIVE SUGGESTION: <text of the directive>\n"
+                    "Only suggest directives for clear, persistent, fleet-wide behavioral rules. Omit this section if nothing warrants it."
                 ),
                 max_tokens=2048,
             )
@@ -204,7 +293,11 @@ async def decay_confidence(client: ArtelClient) -> None:
         "%Y-%m-%dT%H:%M:%S.000Z"
     )
     entries = await client.list_entries(updated_before=cutoff)
-    entries = [e for e in entries if e["agent_id"] != settings.archivist_id]
+    entries = [
+        e
+        for e in entries
+        if e["agent_id"] != settings.archivist_id and e.get("type") != "directive"
+    ]
 
     for entry in entries:
         current = entry["confidence"]
@@ -228,6 +321,8 @@ async def run_promotion(client: ArtelClient) -> None:
     )
     for entry in memory_entries:
         if entry["agent_id"] == settings.archivist_id:
+            continue
+        if entry.get("type") == "directive":
             continue
         try:
             await client.patch_memory(entry["id"], type="doc")

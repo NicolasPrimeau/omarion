@@ -53,6 +53,12 @@ async def require_registration_key(
         raise HTTPException(status_code=401, detail="invalid registration key")
 
 
+def is_owner(agent_id: str) -> bool:
+    db = get_db()
+    row = db.execute("SELECT role FROM agents WHERE id=?", (agent_id,)).fetchone()
+    return row is not None and row["role"] == "owner"
+
+
 def _memberships(agent_id: str) -> list[str] | None:
     if agent_id == settings.ui_agent_id:
         return None

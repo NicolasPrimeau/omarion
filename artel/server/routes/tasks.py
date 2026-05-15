@@ -4,7 +4,7 @@ import sqlite3
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from ...store.db import get_db
-from ..auth import _memberships, project_filter, require_agent
+from ..auth import _memberships, is_owner, project_filter, require_agent
 from ..models import (
     TaskAction,
     TaskComment,
@@ -173,7 +173,7 @@ async def unclaim_task(
         raise HTTPException(status_code=404, detail="not found")
     if row["status"] != "claimed":
         raise HTTPException(status_code=409, detail="task not claimed")
-    if row["assigned_to"] != agent_id:
+    if row["assigned_to"] != agent_id and not is_owner(agent_id):
         raise HTTPException(status_code=403, detail="forbidden")
     with db:
         db.execute(
@@ -203,7 +203,7 @@ async def complete_task(
         raise HTTPException(status_code=404, detail="not found")
     if row["status"] != "claimed":
         raise HTTPException(status_code=409, detail="task not claimed")
-    if row["assigned_to"] != agent_id:
+    if row["assigned_to"] != agent_id and not is_owner(agent_id):
         raise HTTPException(status_code=403, detail="forbidden")
     with db:
         db.execute(
@@ -272,7 +272,7 @@ async def fail_task(
         raise HTTPException(status_code=404, detail="not found")
     if row["status"] != "claimed":
         raise HTTPException(status_code=409, detail="task not claimed")
-    if row["assigned_to"] != agent_id:
+    if row["assigned_to"] != agent_id and not is_owner(agent_id):
         raise HTTPException(status_code=403, detail="forbidden")
     with db:
         db.execute(

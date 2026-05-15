@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.7.0] — 2026-05-15
+
+### Owner role
+- `role` column on agents table (`owner` | `agent`, default `agent`)
+- UI agent auto-promoted to `owner` on startup
+- Owner bypasses all ownership checks — memory patch/delete, task update/complete/fail/unclaim, agent rename/delete
+- `role` exposed on registration response and participants list
+
+### Directive entry type
+- New `entry_type="directive"` for standing instructions that shape agent and archivist behavior
+- Only `owner`-role agents can write directives
+- Directive confidence locked at `1.0` — never decayed, never synthesized, never promoted
+- Archivist loads directives as a preamble before synthesis, excluded from the synthesis pool
+- Archivist detects conflicting directives (embedding similarity) and messages the UI agent
+- Archivist emits `DIRECTIVE SUGGESTION:` lines in synthesis output — suggestions only, never auto-writes
+- `expires_at` nullable field on all memory entries
+- UI: directive cards in blue, pinned above docs and memories, lock icon prefix, write form gated to owner
+
+### Tests
+- 21 new scenario tests covering owner role, directive write gating, ownership bypass, and directive lifecycle
+
 ## [0.6.0] — 2026-05-15
 
 ### Feeds

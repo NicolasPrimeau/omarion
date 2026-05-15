@@ -132,3 +132,19 @@ class AgentHandle:
     async def delete_self(self) -> None:
         r = await self._http.delete("/agents/me")
         r.raise_for_status()
+
+    async def write_memory_raw(self, payload: dict) -> tuple[int, dict]:
+        r = await self._http.post("/memory", json=payload)
+        return r.status_code, r.json()
+
+    async def update_memory_raw(self, entry_id: str, payload: dict) -> tuple[int, dict]:
+        r = await self._http.patch(f"/memory/{entry_id}", json=payload)
+        return r.status_code, r.json()
+
+    async def delete_memory_raw(self, entry_id: str) -> int:
+        r = await self._http.delete(f"/memory/{entry_id}")
+        return r.status_code
+
+    async def complete_task_raw(self, task_id: str) -> tuple[int, dict]:
+        r = await self._http.post(f"/tasks/{task_id}/complete")
+        return r.status_code, r.json()

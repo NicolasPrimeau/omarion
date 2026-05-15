@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ...store.db import get_db
 from ...store.embeddings import embed
-from ..auth import _memberships, project_filter, require_agent
+from ..auth import _memberships, is_owner, project_filter, require_agent
 from ..broadcast import broadcast
 from ..models import EventEntry, MemoryEntry, MemoryPatch, MemoryWrite, new_id
 
@@ -14,6 +14,7 @@ router = APIRouter(prefix="/memory", tags=["memory"])
 
 
 def _row_to_entry(row: sqlite3.Row) -> MemoryEntry:
+    keys = row.keys()
     return MemoryEntry(
         id=row["id"],
         type=row["type"],
@@ -27,6 +28,7 @@ def _row_to_entry(row: sqlite3.Row) -> MemoryEntry:
         created_at=row["created_at"],
         updated_at=row["updated_at"],
         version=row["version"],
+        expires_at=row["expires_at"] if "expires_at" in keys else None,
     )
 
 
@@ -36,10 +38,13 @@ async def write_memory(
     agent_id: str = Depends(require_agent),
 ):
     db = get_db()
+    if body.type == "directive" and not is_owner(agent_id):
+        raise HTTPException(status_code=403, detail="directive writes require elevated permission")
     if body.project:
         allowed = _memberships(agent_id)
         if allowed is not None and body.project not in allowed:
             raise HTTPException(status_code=403, detail="not a member of this project")
+    confidence = 1.0 if body.type == "directive" else body.confidence
     entry_id = new_id()
     vec = embed(body.content)
 
@@ -47,7 +52,7 @@ async def write_memory(
     with db:
         db.execute(
             """INSERT INTO memory (id, type, agent_id, project, scope, content,
-               confidence, parents, tags) VALUES (?,?,?,?,?,?,?,?,?)""",
+               confidence, parents, tags, expires_at) VALUES (?,?,?,?,?,?,?,?,?,?)""",
             (
                 entry_id,
                 body.type,
@@ -55,9 +60,10 @@ async def write_memory(
                 body.project,
                 body.scope,
                 body.content,
-                body.confidence,
+                confidence,
                 json.dumps(body.parents),
                 json.dumps(body.tags),
+                body.expires_at,
             ),
         )
         db.execute(
@@ -258,11 +264,11 @@ async def patch_memory(
     if not row:
         raise HTTPException(status_code=404, detail="not found")
 
-    is_owner = row["agent_id"] == agent_id
+    is_entry_owner = row["agent_id"] == agent_id or is_owner(agent_id)
     wants_owner_fields = any(
         f is not None for f in (body.content, body.tags, body.scope, body.project)
     )
-    if not is_owner and wants_owner_fields:
+    if not is_entry_owner and wants_owner_fields:
         raise HTTPException(status_code=403, detail="forbidden")
 
     updates: dict = {}
@@ -321,7 +327,7 @@ async def delete_memory(
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
-    if row["agent_id"] != agent_id:
+    if row["agent_id"] != agent_id and not is_owner(agent_id):
         raise HTTPException(status_code=403, detail="forbidden")
     with db:
         db.execute(
