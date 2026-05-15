@@ -185,6 +185,7 @@ nav::-webkit-scrollbar{display:none}
   display:flex;gap:8px;margin-bottom:14px;
   align-items:center;flex-wrap:wrap;
 }
+.toolbar-search{flex:1;min-width:120px}
 .toolbar-label{
   font:500 11px var(--mono);color:var(--t4);
   letter-spacing:.4px;margin-left:auto;
@@ -558,7 +559,7 @@ pre{
   .pill.owner,.pill.directive{flex-shrink:0}
   #toast-stack{right:12px;left:12px;align-items:stretch}
   .toast{max-width:100%}
-  .toolbar > input{flex:1 1 100% !important;min-width:0 !important}
+  .toolbar-search{flex-basis:100%;min-width:0}
   .write-row > input,.write-row > select{min-width:0}
   pre{overflow-x:auto}
 }
@@ -608,7 +609,7 @@ pre{
 <!-- MEMORY -->
 <div id="panel-memory" class="panel on">
   <div class="toolbar">
-    <input id="q" placeholder="semantic search…" style="flex:1;min-width:120px" onkeydown="if(event.key==='Enter')search()">
+    <input id="q" class="toolbar-search" placeholder="semantic search…" onkeydown="if(event.key==='Enter')search()">
     <select id="q-type" style="width:110px" onchange="search()">
       <option value="">all types</option>
       <option>memory</option>
