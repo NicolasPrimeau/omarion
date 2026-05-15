@@ -112,7 +112,7 @@ def record(out_cast, max_total=480):
         env["TERM"] = "xterm-256color"
         env["COLUMNS"] = str(COLS)
         env["LINES"] = str(ROWS)
-        env["PS1"] = r"\[\e[32m\]\u@\h\[\e[0m\]:\[\e[34m\]\W\[\e[0m\]\$ "
+        env["PS1"] = r"\[\e[32m\]user@poseidon\[\e[0m\]:\[\e[34m\]\W\[\e[0m\]\$ "
         env["AGENT_ID"] = "demo-user"
         if ARTEL_REG_KEY:
             env["ARTEL_REG_KEY"] = ARTEL_REG_KEY
