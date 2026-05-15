@@ -10,7 +10,7 @@ from .llm import complete, is_configured
 
 log = logging.getLogger(__name__)
 
-_KNOWN_OPS = {"merge", "promote", "prune", "tag", "adjust_confidence", "task"}
+_KNOWN_OPS = {"merge", "promote", "prune", "tag", "adjust_confidence", "task", "split", "extract"}
 
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
@@ -156,8 +156,18 @@ async def _execute_operations(ops: list[dict], client: ArtelClient, entries: lis
                 if eid not in valid_ids:
                     log.warning("prune op references hallucinated ID: %s", eid)
                     continue
-                await client.delete_memory(eid)
-                log.info("archivist pruned entry %s", eid)
+                entry = entries_by_id[eid]
+                current_conf = entry.get("confidence", 1.0)
+                if current_conf <= settings.decay_floor:
+                    await client.delete_memory(eid)
+                    log.info("archivist pruned entry %s", eid)
+                else:
+                    existing_tags = entry.get("tags", [])
+                    merged_tags = list(set(existing_tags) | {"archivist-flagged"})
+                    await client.patch_memory(
+                        eid, confidence=settings.decay_floor, tags=merged_tags
+                    )
+                    log.info("archivist flagged entry %s for decay", eid)
 
             elif op_name == "tag":
                 eid = op.get("entry")
@@ -179,6 +189,54 @@ async def _execute_operations(ops: list[dict], client: ArtelClient, entries: lis
                 confidence = max(0.0, min(1.0, float(op.get("confidence", 1.0))))
                 await client.patch_memory(eid, confidence=confidence)
                 log.info("archivist adjusted confidence of %s to %s", eid, confidence)
+
+            elif op_name == "split":
+                eid = op.get("entry")
+                if eid not in valid_ids:
+                    log.warning("split op references hallucinated ID: %s", eid)
+                    continue
+                parts = op.get("parts", [])
+                if len(parts) < 2:
+                    log.warning("split op requires at least 2 parts, got %d", len(parts))
+                    continue
+                if any(not (p.get("content") or "").strip() for p in parts):
+                    log.warning("split op has part with empty content")
+                    continue
+                original = entries_by_id[eid]
+                original_tags = original.get("tags", [])
+                original_project = original.get("project")
+                original_type = original.get("type", "memory")
+                for part in parts:
+                    part_tags = list(set(original_tags) | set(part.get("tags", [])))
+                    await client.write_memory(
+                        content=part["content"],
+                        type=original_type,
+                        tags=part_tags,
+                        parents=[eid],
+                        project=original_project,
+                    )
+                await client.delete_memory(eid)
+                log.info("archivist split entry %s into %d parts", eid, len(parts))
+
+            elif op_name == "extract":
+                from_id = op.get("from")
+                into_id = op.get("into")
+                if from_id not in valid_ids or into_id not in valid_ids:
+                    log.warning(
+                        "extract op references hallucinated IDs: from=%s into=%s", from_id, into_id
+                    )
+                    continue
+                if from_id == into_id:
+                    log.warning("extract op from and into are the same ID: %s", from_id)
+                    continue
+                merged_content = op.get("merged_content", "")
+                remaining_content = op.get("remaining_content", "")
+                await client.patch_memory(into_id, content=merged_content)
+                if remaining_content and remaining_content.strip():
+                    await client.patch_memory(from_id, content=remaining_content)
+                else:
+                    await client.delete_memory(from_id)
+                log.info("archivist extracted segment from %s into %s", from_id, into_id)
 
             elif op_name == "task":
                 title = op.get("title", "")
@@ -345,11 +403,22 @@ async def run_synthesis(client: ArtelClient) -> None:
                     f"Memory entries written or updated in the last 24h:\n\n{memory_block}"
                     f"{task_block}\n\n"
                     "Directives are in the system prompt. Follow them above all else.\n\n"
-                    "Issue a JSON array of operations to perform on this memory. Available ops: merge, promote, prune, tag, adjust_confidence, task.\n\n"
+                    "Issue a JSON array of operations to perform on this memory. Available ops: merge, promote, prune, tag, adjust_confidence, task, split, extract.\n\n"
+                    "Op schemas:\n"
+                    '- {"op": "merge", "entries": ["<id>", "<id>", ...], "merged_content": "<synthesized text>"}\n'
+                    '- {"op": "promote", "entry": "<id>"}\n'
+                    '- {"op": "prune", "entry": "<id>"}\n'
+                    '- {"op": "tag", "entry": "<id>", "add_tags": ["<tag>", ...]}\n'
+                    '- {"op": "adjust_confidence", "entry": "<id>", "confidence": <0.0-1.0>}\n'
+                    '- {"op": "task", "title": "<title>", "description": "<desc>", "priority": "low|normal|high", "project": "<project|null>"}\n'
+                    '- {"op": "split", "entry": "<id>", "parts": [{"content": "...", "tags": [...]}, ...]}\n'
+                    '- {"op": "extract", "from": "<id>", "into": "<id>", "extracted_content": "<segment moved>", "remaining_content": "<what stays in from, empty to delete>", "merged_content": "<into rewritten with extracted segment>"}\n\n'
                     "Rules:\n"
                     "- Merge entries that are redundant or say the same thing from different agents. Write merged_content that synthesizes both.\n"
                     "- Promote entries that are stable, high-signal, and likely to remain true.\n"
-                    "- Prune entries that are superseded, low-signal, or contradicted by higher-confidence entries.\n"
+                    "- Prune entries that are superseded, duplicated, or low-signal. If confidence is already at floor, they will be deleted. Otherwise they are flagged for decay.\n"
+                    "- Split entries that cover multiple unrelated topics into focused entries. Each part must be self-contained. Minimum 2 parts.\n"
+                    "- Extract a segment from one entry and fold it into another when partial content belongs with a different entry. Set remaining_content to empty string to delete the source after extraction.\n"
                     "- Use tag/adjust_confidence to surface connections or correct signal strength.\n"
                     "- Create tasks ONLY for work requiring an external agent — never for memory operations.\n"
                     "- When in doubt about an operation, omit it. Conservatism is correct.\n"

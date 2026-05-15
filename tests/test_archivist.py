@@ -168,6 +168,18 @@ class TestParseOperations:
         ops = _parse_operations(text)
         assert len(ops) == 1
 
+    def test_split_op_accepted(self):
+        text = '[{"op": "split", "entry": "abc123", "parts": [{"content": "part one", "tags": ["a"]}, {"content": "part two", "tags": ["b"]}]}]'
+        ops = _parse_operations(text)
+        assert len(ops) == 1
+        assert ops[0]["op"] == "split"
+
+    def test_extract_op_accepted(self):
+        text = '[{"op": "extract", "from": "src-id", "into": "dst-id", "extracted_content": "segment", "remaining_content": "rest", "merged_content": "combined"}]'
+        ops = _parse_operations(text)
+        assert len(ops) == 1
+        assert ops[0]["op"] == "extract"
+
     def test_all_known_ops_accepted(self):
         text = (
             "["
@@ -176,11 +188,13 @@ class TestParseOperations:
             '{"op": "prune", "entry": "d"},'
             '{"op": "tag", "entry": "e", "add_tags": ["x"]},'
             '{"op": "adjust_confidence", "entry": "f", "confidence": 0.5},'
-            '{"op": "task", "title": "Do work", "priority": "low"}'
+            '{"op": "task", "title": "Do work", "priority": "low"},'
+            '{"op": "split", "entry": "g", "parts": [{"content": "x"}, {"content": "y"}]},'
+            '{"op": "extract", "from": "h", "into": "i", "extracted_content": "s", "remaining_content": "r", "merged_content": "m"}'
             "]"
         )
         ops = _parse_operations(text)
-        assert len(ops) == 6
+        assert len(ops) == 8
 
 
 class TestExecuteOperations:
@@ -275,12 +289,30 @@ class TestExecuteOperations:
         await _execute_operations(ops, client, entries)
         assert client.write_memory.call_args.kwargs["project"] is None
 
-    async def test_prune_deletes_entry(self):
+    async def test_prune_high_confidence_flags_not_deletes(self):
         entries = self._make_entries()
         client = self._make_client()
-        ops = [{"op": "prune", "entry": "cccc-3333"}]
-        await _execute_operations(ops, client, entries)
+        with patch("artel.archivist.synthesis.settings") as mock_settings:
+            mock_settings.decay_floor = 0.05
+            ops = [{"op": "prune", "entry": "cccc-3333"}]
+            await _execute_operations(ops, client, entries)
+        client.delete_memory.assert_not_called()
+        client.patch_memory.assert_called_once()
+        call_kwargs = client.patch_memory.call_args
+        assert call_kwargs.args[0] == "cccc-3333"
+        assert call_kwargs.kwargs["confidence"] == 0.05
+        assert "archivist-flagged" in call_kwargs.kwargs["tags"]
+
+    async def test_prune_at_floor_deletes(self):
+        entries = self._make_entries()
+        entries[2]["confidence"] = 0.05
+        client = self._make_client()
+        with patch("artel.archivist.synthesis.settings") as mock_settings:
+            mock_settings.decay_floor = 0.05
+            ops = [{"op": "prune", "entry": "cccc-3333"}]
+            await _execute_operations(ops, client, entries)
         client.delete_memory.assert_called_once_with("cccc-3333")
+        client.patch_memory.assert_not_called()
 
     async def test_promote_patches_type_to_doc(self):
         entries = self._make_entries()
@@ -369,13 +401,15 @@ class TestExecuteOperations:
     async def test_one_op_failure_does_not_abort_batch(self):
         entries = self._make_entries()
         client = self._make_client()
-        client.delete_memory = AsyncMock(side_effect=Exception("network error"))
-        ops = [
-            {"op": "prune", "entry": "aaaa-1111"},
-            {"op": "promote", "entry": "bbbb-2222"},
-        ]
-        await _execute_operations(ops, client, entries)
-        client.patch_memory.assert_called_once_with("bbbb-2222", type="doc")
+        client.patch_memory = AsyncMock(side_effect=Exception("network error"))
+        with patch("artel.archivist.synthesis.settings") as mock_settings:
+            mock_settings.decay_floor = 0.05
+            ops = [
+                {"op": "prune", "entry": "aaaa-1111"},
+                {"op": "promote", "entry": "bbbb-2222"},
+            ]
+            await _execute_operations(ops, client, entries)
+        assert client.patch_memory.call_count == 2
 
     async def test_empty_ops_list(self):
         entries = self._make_entries()
@@ -385,6 +419,102 @@ class TestExecuteOperations:
         client.delete_memory.assert_not_called()
         client.patch_memory.assert_not_called()
         client.create_task.assert_not_called()
+
+    async def test_split_writes_parts_deletes_original(self):
+        entries = self._make_entries()
+        client = self._make_client()
+        client.write_memory = AsyncMock(side_effect=[{"id": "new-1"}, {"id": "new-2"}])
+        ops = [
+            {
+                "op": "split",
+                "entry": "aaaa-1111",
+                "parts": [
+                    {"content": "part one content", "tags": ["part-a"]},
+                    {"content": "part two content", "tags": ["part-b"]},
+                ],
+            }
+        ]
+        await _execute_operations(ops, client, entries)
+        assert client.write_memory.call_count == 2
+        first_call = client.write_memory.call_args_list[0]
+        assert first_call.kwargs["content"] == "part one content"
+        assert "aaaa-1111" in first_call.kwargs["parents"]
+        assert "infra" in first_call.kwargs["tags"]
+        assert "part-a" in first_call.kwargs["tags"]
+        second_call = client.write_memory.call_args_list[1]
+        assert second_call.kwargs["content"] == "part two content"
+        assert "aaaa-1111" in second_call.kwargs["parents"]
+        assert "infra" in second_call.kwargs["tags"]
+        assert "part-b" in second_call.kwargs["tags"]
+        client.delete_memory.assert_called_once_with("aaaa-1111")
+
+    async def test_split_requires_two_parts(self):
+        entries = self._make_entries()
+        client = self._make_client()
+        ops = [
+            {
+                "op": "split",
+                "entry": "aaaa-1111",
+                "parts": [{"content": "only one part", "tags": []}],
+            }
+        ]
+        await _execute_operations(ops, client, entries)
+        client.write_memory.assert_not_called()
+        client.delete_memory.assert_not_called()
+
+    async def test_extract_rewrites_both(self):
+        entries = self._make_entries()
+        client = self._make_client()
+        ops = [
+            {
+                "op": "extract",
+                "from": "aaaa-1111",
+                "into": "bbbb-2222",
+                "extracted_content": "the segment",
+                "remaining_content": "what stays in from",
+                "merged_content": "combined into content",
+            }
+        ]
+        await _execute_operations(ops, client, entries)
+        assert client.patch_memory.call_count == 2
+        patch_calls = {c.args[0]: c.kwargs for c in client.patch_memory.call_args_list}
+        assert patch_calls["bbbb-2222"]["content"] == "combined into content"
+        assert patch_calls["aaaa-1111"]["content"] == "what stays in from"
+        client.delete_memory.assert_not_called()
+
+    async def test_extract_deletes_from_when_remaining_empty(self):
+        entries = self._make_entries()
+        client = self._make_client()
+        ops = [
+            {
+                "op": "extract",
+                "from": "aaaa-1111",
+                "into": "bbbb-2222",
+                "extracted_content": "the segment",
+                "remaining_content": "",
+                "merged_content": "combined into content",
+            }
+        ]
+        await _execute_operations(ops, client, entries)
+        client.patch_memory.assert_called_once_with("bbbb-2222", content="combined into content")
+        client.delete_memory.assert_called_once_with("aaaa-1111")
+
+    async def test_extract_rejects_same_id(self):
+        entries = self._make_entries()
+        client = self._make_client()
+        ops = [
+            {
+                "op": "extract",
+                "from": "aaaa-1111",
+                "into": "aaaa-1111",
+                "extracted_content": "segment",
+                "remaining_content": "rest",
+                "merged_content": "merged",
+            }
+        ]
+        await _execute_operations(ops, client, entries)
+        client.patch_memory.assert_not_called()
+        client.delete_memory.assert_not_called()
 
 
 class TestRunSynthesisStructured:
@@ -455,9 +585,15 @@ class TestRunSynthesisStructured:
         ):
             mock_settings.archivist_id = "archivist"
             mock_settings.directive_conflict_threshold = 0.85
+            mock_settings.decay_floor = 0.05
             await synthesis.run_synthesis(client)
 
-        client.delete_memory.assert_called_once_with("entry-beta")
+        client.delete_memory.assert_not_called()
+        client.patch_memory.assert_called_once()
+        patch_kwargs = client.patch_memory.call_args
+        assert patch_kwargs.args[0] == "entry-beta"
+        assert patch_kwargs.kwargs["confidence"] == 0.05
+        assert "archivist-flagged" in patch_kwargs.kwargs["tags"]
         client.write_memory.assert_not_called()
 
     async def test_run_synthesis_empty_ops_no_side_effects(self):

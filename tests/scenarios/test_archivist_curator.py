@@ -109,7 +109,7 @@ async def arch_scenario(scenario):
     await http.aclose()
 
 
-async def _run_synthesis_mocked(client, llm_response: str):
+async def _run_synthesis_mocked(client, llm_response: str, decay_floor: float = 0.05):
     with (
         patch("artel.archivist.synthesis.is_configured", return_value=True),
         patch("artel.archivist.synthesis.settings") as mock_settings,
@@ -117,6 +117,7 @@ async def _run_synthesis_mocked(client, llm_response: str):
     ):
         mock_settings.archivist_id = ARCHIVIST_ID
         mock_settings.directive_conflict_threshold = 0.85
+        mock_settings.decay_floor = decay_floor
         await run_synthesis(client)
 
 
@@ -175,7 +176,7 @@ async def test_curator_prune_op(arch_scenario):
     agent_b = await scenario.agent("pruner-b")
 
     mem_keep = await agent_a.write_memory("Stable fact that should survive")
-    mem_prune = await agent_b.write_memory("Stale and superseded finding")
+    mem_prune = await agent_b.write_memory("Stale and superseded finding", confidence=0.05)
 
     llm_response = f'[{{"op":"prune","entry":"{mem_prune["id"]}"}}]'
     await _run_synthesis_mocked(arch_client, llm_response)
@@ -373,3 +374,122 @@ async def test_curator_directives_loaded_as_preamble(arch_scenario):
     assert "--- STANDING DIRECTIVES ---" in system_prompt
     assert "always tag security findings with sec-critical" in system_prompt
     assert "--- END DIRECTIVES ---" in system_prompt
+
+
+async def test_curator_split_op(arch_scenario):
+    scenario, arch_client, arch_http = arch_scenario
+
+    agent_a = await scenario.agent("split-a")
+    agent_b = await scenario.agent("split-b")
+
+    mem = await agent_a.write_memory(
+        "Python is used for the backend. Postgres is used for storage.", tags=["tech"]
+    )
+    await agent_b.write_memory("Second entry to satisfy two-entry threshold")
+
+    llm_response = (
+        f'[{{"op":"split","entry":"{mem["id"]}",'
+        f'"parts":['
+        f'{{"content":"Python is used for the backend","tags":["backend"]}},'
+        f'{{"content":"Postgres is used for storage","tags":["storage"]}}'
+        f"]}}]"
+    )
+    await _run_synthesis_mocked(arch_client, llm_response)
+
+    all_entries = await agent_a.list_memory()
+    ids = [e["id"] for e in all_entries]
+    assert mem["id"] not in ids
+
+    archivist_entries = [e for e in all_entries if e.get("agent_id") == ARCHIVIST_ID]
+    assert len(archivist_entries) == 2
+    for entry in archivist_entries:
+        assert mem["id"] in entry.get("parents", [])
+        assert "tech" in entry.get("tags", [])
+
+
+async def test_curator_extract_op_with_remaining(arch_scenario):
+    scenario, arch_client, arch_http = arch_scenario
+
+    agent_a = await scenario.agent("extract-a")
+    agent_b = await scenario.agent("extract-b")
+
+    mem_from = await agent_a.write_memory("API uses REST. DB uses WAL mode.", tags=["infra"])
+    mem_into = await agent_b.write_memory("DB is Postgres.", tags=["db"])
+
+    llm_response = (
+        f'[{{"op":"extract",'
+        f'"from":"{mem_from["id"]}",'
+        f'"into":"{mem_into["id"]}",'
+        f'"extracted_content":"DB uses WAL mode.",'
+        f'"remaining_content":"API uses REST.",'
+        f'"merged_content":"DB is Postgres and uses WAL mode."}}]'
+    )
+    await _run_synthesis_mocked(arch_client, llm_response)
+
+    updated_from = await agent_a.get_memory(mem_from["id"])
+    assert updated_from["content"] == "API uses REST."
+
+    updated_into = await agent_b.get_memory(mem_into["id"])
+    assert updated_into["content"] == "DB is Postgres and uses WAL mode."
+
+
+async def test_curator_extract_op_deletes_source(arch_scenario):
+    scenario, arch_client, arch_http = arch_scenario
+
+    agent_a = await scenario.agent("extract-del-a")
+    agent_b = await scenario.agent("extract-del-b")
+
+    mem_from = await agent_a.write_memory("Entire content belongs elsewhere.", tags=["misc"])
+    mem_into = await agent_b.write_memory("Target entry.", tags=["core"])
+
+    llm_response = (
+        f'[{{"op":"extract",'
+        f'"from":"{mem_from["id"]}",'
+        f'"into":"{mem_into["id"]}",'
+        f'"extracted_content":"Entire content belongs elsewhere.",'
+        f'"remaining_content":"",'
+        f'"merged_content":"Target entry. Entire content belongs elsewhere."}}]'
+    )
+    await _run_synthesis_mocked(arch_client, llm_response)
+
+    all_entries = await agent_a.list_memory()
+    ids = [e["id"] for e in all_entries]
+    assert mem_from["id"] not in ids
+
+    updated_into = await agent_b.get_memory(mem_into["id"])
+    assert updated_into["content"] == "Target entry. Entire content belongs elsewhere."
+
+
+async def test_curator_prune_flags_high_confidence(arch_scenario):
+    scenario, arch_client, arch_http = arch_scenario
+
+    agent_a = await scenario.agent("flag-a")
+    agent_b = await scenario.agent("flag-b")
+
+    mem = await agent_a.write_memory("Entry with high confidence", confidence=0.8)
+    await agent_b.write_memory("Second entry to satisfy two-entry threshold")
+
+    llm_response = f'[{{"op":"prune","entry":"{mem["id"]}"}}]'
+    await _run_synthesis_mocked(arch_client, llm_response)
+
+    updated = await agent_a.get_memory(mem["id"])
+    assert abs(updated["confidence"] - 0.05) < 0.001
+    assert "archivist-flagged" in updated.get("tags", [])
+
+
+async def test_curator_prune_deletes_at_floor(arch_scenario):
+    scenario, arch_client, arch_http = arch_scenario
+
+    agent_a = await scenario.agent("floor-del-a")
+    agent_b = await scenario.agent("floor-del-b")
+
+    mem_keep = await agent_a.write_memory("Stable entry that survives")
+    mem_del = await agent_b.write_memory("Entry already at decay floor", confidence=0.05)
+
+    llm_response = f'[{{"op":"prune","entry":"{mem_del["id"]}"}}]'
+    await _run_synthesis_mocked(arch_client, llm_response)
+
+    all_entries = await agent_a.list_memory()
+    ids = [e["id"] for e in all_entries]
+    assert mem_del["id"] not in ids
+    assert mem_keep["id"] in ids

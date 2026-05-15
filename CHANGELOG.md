@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.8.0] — 2026-05-15
+
+### Archivist — curator model
+
+The archivist is now a fully autonomous memory curator. Instead of writing prose synthesis documents, it runs a periodic LLM pass that outputs a structured JSON operation array and executes each operation directly on the memory store.
+
+**Operations:**
+- `merge` — synthesize two entries into one canonical record, delete both originals
+- `promote` — promote a memory entry to `doc` in place
+- `prune` — flag high-confidence entries for decay (lower to floor + tag `archivist-flagged`); hard-delete entries already at the decay floor
+- `tag` — add tags to an entry to surface connections
+- `adjust_confidence` — correct signal strength on an entry
+- `split` — break one entry covering multiple topics into focused sub-entries, each with the original as parent
+- `extract` — move a segment from one entry into another, rewriting both; deletes source if nothing remains
+- `task` — create a task only for work genuinely requiring an external agent
+
+Synthesis documents are gone. The memory store itself is the archivist's output.
+
+### Directives
+- Live DB migrated to allow `type='directive'` (was missing from CHECK constraint on running instance)
+
+### UI
+- Mobile: fixed 44px horizontal overflow in header bar — now wraps to two rows on narrow viewports
+- Mobile: nav tab bar scrollable horizontally, all tabs reachable at 375px
+- Mobile: owner badge and directive pill wrap cleanly in agent cards
+
+### Tests
+- 25 new tests: `split`, `extract`, conservative `prune` (unit + scenario)
+- Full scenario coverage of curator ops via mocked LLM
+
 ## [0.7.0] — 2026-05-15
 
 ### Owner role

@@ -409,7 +409,7 @@ pre{
 .ac.active:hover{box-shadow:0 2px 12px rgba(0,232,122,.1)}
 .ac-name{
   font:500 13px var(--mono);color:var(--t3);
-  margin-bottom:6px;display:flex;align-items:center;gap:7px;
+  margin-bottom:6px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;
 }
 .dot{
   width:7px;height:7px;border-radius:50%;
@@ -527,13 +527,32 @@ pre{
 
 /* ── Mobile ───────────────────────────── */
 @media(max-width:600px){
-  header{padding:0 12px;gap:8px}
-  .h-select{max-width:110px}
+  header{
+    flex-wrap:wrap;height:auto;
+    padding:6px 12px;gap:6px;
+  }
+  .h-div{display:none}
+  .h-select{max-width:none;flex:1;min-width:0}
+  .spacer{display:none}
+  .h-stat{order:10}
+  .h-connect{order:11}
+  .h-icon-btn{order:12}
+  .logo,.h-div,#h-agent-sel,#h-project{width:auto}
+  #h-agent-sel,#h-project{flex:1 1 120px}
+  .h-stat,.h-connect,.h-icon-btn{flex-shrink:0}
+  .logo{flex-shrink:0}
+  .nav{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .nav-btn{flex-shrink:0}
   .panel{padding:12px 14px}
   .agent-grid,.proj-grid{grid-template-columns:1fr}
   input,select,textarea,button{font-size:14px}
   button{height:38px}
   button.sm{height:28px}
+  .meta-time{margin-left:0;white-space:normal}
+  .pill{flex-shrink:1;min-width:0}
+  .pill.owner,.pill.directive{flex-shrink:0}
+  #toast-stack{right:12px;left:12px;align-items:stretch}
+  .toast{max-width:100%}
 }
 </style>
 </head>
