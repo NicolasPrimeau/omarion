@@ -1,14 +1,13 @@
 #!/usr/bin/env python3
 """
 Record the full Artel onboarding demo:
-  1. claude (session 1, no artel) — user types: ! curl .../onboard | sh
-  2. onboard writes .mcp.json → "start a new Claude Code session to connect"
-  3. /exit → bash → claude (session 2, artel MCP loaded)
-  4. Claude joins project, writes memory, sends message, renames itself
+  1. bash: curl artel.local:8000/onboard?project=artel | sh  (registers agent, writes .mcp.json)
+  2. bash: claude --dangerously-skip-permissions  (Claude Code starts with artel MCP loaded)
+  3. Claude joins project, writes memory, sends message, renames itself
 
 Usage:
   ARTEL_REG_KEY=devkey python3 scripts/record_full_onboard.py [out.cast]
-  Then: agg out.cast docs/demo-2.gif --font-size 16 --theme monokai --speed 3 --last-frame-duration 5
+  Then: agg out.cast docs/onboard-3.gif --font-size 16 --theme monokai --speed 3 --last-frame-duration 5
 """
 
 import fcntl
@@ -31,8 +30,6 @@ ROWS = 30
 ARTEL_URL = "http://artel.local:8000"
 ARTEL_REG_KEY = os.environ.get("ARTEL_REG_KEY", "")
 ARTEL_PROJECT = "artel"
-
-ONBOARD_CMD = f"! curl -s '{ARTEL_URL}/onboard?project={ARTEL_PROJECT}' | sh"
 
 CLAUDE_PROMPT = (
     "Use ONLY the artel MCP tools — no other tools, no browser, no bash. "
@@ -87,7 +84,7 @@ def _dismiss_trust(data, trust_dismissed):
     return trust_dismissed
 
 
-def record(out_cast, max_total=600):
+def record(out_cast, max_total=480):
     tmpdir = tempfile.mkdtemp(prefix="artel-demo-")
     subprocess.run(["git", "init", "-q", tmpdir], check=True)
     subprocess.run(
@@ -142,17 +139,15 @@ def record(out_cast, max_total=600):
     trust_dismissed = False
 
     # States:
-    # 0  — wait bash prompt → start claude session 1 (no artel)
-    # 1  — wait claude1 ❯ → type ONBOARD_CMD (! curl ... | sh)
-    # 2  — wait "to connect" + ❯ in tail → type /exit
-    # 3  — wait bash prompt again → start claude session 2 (artel loaded)
-    # 4  — wait claude2 ❯ → send artel demo prompt
-    # 5  — wait claude2 done → state 6
-    # 6  — done
+    # 0 - wait bash prompt -> curl onboard
+    # 1 - wait onboard done -> launch claude
+    # 2 - wait claude ready -> send artel demo prompt
+    # 3 - wait claude done -> state 6
+    # 6 - done
     state = 0
     state_entered = time.time()
 
-    print(f"Recording → {out_cast}", flush=True)
+    print(f"Recording -> {out_cast}", flush=True)
 
     try:
         while time.time() - t0 < max_total and state != 6:
@@ -188,72 +183,47 @@ def record(out_cast, max_total=600):
 
             if state == 0:
                 if "$ " in text and in_state > 1.5:
-                    print(
-                        f"  [t={elapsed:.1f}s] bash ready — starting claude session 1", flush=True
-                    )
+                    print(f"  [t={elapsed:.1f}s] bash ready -- running onboard", flush=True)
                     time.sleep(0.5)
-                    send_keys(master, "claude --dangerously-skip-permissions", delay=0.07)
+                    send_keys(
+                        master,
+                        f"curl -s '{ARTEL_URL}/onboard?project={ARTEL_PROJECT}' | sh",
+                        delay=0.07,
+                    )
                     accumulated = b""
                     state = 1
                     state_entered = time.time()
 
             elif state == 1:
-                if "❯" in text and idle > 2.0:
-                    print(f"  [t={elapsed:.1f}s] claude1 ready — running onboard", flush=True)
-                    time.sleep(0.8)
-                    send_keys(master, ONBOARD_CMD, delay=0.06)
+                if "to connect" in text and idle > 1.5:
+                    print(f"  [t={elapsed:.1f}s] onboard done -- launching claude", flush=True)
+                    time.sleep(1.2)
+                    send_keys(master, "claude --dangerously-skip-permissions", delay=0.07)
                     accumulated = b""
                     state = 2
                     state_entered = time.time()
-                elif in_state > 60:
-                    print(f"  [t={elapsed:.1f}s] timeout waiting for claude1", flush=True)
+                elif in_state > 30:
+                    print(f"  [t={elapsed:.1f}s] timeout waiting for onboard", flush=True)
                     state = 6
 
             elif state == 2:
-                if "to connect" in text and "❯" in tail and idle > 2.5:
-                    print(f"  [t={elapsed:.1f}s] onboard done — exiting claude1", flush=True)
-                    time.sleep(1.5)
-                    send_keys(master, "/exit", delay=0.07)
-                    accumulated = b""
-                    state = 3
-                    trust_dismissed = False
-                    state_entered = time.time()
-                elif in_state > 60:
-                    print(f"  [t={elapsed:.1f}s] timeout waiting for onboard output", flush=True)
-                    state = 6
-
-            elif state == 3:
-                if "$ " in tail and idle > 1.5:
-                    print(
-                        f"  [t={elapsed:.1f}s] back to bash — starting claude session 2", flush=True
-                    )
-                    time.sleep(0.8)
-                    send_keys(master, "claude --dangerously-skip-permissions", delay=0.07)
-                    accumulated = b""
-                    state = 4
-                    state_entered = time.time()
-                elif in_state > 30:
-                    print(f"  [t={elapsed:.1f}s] timeout waiting for bash after exit", flush=True)
-                    state = 6
-
-            elif state == 4:
                 if "❯" in text and idle > 2.0:
-                    print(f"  [t={elapsed:.1f}s] claude2 ready — sending artel prompt", flush=True)
+                    print(f"  [t={elapsed:.1f}s] claude ready -- sending prompt", flush=True)
                     time.sleep(0.8)
                     send_keys(master, CLAUDE_PROMPT, delay=0.03)
                     accumulated = b""
-                    state = 5
+                    state = 3
                     state_entered = time.time()
                 elif in_state > 90:
-                    print(f"  [t={elapsed:.1f}s] timeout waiting for claude2", flush=True)
+                    print(f"  [t={elapsed:.1f}s] timeout waiting for claude", flush=True)
                     state = 6
 
-            elif state == 5:
+            elif state == 3:
                 if "❯" in tail and idle > 4 and in_state > 20:
-                    print(f"  [t={elapsed:.1f}s] claude2 done", flush=True)
+                    print(f"  [t={elapsed:.1f}s] claude done", flush=True)
                     state = 6
                 elif in_state > 150:
-                    print(f"  [t={elapsed:.1f}s] hard timeout — cutting", flush=True)
+                    print(f"  [t={elapsed:.1f}s] hard timeout -- cutting", flush=True)
                     state = 6
 
     finally:
@@ -284,7 +254,7 @@ def record(out_cast, max_total=600):
         shutil.rmtree(tmpdir, ignore_errors=True)
 
     if not events:
-        print("no events — aborting", flush=True)
+        print("no events -- aborting", flush=True)
         sys.exit(1)
 
     duration = events[-1][0]
@@ -293,7 +263,7 @@ def record(out_cast, max_total=600):
         "width": COLS,
         "height": ROWS,
         "timestamp": int(time.time()),
-        "title": "Artel — onboard and explore",
+        "title": "Artel -- onboard and explore",
         "env": {"SHELL": "/bin/bash", "TERM": "xterm-256color"},
         "duration": round(duration + 2.0, 4),
     }
@@ -303,7 +273,7 @@ def record(out_cast, max_total=600):
         for ev in events:
             f.write(json.dumps(list(ev)) + "\n")
 
-    print(f"  → {len(events)} events, {duration:.0f}s → {out_cast}", flush=True)
+    print(f"  -> {len(events)} events, {duration:.0f}s -> {out_cast}", flush=True)
 
 
 if __name__ == "__main__":
