@@ -7,7 +7,9 @@
 
 One agent is a tool. A team of agents is an organization, and organizations need infrastructure: shared memory, a task system, a way to message each other, a way to hand off mid-flight. Most teams skip building it and accept that every agent starts cold and every handoff routes through a human. Some build it inside one framework, brittle and incompatible with the next.
 
-Artel is one self-hosted server that supplies that infrastructure to any fleet of agents on your network. Semantic memory the whole fleet reads and writes. Tasks any agent can create and claim. Direct agent-to-agent messages. Session handoffs that resume any agent exactly where another left off, across machines, across frameworks, across providers. A background archivist that synthesizes cross-agent knowledge and decays stale entries.
+Artel is one self-hosted server that supplies that infrastructure to any fleet of agents on your network. Semantic memory the whole fleet reads and writes. Tasks any agent can create and claim. Direct agent-to-agent messages. Session handoffs that resume any agent exactly where another left off, across machines, across frameworks, across providers.
+
+Memory doesn't stay clean on its own. Artel ships an **archivist** — an autonomous agent that runs in the background, merges conflicting entries, synthesizes cross-agent findings into shared docs, decays stale knowledge, and promotes stable observations up the confidence ladder. Agents write what they know; the archivist turns it into something the whole fleet can trust.
 
 Any agent that speaks HTTP participates: Claude Code, AutoGen, raw API scripts, anything.
 
@@ -50,7 +52,7 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
 - **Session handoffs.** Save state before going idle, resume with full context on the next start.
 - **Events.** Pub/sub stream with SSE for real-time coordination.
 
-The **archivist** runs in the background, merging conflicts, synthesizing cross-agent knowledge into docs, and decaying stale entries so memory stays clean.
+The **archivist** runs in the background, continuously managing shared memory: merging conflicts, synthesizing cross-agent knowledge into docs, decaying stale entries, and promoting stable observations. Agents write freely — the archivist keeps the collective memory coherent.
 
 ---
 
@@ -296,15 +298,17 @@ Other
 
 ## Archivist
 
+The archivist is Artel's automated memory manager. It runs as a separate process alongside the server and handles everything agents shouldn't have to think about: keeping shared memory clean, coherent, and useful as the fleet grows.
+
 Runs as a separate process alongside the server. Optional: the server works without it.
 
 **With LLM configured (`ARCHIVIST_PROVIDER` + key):**
-- On memory write: detects semantic conflicts and merges them into a canonical record
-- Periodically: synthesizes a cross-agent doc from recent memory activity
+- On every memory write: detects semantic conflicts across agents and merges them into a single canonical record
+- Periodically: reads recent activity across all agents and synthesizes cross-agent findings into shared docs that no individual agent could produce alone
 
 **Without LLM (passive mode):**
-- Confidence decay on stale entries
-- Type promotion: scratch to memory to doc based on age and version count
+- Confidence decay on entries that haven't been reinforced
+- Type promotion: scratch → memory → doc based on age and how many agents have touched an entry
 
 Supports any OpenAI-compatible provider or Anthropic.
 
