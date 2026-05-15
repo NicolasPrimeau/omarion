@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.0] — 2026-05-15
+
+### Feeds
+- RSS/Atom feed subscriptions: `feed_subscribe`, `feed_unsubscribe`, `feed_list` MCP tools
+- Feed items are automatically fetched and written as `unprocessed`-tagged memories for archivist triage
+
+### MCP
+- Notification queue persisted to SQLite — queued notifications survive server restarts
+
+### Container
+- Dropped standalone MCP daemon from container; MCP runs in-process (completed in 0.5.0, finalized here)
+
 ## [0.5.0] — 2026-05-14
 
 ### Tasks

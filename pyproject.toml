@@ -1,6 +1,6 @@
 [project]
 name = "artel"
-version = "0.5.0"
+version = "0.6.0"
 description = "Harness-agnostic coordination layer for AI agents"
 readme = "README.md"
 license = { text = "MIT" }
