@@ -1,6 +1,6 @@
 [project]
 name = "artel"
-version = "0.1.0"
+version = "0.5.0"
 description = "Harness-agnostic coordination layer for AI agents"
 readme = "README.md"
 license = { text = "MIT" }
@@ -29,7 +29,6 @@ dependencies = [
     "uvicorn[standard]>=0.46.0",
     "zeroconf>=0.136.0",
     "python-jose>=3.3.0",
-    "supervisor>=4.3.0",
 ]
 
 [project.urls]
@@ -45,7 +44,6 @@ artel-mdns = "artel.server.mdns_announce:main"
 
 [dependency-groups]
 dev = [
-    "boto3>=1.43.2",
     "hatchling>=1.27.0",
     "httpx>=0.28.1",
     "pre-commit>=4.0.0",
