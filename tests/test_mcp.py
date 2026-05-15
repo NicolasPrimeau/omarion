@@ -260,3 +260,122 @@ async def test_agent_delete_removes_from_participants(mcp, monkeypatch):
     monkeypatch.setattr(mcp_mod, "_http", agent2_http)
     result = await mcp.agent_list()
     assert TEST_AGENT not in result
+
+
+# ── Notification queue persistence ───────────────────────────────────────────
+
+
+async def test_notification_queued_when_no_session(mcp):
+    import artel.store.db as db_mod
+
+    mcp._sessions.clear()
+    mcp._enqueue_notification(TEST_AGENT, "inbox: new message from otheragent")
+
+    row = (
+        db_mod.get_db()
+        .execute(
+            "SELECT message, delivered_at FROM mcp_notification_queue WHERE agent_id=?",
+            (TEST_AGENT,),
+        )
+        .fetchone()
+    )
+    assert row is not None
+    assert row["message"] == "inbox: new message from otheragent"
+    assert row["delivered_at"] is None
+
+
+async def test_flush_notifications_delivers_queued(mcp):
+    from unittest.mock import AsyncMock
+
+    import artel.store.db as db_mod
+
+    mcp._enqueue_notification(TEST_AGENT, "queued notification 1")
+    mcp._enqueue_notification(TEST_AGENT, "queued notification 2")
+
+    mock_session = AsyncMock()
+    await mcp._flush_notifications(TEST_AGENT, mock_session)
+
+    assert mock_session.send_log_message.call_count == 2
+    undelivered = (
+        db_mod.get_db()
+        .execute(
+            "SELECT id FROM mcp_notification_queue WHERE agent_id=? AND delivered_at IS NULL",
+            (TEST_AGENT,),
+        )
+        .fetchall()
+    )
+    assert len(undelivered) == 0
+
+
+async def test_flush_notifications_empty(mcp):
+    from unittest.mock import AsyncMock
+
+    mock_session = AsyncMock()
+    await mcp._flush_notifications(TEST_AGENT, mock_session)
+    mock_session.send_log_message.assert_not_called()
+
+
+async def test_deliver_notification_queues_when_no_session(mcp):
+    import artel.store.db as db_mod
+
+    mcp._sessions.clear()
+    await mcp._deliver_notification(TEST_AGENT, "inbox: new message from otheragent")
+
+    row = (
+        db_mod.get_db()
+        .execute("SELECT message FROM mcp_notification_queue WHERE agent_id=?", (TEST_AGENT,))
+        .fetchone()
+    )
+    assert row is not None
+    assert row["message"] == "inbox: new message from otheragent"
+
+
+async def test_deliver_notification_sends_live_when_session_present(mcp):
+    from unittest.mock import AsyncMock
+
+    import artel.store.db as db_mod
+
+    mock_session = AsyncMock()
+    mcp._sessions[TEST_AGENT] = mock_session
+    try:
+        await mcp._deliver_notification(TEST_AGENT, "live notification")
+        mock_session.send_log_message.assert_called_once_with("warning", "live notification")
+        row = (
+            db_mod.get_db()
+            .execute("SELECT id FROM mcp_notification_queue WHERE agent_id=?", (TEST_AGENT,))
+            .fetchone()
+        )
+        assert row is None
+    finally:
+        mcp._sessions.pop(TEST_AGENT, None)
+
+
+async def test_notification_queue_restart_survival(mcp):
+    """Simulate restart: notifications queued while sessions absent, flushed on reconnect."""
+    from unittest.mock import AsyncMock
+
+    import artel.store.db as db_mod
+
+    mcp._sessions.clear()
+
+    await mcp._deliver_notification(TEST_AGENT, "inbox: new message from otheragent")
+
+    mock_session = AsyncMock()
+    mcp._sessions[TEST_AGENT] = mock_session
+    try:
+        await mcp._flush_notifications(TEST_AGENT, mock_session)
+
+        mock_session.send_log_message.assert_called_once_with(
+            "warning", "inbox: new message from otheragent"
+        )
+        row = (
+            db_mod.get_db()
+            .execute(
+                "SELECT delivered_at FROM mcp_notification_queue WHERE agent_id=?", (TEST_AGENT,)
+            )
+            .fetchone()
+        )
+        assert row is not None
+        assert row["delivered_at"] is not None
+    finally:
+        mcp._sessions.pop(TEST_AGENT, None)

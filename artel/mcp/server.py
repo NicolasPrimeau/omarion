@@ -2,7 +2,9 @@ import asyncio
 import contextvars
 import json
 import logging
+import uuid
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -10,6 +12,7 @@ import mcp.types as mcp_types
 from mcp.server.fastmcp import FastMCP
 from mcp.server.session import ServerSession
 
+from ..store.db import get_db
 from .config import settings
 
 log = logging.getLogger(__name__)
@@ -51,6 +54,60 @@ async def _refresh_key(agent_id: str) -> str | None:
     return None
 
 
+def _utcnow() -> str:
+    dt = datetime.now(UTC)
+    return dt.strftime(f"%Y-%m-%dT%H:%M:%S.{dt.microsecond // 1000:03d}Z")
+
+
+def _enqueue_notification(agent_id: str, message: str) -> None:
+    try:
+        db = get_db()
+        db.execute(
+            "INSERT INTO mcp_notification_queue (id, agent_id, message) VALUES (?, ?, ?)",
+            (str(uuid.uuid4()), agent_id, message),
+        )
+        db.commit()
+    except Exception as e:
+        log.warning("failed to queue notification for %s: %s", agent_id, e)
+
+
+async def _flush_notifications(agent_id: str, session: ServerSession) -> None:
+    try:
+        db = get_db()
+        rows = db.execute(
+            "SELECT id, message FROM mcp_notification_queue "
+            "WHERE agent_id=? AND delivered_at IS NULL ORDER BY queued_at",
+            (agent_id,),
+        ).fetchall()
+        for row in rows:
+            try:
+                await session.send_log_message("warning", row["message"])
+                db.execute(
+                    "UPDATE mcp_notification_queue SET delivered_at=? WHERE id=?",
+                    (_utcnow(), row["id"]),
+                )
+                db.commit()
+            except Exception as e:
+                log.debug("flush failed for %s at %s: %s", agent_id, row["id"], e)
+                _sessions.pop(agent_id, None)
+                break
+    except Exception as e:
+        log.warning("flush_notifications error for %s: %s", agent_id, e)
+
+
+async def _gc_notification_queue() -> None:
+    while True:
+        await asyncio.sleep(3600)
+        try:
+            db = get_db()
+            cutoff_dt = datetime.now(UTC) - timedelta(hours=24)
+            cutoff = cutoff_dt.strftime(f"%Y-%m-%dT%H:%M:%S.{cutoff_dt.microsecond // 1000:03d}Z")
+            db.execute("DELETE FROM mcp_notification_queue WHERE queued_at < ?", (cutoff,))
+            db.commit()
+        except Exception as e:
+            log.warning("notification queue GC failed: %s", e)
+
+
 @asynccontextmanager
 async def _lifespan(app: "ArtelMCP"):
     global _notification_queue, _client
@@ -66,12 +123,14 @@ async def _lifespan(app: "ArtelMCP"):
     _notification_queue = asyncio.Queue()
     watcher = asyncio.create_task(_sse_watcher())
     sender = asyncio.create_task(_notification_sender())
+    gc = asyncio.create_task(_gc_notification_queue())
     try:
         yield
     finally:
         watcher.cancel()
         sender.cancel()
-        await asyncio.gather(watcher, sender, return_exceptions=True)
+        gc.cancel()
+        await asyncio.gather(watcher, sender, gc, return_exceptions=True)
         await _client.aclose()
 
 
@@ -98,10 +157,11 @@ class ArtelMCP(FastMCP):
     ) -> list[mcp_types.ContentBlock]:
         ctx = self.get_context()
         aid = _agent_id.get(settings.mcp_agent_id)
-        if ctx._request_context is not None:
+        has_session = ctx._request_context is not None
+        if has_session:
             _sessions[aid] = ctx._request_context.session
         try:
-            return await super().call_tool(name, arguments)
+            result = await super().call_tool(name, arguments)
         except _StaleKeyError:
             new_key = await _refresh_key(aid)
             if new_key:
@@ -114,6 +174,9 @@ class ArtelMCP(FastMCP):
                 "Artel rejected your API key (401). Credentials in .mcp.json are stale. "
                 f"Fix: curl {settings.artel_url.rstrip('/')}/onboard | sh  then /reload-plugins"
             )
+        if has_session:
+            await _flush_notifications(aid, _sessions[aid])
+        return result
 
 
 async def _sse_watcher():
@@ -155,23 +218,31 @@ async def _sse_watcher():
             delay = min(delay * 2, 60.0)
 
 
+async def _deliver_notification(to_agent: str, msg: str) -> None:
+    if to_agent == "broadcast":
+        targets = list(_sessions.items())
+    else:
+        s = _sessions.get(to_agent)
+        targets = [(to_agent, s)] if s else []
+    delivered = False
+    for aid, session in targets:
+        try:
+            await session.send_log_message("warning", msg)
+            delivered = True
+        except Exception as e:
+            log.debug("notification failed for %s, dropping session: %s", aid, e)
+            _sessions.pop(aid, None)
+    if not delivered and to_agent != "broadcast":
+        _enqueue_notification(to_agent, msg)
+
+
 async def _notification_sender():
     while True:
         if _notification_queue is None:
             await asyncio.sleep(0.1)
             continue
         to_agent, msg = await _notification_queue.get()
-        if to_agent == "broadcast":
-            targets = list(_sessions.items())
-        else:
-            s = _sessions.get(to_agent)
-            targets = [(to_agent, s)] if s else []
-        for aid, session in targets:
-            try:
-                await session.send_log_message("warning", msg)
-            except Exception as e:
-                log.debug("notification failed for %s, dropping session: %s", aid, e)
-                _sessions.pop(aid, None)
+        await _deliver_notification(to_agent, msg)
 
 
 mcp = ArtelMCP(

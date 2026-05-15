@@ -129,4 +129,13 @@ CREATE TABLE IF NOT EXISTS ui_sessions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_ui_sessions_last_seen ON ui_sessions (last_seen_at);
+
+CREATE TABLE IF NOT EXISTS mcp_notification_queue (
+    id          TEXT PRIMARY KEY,
+    agent_id    TEXT NOT NULL,
+    message     TEXT NOT NULL,
+    queued_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    delivered_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_mcp_notif_agent ON mcp_notification_queue (agent_id, delivered_at);
 """
