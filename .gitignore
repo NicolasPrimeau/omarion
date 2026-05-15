@@ -23,3 +23,6 @@ scripts/sync_env_secrets.py
 *.db-wal
 *.db-shm
 .playwright-mcp/
+
+# Asciinema recordings (intermediate artifact; only the rendered .gif is shipped)
+*.cast
