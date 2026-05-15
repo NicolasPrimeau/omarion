@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
 Record the full Artel onboarding demo:
-  1. bash: curl artel.local:8000/onboard?project=artel | sh  (fresh agent registration)
-  2. bash: claude  (Claude Code starts)
-  3. user sends prompt asking Claude to explore Artel
-  4. Claude renames itself, joins a project, writes a memory, sends a message
+  1. claude (session 1, no artel) — user types: ! curl .../onboard | sh
+  2. onboard writes .mcp.json → "start a new Claude Code session to connect"
+  3. /exit → bash → claude (session 2, artel MCP loaded)
+  4. Claude joins project, writes memory, sends message, renames itself
 
 Usage:
   ARTEL_REG_KEY=devkey python3 scripts/record_full_onboard.py [out.cast]
-  Then: agg out.cast docs/onboard.gif --font-size 16 --theme monokai --speed 3 --last-frame-duration 5
+  Then: agg out.cast docs/demo.gif --font-size 16 --theme monokai --speed 3 --last-frame-duration 5
 """
 
 import fcntl
@@ -31,6 +31,8 @@ ROWS = 30
 ARTEL_URL = "http://artel.local:8000"
 ARTEL_REG_KEY = os.environ.get("ARTEL_REG_KEY", "")
 ARTEL_PROJECT = "artel"
+
+ONBOARD_CMD = f"! curl -s '{ARTEL_URL}/onboard?project={ARTEL_PROJECT}' | sh"
 
 CLAUDE_PROMPT = (
     "Use ONLY the artel MCP tools — no other tools, no browser, no bash. "
@@ -75,7 +77,17 @@ def _kill_group(pid):
             pass
 
 
-def record(out_cast, max_total=480):
+def _dismiss_trust(data, trust_dismissed):
+    if trust_dismissed:
+        return trust_dismissed
+    text = data.decode("utf-8", errors="replace")
+    if "trust" in text.lower() or ("enter" in text.lower() and "folder" in text.lower()):
+        time.sleep(0.3)
+        return True
+    return trust_dismissed
+
+
+def record(out_cast, max_total=600):
     tmpdir = tempfile.mkdtemp(prefix="artel-demo-")
     subprocess.run(["git", "init", "-q", tmpdir], check=True)
     subprocess.run(
@@ -129,15 +141,21 @@ def record(out_cast, max_total=480):
     accumulated = b""
     trust_dismissed = False
 
-    # States: 0=wait bash prompt, 1=wait onboard done, 2=wait claude prompt,
-    #         3=wait claude finish, 6=done
+    # States:
+    # 0  — wait bash prompt → start claude session 1 (no artel)
+    # 1  — wait claude1 ❯ → type ONBOARD_CMD (! curl ... | sh)
+    # 2  — wait "to connect" + ❯ in tail → type /exit
+    # 3  — wait bash prompt again → start claude session 2 (artel loaded)
+    # 4  — wait claude2 ❯ → send artel demo prompt
+    # 5  — wait claude2 done → state 6
+    # 6  — done
     state = 0
     state_entered = time.time()
 
     print(f"Recording → {out_cast}", flush=True)
 
     try:
-        while time.time() - t0 < max_total and state < 6:
+        while time.time() - t0 < max_total and state != 6:
             r, _, _ = select.select([master], [], [], 0.05)
             if r:
                 try:
@@ -153,71 +171,92 @@ def record(out_cast, max_total=480):
                                 os.write(master, resp)
                             except OSError:
                                 pass
-                    if not trust_dismissed:
-                        text = data.decode("utf-8", errors="replace")
-                        if "trust" in text.lower() or (
-                            "enter" in text.lower() and "folder" in text.lower()
-                        ):
-                            time.sleep(0.3)
-                            os.write(master, b"\r")
-                            trust_dismissed = True
+                    new_dismissed = _dismiss_trust(data, trust_dismissed)
+                    if new_dismissed and not trust_dismissed:
+                        os.write(master, b"\r")
+                        trust_dismissed = new_dismissed
                     accumulated += data
                     last_data = time.time()
                 except OSError:
                     break
-            # Check state after every iteration (data or idle) so timeouts fire
-            # even when Claude is continuously streaming output
+
             elapsed = time.time() - t0
             idle = time.time() - last_data
             in_state = time.time() - state_entered
             text = accumulated.decode("utf-8", errors="replace")
+            tail = text[-600:]
 
             if state == 0:
                 if "$ " in text and in_state > 1.5:
-                    print(f"  [t={elapsed:.1f}s] bash ready", flush=True)
-                    time.sleep(0.5)
-                    send_keys(
-                        master,
-                        f"curl -s '{ARTEL_URL}/onboard?project={ARTEL_PROJECT}' | sh",
-                        delay=0.04,
+                    print(
+                        f"  [t={elapsed:.1f}s] bash ready — starting claude session 1", flush=True
                     )
+                    time.sleep(0.5)
+                    send_keys(master, "claude --dangerously-skip-permissions", delay=0.07)
                     accumulated = b""
                     state = 1
                     state_entered = time.time()
 
             elif state == 1:
-                if "to connect" in text and idle > 1.5:
-                    print(f"  [t={elapsed:.1f}s] onboard done — launching claude", flush=True)
-                    time.sleep(1.2)
-                    send_keys(master, "claude --dangerously-skip-permissions", delay=0.06)
+                if "❯" in text and idle > 2.0:
+                    print(f"  [t={elapsed:.1f}s] claude1 ready — running onboard", flush=True)
+                    time.sleep(0.8)
+                    send_keys(master, ONBOARD_CMD, delay=0.06)
                     accumulated = b""
                     state = 2
                     state_entered = time.time()
+                elif in_state > 60:
+                    print(f"  [t={elapsed:.1f}s] timeout waiting for claude1", flush=True)
+                    state = 6
 
             elif state == 2:
-                if "❯" in text and idle > 2.0:
-                    print(f"  [t={elapsed:.1f}s] claude ready — sending prompt", flush=True)
-                    time.sleep(0.8)
-                    send_keys(master, CLAUDE_PROMPT, delay=0.03)
+                if "to connect" in text and "❯" in tail and idle > 2.5:
+                    print(f"  [t={elapsed:.1f}s] onboard done — exiting claude1", flush=True)
+                    time.sleep(1.5)
+                    send_keys(master, "/exit", delay=0.07)
                     accumulated = b""
                     state = 3
+                    trust_dismissed = False
                     state_entered = time.time()
                 elif in_state > 60:
-                    print(f"  [t={elapsed:.1f}s] timeout waiting for claude", flush=True)
+                    print(f"  [t={elapsed:.1f}s] timeout waiting for onboard output", flush=True)
                     state = 6
 
             elif state == 3:
-                # ❯ near end of buffer = claude returned to prompt after working
-                tail = text[-400:]
-                if "❯" in tail and idle > 4 and in_state > 20:
-                    print(f"  [t={elapsed:.1f}s] claude done (prompt returned)", flush=True)
+                if "$ " in tail and idle > 1.5:
+                    print(
+                        f"  [t={elapsed:.1f}s] back to bash — starting claude session 2", flush=True
+                    )
+                    time.sleep(0.8)
+                    send_keys(master, "claude --dangerously-skip-permissions", delay=0.07)
+                    accumulated = b""
+                    state = 4
+                    state_entered = time.time()
+                elif in_state > 30:
+                    print(f"  [t={elapsed:.1f}s] timeout waiting for bash after exit", flush=True)
                     state = 6
-                elif in_state > 120:
+
+            elif state == 4:
+                if "❯" in text and idle > 2.0:
+                    print(f"  [t={elapsed:.1f}s] claude2 ready — sending artel prompt", flush=True)
+                    time.sleep(0.8)
+                    send_keys(master, CLAUDE_PROMPT, delay=0.03)
+                    accumulated = b""
+                    state = 5
+                    state_entered = time.time()
+                elif in_state > 90:
+                    print(f"  [t={elapsed:.1f}s] timeout waiting for claude2", flush=True)
+                    state = 6
+
+            elif state == 5:
+                if "❯" in tail and idle > 4 and in_state > 20:
+                    print(f"  [t={elapsed:.1f}s] claude2 done", flush=True)
+                    state = 6
+                elif in_state > 150:
                     print(f"  [t={elapsed:.1f}s] hard timeout — cutting", flush=True)
                     state = 6
 
     finally:
-        # Kill first, then drain (avoids infinite drain while child is alive)
         print("  killing process group", flush=True)
         _kill_group(pid)
 
