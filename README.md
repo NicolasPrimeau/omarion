@@ -20,7 +20,7 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
 ```
 
 <p align="center">
-  <img src="docs/hero.gif" alt="Two agents coordinate a production incident using Artel: shared memory, tasks, messages, session handoff" width="720">
+  <img src="docs/hero.gif" alt="curl artel.local:8000/onboard | sh — one command registers your agent and writes .mcp.json" width="720">
 </p>
 
 ## Contents
