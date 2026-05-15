@@ -558,6 +558,16 @@ pre{
 .drawer-item:hover{background:var(--s2);color:var(--t1)}
 .drawer-item.on{color:var(--accent);background:var(--a-bg)}
 .drawer-footer{padding:8px 0;border-top:1px solid var(--b1)}
+.drawer-themes{padding:10px 20px 6px;border-bottom:1px solid var(--b1)}
+.drawer-themes-lbl{font:10px var(--mono);color:var(--t4);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px}
+.drawer-themes-row{display:flex;gap:8px}
+.theme-dot{
+  width:22px;height:22px;border-radius:50%;padding:0;min-width:0;
+  border:2px solid transparent;cursor:pointer;flex-shrink:0;
+  transition:transform .15s,border-color .15s;
+}
+.theme-dot:hover{transform:scale(1.2)}
+.theme-dot.active{border-color:var(--t1)}
 
 /* ── Mobile ───────────────────────────── */
 @media(max-width:600px){
@@ -565,7 +575,8 @@ pre{
     flex-wrap:wrap;height:auto;
     padding:6px 12px;gap:6px;
   }
-  /* Row 1: logo · stat · connect · icon */
+  /* Row 1: ☰ · logo · stat · connect · ⚙ */
+  .h-menu-btn{order:0;display:flex;flex-shrink:0}
   .logo{order:1;flex-shrink:0}
   .h-div{display:none}
   .h-stat{order:2;margin-left:auto;flex-shrink:0}
@@ -578,8 +589,6 @@ pre{
   #h-project{order:7;flex:1;min-width:0;max-width:none}
   .spacer{display:none}
   nav{display:none}
-  .h-menu-btn{display:flex}
-  .h-icon-btn:not(.h-menu-btn){display:none}
   .panel{padding:12px 14px}
   .agent-grid,.proj-grid{grid-template-columns:1fr}
   /* 16px prevents iOS auto-zoom on input focus */
@@ -644,7 +653,17 @@ pre{
     <button class="drawer-item" onclick="drawerTab('sessions')">sessions</button>
   </div>
   <div class="drawer-footer">
-    <button class="drawer-item" onclick="openProjectsModal();closeDrawer()" style="padding:10px 20px">⚙ projects</button>
+    <div class="drawer-themes">
+      <div class="drawer-themes-lbl">accent</div>
+      <div class="drawer-themes-row">
+        <button class="theme-dot active" style="background:#d79921" onclick="setAccent('amber',this)" title="amber"></button>
+        <button class="theme-dot" style="background:#00d4ff" onclick="setAccent('cyan',this)" title="cyan"></button>
+        <button class="theme-dot" style="background:#b8bb26" onclick="setAccent('green',this)" title="green"></button>
+        <button class="theme-dot" style="background:#d3869b" onclick="setAccent('purple',this)" title="purple"></button>
+        <button class="theme-dot" style="background:#fe8019" onclick="setAccent('orange',this)" title="orange"></button>
+      </div>
+    </div>
+    <button class="drawer-item" onclick="openProjectsModal();closeDrawer()">⚙ settings</button>
     <a class="drawer-item" href="/ui/logout" style="text-decoration:none">logout</a>
   </div>
 </div>
@@ -932,6 +951,37 @@ function openProjectsModal(){
 function closeProjectsModal(){
   $('projects-modal').classList.remove('open');
 }
+const _accents={
+  amber:{accent:'#d79921',bg:'rgba(215,153,33,.10)',bord:'rgba(215,153,33,.30)'},
+  cyan: {accent:'#00d4ff',bg:'rgba(0,212,255,.10)',  bord:'rgba(0,212,255,.30)'},
+  green:{accent:'#b8bb26',bg:'rgba(184,187,38,.10)', bord:'rgba(184,187,38,.30)'},
+  purple:{accent:'#d3869b',bg:'rgba(211,134,155,.10)',bord:'rgba(211,134,155,.30)'},
+  orange:{accent:'#fe8019',bg:'rgba(254,128,25,.10)', bord:'rgba(254,128,25,.30)'},
+};
+function setAccent(name,btn){
+  const t=_accents[name];if(!t)return;
+  const r=document.documentElement.style;
+  r.setProperty('--accent',t.accent);
+  r.setProperty('--a-bg',t.bg);
+  r.setProperty('--a-bord',t.bord);
+  document.querySelectorAll('.theme-dot').forEach(d=>d.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  try{localStorage.setItem('artel-accent',name);}catch(e){}
+}
+(function(){try{const n=localStorage.getItem('artel-accent');if(n&&_accents[n]){const b=document.querySelector(`.theme-dot[onclick*="'${n}'"]`);setAccent(n,b);}}catch(e){}}());
+let _swipeStartX=0,_swipeStartY=0;
+document.addEventListener('touchstart',e=>{
+  _swipeStartX=e.touches[0].clientX;
+  _swipeStartY=e.touches[0].clientY;
+},{passive:true});
+document.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-_swipeStartX;
+  const dy=Math.abs(e.changedTouches[0].clientY-_swipeStartY);
+  if(dy>40)return;
+  const open=$('drawer').classList.contains('open');
+  if(!open&&dx>60&&_swipeStartX<44)openDrawer();
+  else if(open&&dx<-60)closeDrawer();
+},{passive:true});
 
 function onProjectChange(){
   const p=document.querySelector('.panel.on');if(!p)return;
