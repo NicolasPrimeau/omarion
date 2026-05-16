@@ -167,10 +167,17 @@ nav{
 /* ── Side panel sections (shared by nav + drawer) ── */
 .panel-section{padding:12px 0;border-top:1px solid var(--b1)}
 .panel-section-lbl{
-  display:block;font:10px var(--mono);color:var(--t4);
+  display:flex;align-items:center;justify-content:space-between;
+  font:10px var(--mono);color:var(--t4);
   text-transform:uppercase;letter-spacing:.5px;
   padding:0 18px;margin-bottom:8px;
+  cursor:pointer;user-select:none;width:100%;
+  transition:color .15s;
 }
+.panel-section-lbl:hover{color:var(--t2)}
+.panel-section-lbl::after{content:'▾';font-size:9px;transition:transform .2s}
+.panel-section.collapsed .panel-section-lbl::after{transform:rotate(-90deg)}
+.panel-section.collapsed .panel-section-body{display:none}
 .panel-proj-row{display:flex;gap:4px;padding:0 12px;margin-bottom:6px}
 .panel-proj-row input{flex:1;min-width:0;height:28px;padding:0 8px;font-size:11px}
 .panel-proj-row button{height:28px;padding:0 8px}
@@ -827,9 +834,11 @@ pre{
       </div>
       <div id="drawer-pjlist"></div>
     </div>
-    <div class="panel-section">
-      <span class="panel-section-lbl">appearance</span>
-      <div class="panel-theme-grid" id="drawer-theme-row"></div>
+    <div class="panel-section" id="ps-appearance-drawer">
+      <span class="panel-section-lbl" onclick="toggleSection('ps-appearance-drawer')">appearance</span>
+      <div class="panel-section-body">
+        <div class="panel-theme-grid" id="drawer-theme-row"></div>
+      </div>
     </div>
   </div>
   <div class="drawer-footer">
@@ -859,9 +868,11 @@ pre{
       </div>
       <div id="sidebar-pjlist"></div>
     </div>
-    <div class="panel-section">
-      <span class="panel-section-lbl">appearance</span>
-      <div class="panel-theme-grid" id="sidebar-theme-row"></div>
+    <div class="panel-section" id="ps-appearance-sidebar">
+      <span class="panel-section-lbl" onclick="toggleSection('ps-appearance-sidebar')">appearance</span>
+      <div class="panel-section-body">
+        <div class="panel-theme-grid" id="sidebar-theme-row"></div>
+      </div>
     </div>
   </div>
   <div class="nav-footer">
@@ -1090,6 +1101,14 @@ function tab(name,btn){
   if(name==='sessions'){populateSessionAgents();loadSession();}
 }
 
+function toggleSection(id){
+  const el=$(id);if(!el)return;
+  el.classList.toggle('collapsed');
+  try{localStorage.setItem('artel-ps-'+id,el.classList.contains('collapsed')?'1':'0');}catch(e){}
+}
+(function(){['ps-appearance-sidebar','ps-appearance-drawer'].forEach(id=>{
+  try{if(localStorage.getItem('artel-ps-'+id)==='1'&&$(id))$(id).classList.add('collapsed');}catch(e){}
+});}());
 function openDrawer(){
   $('drawer').classList.add('open');
   $('drawer-overlay').classList.add('open');
