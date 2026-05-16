@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
 from ...store.db import get_db
-from ..auth import require_agent
+from ..auth import ReaderDep
 from ..config import settings
 from ..models import Participant
 
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/participants", tags=["participants"])
     response_model=list[Participant],
     summary="List all registered agents and last-seen timestamps",
 )
-async def list_participants(agent_id: str = Depends(require_agent)):
+async def list_participants(agent_id: str = ReaderDep):
     db = get_db()
     last_seen: dict[str, str | None] = {aid: None for aid in settings.api_keys().values()}
     for row in db.execute("SELECT id, last_seen_at FROM agents").fetchall():

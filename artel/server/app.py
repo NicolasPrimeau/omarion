@@ -78,13 +78,17 @@ button:hover{background:#3c3836}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db = get_db(settings.db_path)
-    row = db.execute("SELECT 1 FROM agents WHERE id=?", (settings.ui_agent_id,)).fetchone()
-    if not row:
-        db.execute(
-            "INSERT INTO agents (id, api_key, role) VALUES (?, ?, 'owner')",
-            (settings.ui_agent_id, secrets.token_urlsafe(32)),
-        )
-    db.execute("UPDATE agents SET role='owner' WHERE id=?", (settings.ui_agent_id,))
+    for special_id, special_role in (
+        (settings.ui_agent_id, "owner"),
+        (settings.archivist_agent_id, "archivist"),
+        (settings.viewer_agent_id, "viewer"),
+    ):
+        if not db.execute("SELECT 1 FROM agents WHERE id=?", (special_id,)).fetchone():
+            db.execute(
+                "INSERT INTO agents (id, api_key, role) VALUES (?, ?, ?)",
+                (special_id, secrets.token_urlsafe(32), special_role),
+            )
+        db.execute("UPDATE agents SET role=? WHERE id=?", (special_role, special_id))
     db.commit()
     mdns = MDNSService(settings.port)
     try:
@@ -289,15 +293,21 @@ async def logout(request: Request):
 
 @app.get("/ui", response_class=HTMLResponse, include_in_schema=False)
 async def ui(request: Request):
-    if not _authed(request):
-        return RedirectResponse("/ui/login")
-    aid = settings.ui_agent_id
-    akey = settings.ui_agent_key()
-    agent_row = get_db().execute("SELECT api_key, role FROM agents WHERE id=?", (aid,)).fetchone()
-    if not akey and agent_row:
-        akey = agent_row["api_key"]
-    agent_role = agent_row["role"] if agent_row else "agent"
-    regkey = settings.registration_key
+    db = get_db()
+    if _authed(request):
+        aid = settings.ui_agent_id
+        akey = settings.ui_agent_key()
+        agent_row = db.execute("SELECT api_key, role FROM agents WHERE id=?", (aid,)).fetchone()
+        if not akey and agent_row:
+            akey = agent_row["api_key"]
+        agent_role = agent_row["role"] if agent_row else "owner"
+        regkey = settings.registration_key
+    else:
+        aid = settings.viewer_agent_id
+        agent_row = db.execute("SELECT api_key, role FROM agents WHERE id=?", (aid,)).fetchone()
+        akey = agent_row["api_key"] if agent_row else ""
+        agent_role = agent_row["role"] if agent_row else "viewer"
+        regkey = ""
     html = _UI.read_text().replace(
         "/*CREDS*/",
         f"window._aid={json.dumps(aid)};window._akey={json.dumps(akey)};window._regkey={json.dumps(regkey)};window._ui_agent_id={json.dumps(aid)};window._agent_role={json.dumps(agent_role)};",

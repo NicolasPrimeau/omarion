@@ -4,7 +4,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 
 from ...store.db import get_db
-from ..auth import AgentDep, require_registration_key
+from ..auth import ActorDep, OwnerDep, ReaderDep, require_registration_key
 from ..config import settings
 from ..models import AgentCreated, AgentRegister, AgentRename, AgentSelfRegister
 from ..presence import update_seen
@@ -127,7 +127,7 @@ async def self_register(body: AgentSelfRegister, x_registration_key: str = Heade
 
 
 @router.get("/me", response_model=AgentCreated, summary="Get your own agent record")
-async def get_self(agent_id: str = AgentDep):
+async def get_self(agent_id: str = ReaderDep):
     db = get_db()
     row = db.execute("SELECT * FROM agents WHERE id=?", (agent_id,)).fetchone()
     if row:
@@ -139,7 +139,7 @@ async def get_self(agent_id: str = AgentDep):
 @router.patch(
     "/me", response_model=AgentCreated, summary="Rename yourself; cascades across all records"
 )
-async def rename_self(body: AgentRename, agent_id: str = AgentDep):
+async def rename_self(body: AgentRename, agent_id: str = ActorDep):
     new_id = body.new_id.strip()
     if not _valid_agent_id(new_id):
         raise HTTPException(status_code=422, detail="new_id must be alphanumeric with - or _")
@@ -159,7 +159,7 @@ async def rename_self(body: AgentRename, agent_id: str = AgentDep):
 
 
 @router.delete("/me", status_code=204, summary="Delete your own agent record")
-async def delete_self(agent_id: str = AgentDep):
+async def delete_self(agent_id: str = ActorDep):
     if agent_id in settings.api_keys().values():
         raise HTTPException(
             status_code=422,
@@ -177,8 +177,8 @@ async def delete_self(agent_id: str = AgentDep):
 @router.patch(
     "/{agent_id}",
     response_model=AgentCreated,
-    summary="Rename any agent (registration key required)",
-    dependencies=[Depends(require_registration_key)],
+    summary="Rename any agent (owner only)",
+    dependencies=[OwnerDep],
 )
 async def rename_agent(agent_id: str, body: AgentRename):
     new_id = body.new_id.strip()
@@ -199,8 +199,8 @@ async def rename_agent(agent_id: str, body: AgentRename):
 @router.delete(
     "/{agent_id}",
     status_code=204,
-    summary="Delete any agent (registration key required)",
-    dependencies=[Depends(require_registration_key)],
+    summary="Delete any agent (owner only)",
+    dependencies=[OwnerDep],
 )
 async def delete_agent(agent_id: str):
     if agent_id in settings.api_keys().values():
@@ -220,8 +220,8 @@ async def delete_agent(agent_id: str):
 @router.get(
     "",
     response_model=list[AgentCreated],
-    summary="List all agents (registration key required)",
-    dependencies=[Depends(require_registration_key)],
+    summary="List all agents (owner only)",
+    dependencies=[OwnerDep],
 )
 async def list_agents():
     db = get_db()

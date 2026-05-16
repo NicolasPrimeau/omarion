@@ -1068,7 +1068,8 @@ async function parseErr(r){
   try{const j=await r.json();return j.detail||JSON.stringify(j);}catch{return await r.text();}
 }
 async function adminReq(method,path,body){
-  const r=await fetch(path,{method,headers:{'content-type':'application/json','x-registration-key':window._regkey},body:body?JSON.stringify(body):undefined});
+  if(window._agent_role!=='owner')throw new Error('read-only: log in as owner to make changes');
+  const r=await fetch(path,{method,headers:hdrs(),body:body?JSON.stringify(body):undefined});
   if(!r.ok)throw new Error(await parseErr(r));
   return method==='DELETE'?null:r.json();
 }
@@ -1077,6 +1078,7 @@ function activeProject(){return $('h-project').value||null}
 function activeAgent(){return $('h-agent-sel').value||null}
 
 async function req(method,path,body){
+  if(window._agent_role==='viewer'&&method!=='GET')throw new Error('read-only: log in as owner to make changes');
   const r=await fetch(path,{method,headers:hdrs(),body:body?JSON.stringify(body):undefined});
   if(!r.ok)throw new Error(await parseErr(r));
   return method==='DELETE'?null:r.json();
@@ -1627,10 +1629,10 @@ async function loadAgents(){
           <span title="${p.last_seen||''}">last seen ${relTime(p.last_seen)}</span>
           ${projs?`<span style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">${projs}</span>`:''}
         </div>
-        <div class="card-actions" style="margin-top:0">
+        ${window._agent_role==='owner'?`<div class="card-actions" style="margin-top:0">
           <button class="sm" onclick="renameAgent('${esc(p.agent_id)}')">rename</button>
           <button class="sm danger" onclick="deleteAgent('${esc(p.agent_id)}')">delete</button>
-        </div>
+        </div>`:''}
       </div>`;
     }).join('')+'</div>';
   }catch(e){$('alist').innerHTML=emptyState('⚠','Error: '+e.message);}

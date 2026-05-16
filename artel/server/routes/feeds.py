@@ -1,10 +1,10 @@
 import json
 import sqlite3
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 
 from ...store.db import get_db
-from ..auth import _memberships, require_agent
+from ..auth import ActorDep, ReaderDep, _memberships
 from ..models import FeedCreate, FeedEntry, new_id
 
 router = APIRouter(prefix="/feeds", tags=["feeds"])
@@ -26,7 +26,7 @@ def _row_to_entry(row: sqlite3.Row) -> FeedEntry:
 
 
 @router.post("", response_model=FeedEntry, status_code=201, summary="Subscribe to an RSS/Atom feed")
-async def subscribe(body: FeedCreate, agent_id: str = Depends(require_agent)):
+async def subscribe(body: FeedCreate, agent_id: str = ActorDep):
     allowed = _memberships(agent_id)
     if allowed is not None and body.project not in allowed:
         raise HTTPException(status_code=403, detail="not a member of this project")
@@ -53,7 +53,7 @@ async def subscribe(body: FeedCreate, agent_id: str = Depends(require_agent)):
 
 
 @router.get("", response_model=list[FeedEntry], summary="List feed subscriptions")
-async def list_feeds(agent_id: str = Depends(require_agent)):
+async def list_feeds(agent_id: str = ReaderDep):
     allowed = _memberships(agent_id)
     db = get_db()
     if allowed is None:
@@ -70,7 +70,7 @@ async def list_feeds(agent_id: str = Depends(require_agent)):
 
 
 @router.delete("/{feed_id}", status_code=204, summary="Unsubscribe from a feed")
-async def unsubscribe(feed_id: str, agent_id: str = Depends(require_agent)):
+async def unsubscribe(feed_id: str, agent_id: str = ActorDep):
     db = get_db()
     row = db.execute("SELECT agent_id FROM feed_subscriptions WHERE id=?", (feed_id,)).fetchone()
     if not row:

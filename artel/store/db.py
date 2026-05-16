@@ -42,6 +42,31 @@ def _migrate(conn: sqlite3.Connection) -> None:
             "ALTER TABLE agents ADD COLUMN role TEXT NOT NULL DEFAULT 'agent' CHECK (role IN ('owner', 'agent'))"
         )
         conn.commit()
+    agents_sql = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='agents'"
+    ).fetchone()
+    if agents_sql and "CHECK (role IN" in agents_sql[0]:
+        conn.executescript(
+            """
+            PRAGMA foreign_keys=off;
+            BEGIN;
+            ALTER TABLE agents RENAME TO _agents_old;
+            CREATE TABLE agents (
+                id            TEXT PRIMARY KEY,
+                api_key       TEXT NOT NULL UNIQUE,
+                project       TEXT,
+                created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+                last_seen_at  TEXT,
+                role          TEXT NOT NULL DEFAULT 'agent'
+            );
+            INSERT INTO agents (id, api_key, project, created_at, last_seen_at, role)
+                SELECT id, api_key, project, created_at, last_seen_at, role FROM _agents_old;
+            DROP TABLE _agents_old;
+            COMMIT;
+            PRAGMA foreign_keys=on;
+            """
+        )
+        conn.commit()
 
 
 def _init_vec_table(conn: sqlite3.Connection) -> None:

@@ -1,9 +1,9 @@
 import json
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 
 from ...store.db import get_db
-from ..auth import project_filter, require_agent
+from ..auth import ActorDep, ReaderDep, project_filter
 from ..models import HandoffPost, HandoffResponse, new_id
 from .memory import _row_to_entry
 
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 
 @router.post("/handoff", status_code=201, summary="Save session end state")
-async def post_handoff(body: HandoffPost, agent_id: str = Depends(require_agent)):
+async def post_handoff(body: HandoffPost, agent_id: str = ActorDep):
     db = get_db()
     handoff_id = new_id()
     db.execute(
@@ -39,7 +39,7 @@ async def post_handoff(body: HandoffPost, agent_id: str = Depends(require_agent)
 )
 async def get_handoff(
     target_agent_id: str,
-    agent_id: str = Depends(require_agent),
+    agent_id: str = ReaderDep,
 ):
     if target_agent_id != agent_id:
         raise HTTPException(status_code=403, detail="forbidden")

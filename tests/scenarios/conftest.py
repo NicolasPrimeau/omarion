@@ -34,17 +34,19 @@ class Scenario:
             self._agents[agent_id] = AgentHandle(agent_id, http)
         return self._agents[agent_id]
 
-    async def owner_agent(self) -> AgentHandle:
-        import artel.server.config as cfg_mod
+    async def role_agent(self, uid: str, role: str) -> AgentHandle:
+        import secrets
+
         import artel.store.db as db_mod
 
-        uid = cfg_mod.settings.ui_agent_id
         if uid not in self._agents:
-            r = await self._admin.post("/agents/register", json={"agent_id": uid})
-            r.raise_for_status()
-            api_key = r.json()["api_key"]
+            api_key = secrets.token_urlsafe(32)
             db = db_mod.get_db()
-            db.execute("UPDATE agents SET role='owner' WHERE id=?", (uid,))
+            db.execute(
+                "INSERT INTO agents (id, api_key, role) VALUES (?, ?, ?) "
+                "ON CONFLICT(id) DO UPDATE SET api_key=excluded.api_key, role=excluded.role",
+                (uid, api_key, role),
+            )
             db.commit()
             http = AsyncClient(
                 transport=self._transport,
@@ -54,12 +56,29 @@ class Scenario:
             self._agents[uid] = AgentHandle(uid, http)
         return self._agents[uid]
 
+    async def owner_agent(self) -> AgentHandle:
+        import artel.server.config as cfg_mod
+
+        return await self.role_agent(cfg_mod.settings.ui_agent_id, "owner")
+
+    async def viewer_agent(self) -> AgentHandle:
+        import artel.server.config as cfg_mod
+
+        return await self.role_agent(cfg_mod.settings.viewer_agent_id, "viewer")
+
+    async def archivist_agent(self) -> AgentHandle:
+        import artel.server.config as cfg_mod
+
+        return await self.role_agent(cfg_mod.settings.archivist_agent_id, "archivist")
+
     async def admin_delete(self, agent_id: str) -> None:
-        r = await self._admin.delete(f"/agents/{agent_id}")
+        owner = await self.owner_agent()
+        r = await owner._http.delete(f"/agents/{agent_id}")
         r.raise_for_status()
 
     async def admin_list_agents(self) -> list[dict]:
-        r = await self._admin.get("/agents")
+        owner = await self.owner_agent()
+        r = await owner._http.get("/agents")
         r.raise_for_status()
         return r.json()
 
