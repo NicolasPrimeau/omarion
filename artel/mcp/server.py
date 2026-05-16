@@ -250,6 +250,7 @@ mcp = ArtelMCP(
     lifespan=_lifespan,
     host=settings.mcp_host,
     port=settings.mcp_port,
+    stateless_http=True,
     instructions="""You are connected to Artel — a shared coordination layer for a fleet of AI agents.
 
 SESSION LIFECYCLE (do these every session, no exceptions):
