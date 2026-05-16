@@ -61,14 +61,17 @@ input:focus{outline:none;border-color:#d79921}
 button{background:#282828;color:#d79921;border:1px solid #d79921;padding:9px;font:15px Inter,sans-serif;border-radius:3px;cursor:pointer}
 button:hover{background:#3c3836}
 .err{color:#fb4934;font-size:13px}
+.guest{color:#928374;font-size:13px;text-align:center;text-decoration:none}
+.guest:hover{color:#d79921}
 </style>
 </head>
 <body>
 <form method="POST" action="/ui/login">
   <h1>artel</h1>
   {error}
-  <input type="password" name="password" placeholder="password" autofocus>
+  <input type="password" name="password" placeholder="admin password" autofocus>
   <button type="submit">login</button>
+  <a class="guest" href="/ui">continue read-only →</a>
 </form>
 </body>
 </html>
