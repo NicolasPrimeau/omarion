@@ -1,14 +1,56 @@
 import json
 import sqlite3
+import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse, Response
 
 from ...store.db import get_db
 from ...store.embeddings import embed
-from ..auth import _memberships, is_owner, project_filter, require_agent
+from ..auth import _memberships, is_owner, project_filter, require_agent, require_agent_feed
 from ..broadcast import broadcast
+from ..config import settings
 from ..models import EventEntry, MemoryEntry, MemoryPatch, MemoryWrite, new_id
+
+_ATOM_NS = "http://www.w3.org/2005/Atom"
+ET.register_namespace("", _ATOM_NS)
+
+
+def _a(tag: str) -> str:
+    return f"{{{_ATOM_NS}}}{tag}"
+
+
+def _fetch_feed_rows(
+    db, agent_id: str, project: str | None, tag: str | None, type_: str | None, limit: int
+):
+    clauses = ["deleted_at IS NULL", "(scope != 'agent' OR agent_id = ?)"]
+    params: list = [agent_id]
+    if project:
+        from ..auth import _memberships as _m
+
+        allowed = _m(agent_id)
+        if allowed is not None and project not in allowed:
+            return []
+        clauses.append("project = ?")
+        params.append(project)
+    else:
+        pf_clause, pf_params = project_filter(agent_id)
+        if pf_clause:
+            clauses.append(pf_clause)
+            params.extend(pf_params)
+    if tag:
+        clauses.append("EXISTS (SELECT 1 FROM json_each(tags) WHERE value = ?)")
+        params.append(tag)
+    if type_:
+        clauses.append("type = ?")
+        params.append(type_)
+    params.append(limit)
+    return db.execute(
+        f"SELECT * FROM memory WHERE {' AND '.join(clauses)} ORDER BY updated_at DESC LIMIT ?",
+        params,
+    ).fetchall()
+
 
 router = APIRouter(prefix="/memory", tags=["memory"])
 
@@ -235,6 +277,93 @@ async def memory_delta(
     sql += " ORDER BY updated_at"
     rows = db.execute(sql, params).fetchall()
     return [_row_to_entry(r) for r in rows]
+
+
+@router.get("/feed.atom", summary="Atom feed of memory entries")
+async def memory_feed_atom(
+    project: str | None = Query(default=None),
+    tag: str | None = Query(default=None),
+    type: str | None = Query(default=None),
+    limit: int = Query(default=50, le=200),
+    agent_id: str = Depends(require_agent_feed),
+):
+    db = get_db()
+    rows = _fetch_feed_rows(db, agent_id, project, tag, type, limit)
+    base = settings.public_url or f"http://localhost:{settings.port}"
+    feed_url = f"{base}/memory/feed.atom"
+    if project:
+        feed_url += f"?project={project}"
+
+    feed = ET.Element(_a("feed"))
+    title = ET.SubElement(feed, _a("title"))
+    title.text = f"Artel Memory{f' / {project}' if project else ''}"
+    ET.SubElement(feed, _a("link"), rel="self", href=feed_url)
+    feed_id = ET.SubElement(feed, _a("id"))
+    feed_id.text = feed_url
+    updated = ET.SubElement(feed, _a("updated"))
+    updated.text = rows[0]["updated_at"] if rows else datetime.now(UTC).isoformat()
+
+    for row in rows:
+        entry = ET.SubElement(feed, _a("entry"))
+        eid = ET.SubElement(entry, _a("id"))
+        eid.text = f"{base}/memory/{row['id']}"
+        etitle = ET.SubElement(entry, _a("title"))
+        etitle.text = row["content"].split("\n")[0][:80].strip() or row["id"]
+        eupdated = ET.SubElement(entry, _a("updated"))
+        eupdated.text = row["updated_at"]
+        epublished = ET.SubElement(entry, _a("published"))
+        epublished.text = row["created_at"]
+        author = ET.SubElement(entry, _a("author"))
+        ET.SubElement(author, _a("name")).text = row["agent_id"]
+        content_el = ET.SubElement(entry, _a("content"), type="text")
+        content_el.text = row["content"]
+        for t in json.loads(row["tags"]):
+            ET.SubElement(entry, _a("category"), term=t)
+
+    xml_bytes = ET.tostring(feed, encoding="utf-8", xml_declaration=True)
+    return Response(content=xml_bytes, media_type="application/atom+xml; charset=utf-8")
+
+
+@router.get("/feed.json", summary="JSON Feed of memory entries")
+async def memory_feed_json(
+    project: str | None = Query(default=None),
+    tag: str | None = Query(default=None),
+    type: str | None = Query(default=None),
+    limit: int = Query(default=50, le=200),
+    agent_id: str = Depends(require_agent_feed),
+):
+    db = get_db()
+    rows = _fetch_feed_rows(db, agent_id, project, tag, type, limit)
+    base = settings.public_url or f"http://localhost:{settings.port}"
+
+    items = [
+        {
+            "id": f"{base}/memory/{row['id']}",
+            "title": row["content"].split("\n")[0][:80].strip() or row["id"],
+            "content_text": row["content"],
+            "date_published": row["created_at"],
+            "date_modified": row["updated_at"],
+            "authors": [{"name": row["agent_id"]}],
+            "tags": json.loads(row["tags"]),
+            "_artel": {
+                "memory_id": row["id"],
+                "type": row["type"],
+                "confidence": row["confidence"],
+                "project": row["project"],
+                "scope": row["scope"],
+            },
+        }
+        for row in rows
+    ]
+
+    payload = {
+        "version": "https://jsonfeed.org/version/1.1",
+        "title": f"Artel Memory{f' / {project}' if project else ''}",
+        "home_page_url": base,
+        "feed_url": f"{base}/memory/feed.json",
+        "items": items,
+    }
+    return JSONResponse(content=payload, media_type="application/feed+json")
 
 
 @router.get("/{entry_id}", response_model=MemoryEntry, summary="Get a memory entry by ID")

@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from fastapi import Depends, Header, HTTPException, Request
+from fastapi import Depends, Header, HTTPException, Query, Request
 
 from ..store.db import get_db
 from .config import settings
@@ -82,6 +82,37 @@ def project_filter(agent_id: str) -> tuple[str, list]:
         return "(project IS NULL)", []
     placeholders = ",".join("?" * len(allowed))
     return f"(project IS NULL OR project IN ({placeholders}))", list(allowed)
+
+
+async def require_agent_feed(
+    request: Request,
+    agent_id_q: str = Query(default="", alias="agent_id"),
+    api_key_q: str = Query(default="", alias="api_key"),
+    x_agent_id: str = Header(default=""),
+    x_api_key: str = Header(default=""),
+) -> str:
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Bearer "):
+        try:
+            from .jwt_utils import verify_token
+
+            aid, key = verify_token(auth[7:])
+            if not _verify_agent(aid, key):
+                raise HTTPException(status_code=401, detail="invalid credentials")
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=401, detail="invalid credentials")
+        update_seen(aid, datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"))
+        return aid
+    aid = x_agent_id or agent_id_q
+    key = x_api_key or api_key_q
+    if not aid or not key:
+        raise HTTPException(status_code=401, detail="invalid credentials")
+    if not _verify_agent(aid, key):
+        raise HTTPException(status_code=401, detail="invalid credentials")
+    update_seen(aid, datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"))
+    return aid
 
 
 AgentDep = Depends(require_agent)

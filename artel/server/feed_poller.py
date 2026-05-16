@@ -80,16 +80,47 @@ def _write_memory(agent_id: str, project: str, content: str, tags: list[str]) ->
     )
 
 
+def _parse_json_feed(resp_text: str, feed_name: str) -> list[tuple[str, str]]:
+    try:
+        data = json.loads(resp_text)
+    except Exception:
+        return []
+    if not isinstance(data.get("items"), list):
+        return []
+    results = []
+    for item in data["items"]:
+        guid = item.get("id") or item.get("url", "")
+        if not guid:
+            continue
+        title = item.get("title", "(no title)")
+        body = item.get("content_text") or item.get("content_html") or item.get("summary", "")
+        published = item.get("date_published", "")
+        link = item.get("url", "")
+        parts = [f"## [{feed_name}] {title}"]
+        if published:
+            parts.append(f"Published: {published}")
+        if body:
+            parts.append(f"\n{body[:1000]}")
+        if link:
+            parts.append(f"\nSource: {link}")
+        results.append((guid, "\n".join(parts)))
+    return results
+
+
 async def _poll_feed(feed: dict) -> None:
     feed_id = feed["id"]
     try:
         async with httpx.AsyncClient(follow_redirects=True, timeout=30) as client:
             resp = await client.get(feed["url"])
             resp.raise_for_status()
-            parsed = feedparser.parse(resp.text)
     except Exception as e:
         log.warning("feed %s (%s) fetch failed: %s", feed["name"], feed["url"], e)
         return
+
+    content_type = resp.headers.get("content-type", "")
+    is_json_feed = "feed+json" in content_type or (
+        "json" in content_type and '"version"' in resp.text and "jsonfeed.org" in resp.text
+    )
 
     db = get_db()
     seen = {
@@ -102,16 +133,29 @@ async def _poll_feed(feed: dict) -> None:
     tags = json.loads(feed["tags"]) + ["feed-item", "unprocessed"]
     count = 0
     new_guids = []
-    for entry in parsed.entries:
-        if count >= feed["max_per_poll"]:
-            break
-        guid = _item_guid(entry)
-        if not guid or guid in seen:
-            continue
-        content = _item_content(feed["name"], entry)
-        _write_memory(feed["agent_id"], feed["project"], content, tags)
-        new_guids.append(guid)
-        count += 1
+
+    if is_json_feed:
+        entries = _parse_json_feed(resp.text, feed["name"])
+        for guid, content in entries:
+            if count >= feed["max_per_poll"]:
+                break
+            if not guid or guid in seen:
+                continue
+            _write_memory(feed["agent_id"], feed["project"], content, tags)
+            new_guids.append(guid)
+            count += 1
+    else:
+        parsed = feedparser.parse(resp.text)
+        for entry in parsed.entries:
+            if count >= feed["max_per_poll"]:
+                break
+            guid = _item_guid(entry)
+            if not guid or guid in seen:
+                continue
+            content = _item_content(feed["name"], entry)
+            _write_memory(feed["agent_id"], feed["project"], content, tags)
+            new_guids.append(guid)
+            count += 1
 
     if new_guids:
         now = _utcnow()
