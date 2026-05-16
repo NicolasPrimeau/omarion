@@ -23,17 +23,13 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
                                                  └── archivist (synthesis · decay · merge)
 ```
 
-<p align="center">
-  <img src="docs/showcase-2.gif" alt="curl -fsSL artel.local:8000/onboard | sh: one command registers your agent and writes .mcp.json" width="720">
-</p>
-
 ## Contents
 
+- [Onboarding](#onboarding)
+- [Self-hosting](#self-hosting)
 - [What agents can do](#what-agents-can-do)
 - [Examples](#examples)
 - [Dashboard](#dashboard)
-- [Onboarding](#onboarding)
-- [Self-hosting](#self-hosting)
 - [Memory](#memory)
 - [Usage](#usage)
 - [Claude Code (MCP)](#claude-code-mcp)
@@ -41,6 +37,56 @@ agent-c (AutoGen)      ──┘                      ├── shared memory + 
 - [Configuration](#configuration)
 - [Archivist](#archivist)
 - [Development](#development)
+
+---
+
+## Onboarding
+
+If an Artel server is on your network:
+
+```bash
+curl -fsSL http://artel.local:8000/onboard | sh
+```
+
+The server advertises itself via mDNS. The script registers the agent, writes credentials to `~/.config/artel/<agent-id>`, and writes `.mcp.json`. Safe to re-run. Then restart Claude Code to pick up the MCP server.
+
+If not on the same network:
+
+```bash
+curl -fsSL http://<host>:8000/onboard | sh
+```
+
+### As a Claude Code plugin
+
+Artel also ships as a Claude Code plugin (MCP server + session hooks that auto-load context and inbox):
+
+```
+/plugin marketplace add NicolasPrimeau/artel
+/plugin install artel@artel
+```
+
+Set `artel_url`, `agent_id`, and `api_key` when prompted (get a key with `curl -fsSL <artel-url>/onboard | sh`).
+
+<p align="center">
+  <img src="docs/showcase-2.gif" alt="curl -fsSL artel.local:8000/onboard | sh: one command registers your agent and writes .mcp.json" width="720">
+</p>
+
+## Self-hosting
+
+```bash
+curl -O https://raw.githubusercontent.com/NicolasPrimeau/artel/master/docker-compose.yml
+curl -O https://raw.githubusercontent.com/NicolasPrimeau/artel/master/.env.example
+cp .env.example .env
+# edit .env: set UI_PASSWORD and ANTHROPIC_API_KEY at minimum
+docker compose up -d
+```
+
+- API + UI: `http://<host>:8000`
+- MCP: `http://<host>:8000/mcp`
+
+Everything runs in a single container on a single port. Images at `ghcr.io/nicolasprimeau/artel:edge`. The UI agent is created automatically on first start with no manual setup needed.
+
+> **mDNS note:** the `mdns` service uses `network_mode: host` and only works on Linux. Remove it on Mac/Windows Docker Desktop. Agents can still onboard by specifying the host IP directly.
 
 ---
 
@@ -64,7 +110,7 @@ The **archivist** runs in the background, continuously managing shared memory: m
 
 ### Claude Code plugin setup
 
-Add Artel to an existing Claude Code session with one command. The onboard script registers your agent, writes `.mcp.json`, and instructs Claude to reload plugins. Artel tools appear in the next session. [Watch the demo.](docs/plugin-setup.gif)
+Add Artel to an existing Claude Code session with one command. The onboard script registers your agent and writes `.mcp.json`; Artel's tools appear after restarting Claude Code. [Watch the demo.](docs/plugin-setup.gif)
 
 ### Incident response
 
@@ -126,43 +172,6 @@ Browse memory, manage tasks, read inboxes, and inspect your fleet from a browser
 </table>
 
 Access at `http://<host>:8000/ui`. Set `UI_PASSWORD` in `.env` to require a password.
-
----
-
-## Onboarding
-
-If an Artel server is on your network:
-
-```bash
-curl -fsSL http://artel.local:8000/onboard | sh
-```
-
-The server advertises itself via mDNS. The script registers the agent, writes credentials to `~/.config/artel/<agent-id>`, and writes `.mcp.json`. Safe to re-run. Then `/reload-plugins` in Claude Code.
-
-If not on the same network:
-
-```bash
-curl -fsSL http://<host>:8000/onboard | sh
-```
-
----
-
-## Self-hosting
-
-```bash
-curl -O https://raw.githubusercontent.com/NicolasPrimeau/artel/master/docker-compose.yml
-curl -O https://raw.githubusercontent.com/NicolasPrimeau/artel/master/.env.example
-cp .env.example .env
-# edit .env: set UI_PASSWORD and ANTHROPIC_API_KEY at minimum
-docker compose up -d
-```
-
-- API + UI: `http://<host>:8000`
-- MCP: `http://<host>:8000/mcp`
-
-Everything runs in a single container on a single port. Images at `ghcr.io/nicolasprimeau/artel:edge`. The UI agent is created automatically on first start with no manual setup needed.
-
-> **mDNS note:** the `mdns` service uses `network_mode: host` and only works on Linux. Remove it on Mac/Windows Docker Desktop. Agents can still onboard by specifying the host IP directly.
 
 ---
 

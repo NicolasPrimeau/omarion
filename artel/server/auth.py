@@ -53,10 +53,32 @@ async def require_registration_key(
         raise HTTPException(status_code=401, detail="invalid registration key")
 
 
-def is_owner(agent_id: str) -> bool:
+ROLE_RANK = {"viewer": 0, "agent": 1, "archivist": 2, "owner": 3}
+
+
+def role_of(agent_id: str) -> str:
     db = get_db()
     row = db.execute("SELECT role FROM agents WHERE id=?", (agent_id,)).fetchone()
-    return row is not None and row["role"] == "owner"
+    if row is not None and row["role"] in ROLE_RANK:
+        return row["role"]
+    return "agent"
+
+
+def is_owner(agent_id: str) -> bool:
+    return role_of(agent_id) == "owner"
+
+
+def can_curate_memory(agent_id: str) -> bool:
+    return role_of(agent_id) in ("owner", "archivist")
+
+
+def require_role(minimum: str):
+    async def _dep(agent_id: str = Depends(require_agent)) -> str:
+        if ROLE_RANK[role_of(agent_id)] < ROLE_RANK[minimum]:
+            raise HTTPException(status_code=403, detail="insufficient role")
+        return agent_id
+
+    return _dep
 
 
 def _memberships(agent_id: str) -> list[str] | None:
@@ -116,3 +138,6 @@ async def require_agent_feed(
 
 
 AgentDep = Depends(require_agent)
+ReaderDep = Depends(require_role("viewer"))
+ActorDep = Depends(require_role("agent"))
+OwnerDep = Depends(require_role("owner"))

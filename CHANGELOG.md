@@ -1,5 +1,63 @@
 # Changelog
 
+## [0.10.0] — 2026-05-16
+
+### RBAC — role-based access control
+
+A single authorization layer now governs every endpoint. Roles, in ascending privilege: `viewer` < `agent` < `archivist` < `owner`.
+
+- **Reader** (viewer+): all reads, search, list, streams
+- **Actor** (agent+): all normal writes (memory, tasks, messages, sessions, events, feeds, projects, self rename/delete)
+- **Owner**: delete / rename / list **any** agent
+- **Memory curation** (archivist or owner): mutating another agent's memory, directive writes
+
+### Security
+
+- `DELETE`/`PATCH /agents/{id}` and `GET /agents` moved off the registration key onto **owner-only**. The registration key now *only* registers agents — it can no longer delete, rename, or list them. Open registration is preserved.
+- `/ui` no longer walls users or ships the registration key to the browser. Unauthenticated visitors get the `sandbox-free-user` **viewer** principal: read-only, no registration key, no owner key. `UI_PASSWORD` elevates to `artel-ui`/owner. The dashboard hides mutation/admin controls and blocks writes client-side for viewers (defence-in-depth; the server is the real gate).
+- `archivist` is a first-class role, seeded at boot, scoped to memory curation only — not agent administration. Fixes a latent bug: the archivist is a static `AGENT_KEYS` agent with no DB row, so `is_owner` was always `False` and its cross-agent prune/merge was silently blocked.
+
+**Breaking:** clients that used the registration key to delete, rename, or list agents must now use an owner-role credential.
+
+### MCP transport
+
+- `/onboard` writes the MCP URL with a trailing slash (`/mcp/`); uvicorn trusts proxy headers. Fixes the `400` parse error caused by a redirect dropping the POST body behind a TLS-terminating proxy.
+- Streamable HTTP transport runs **stateless** (`stateless_http=True`). Eliminates "Session not found" / "Missing session ID" across redeploys; inbox delivery still flows through the SQLite notification queue.
+
+### UI
+
+- Connect-agent command uses `curl -fsSL` to match the README.
+
+### Migration
+
+- The `agents.role` 2-value `CHECK` constraint is dropped via an idempotent table rebuild so `viewer` / `archivist` are insertable.
+
+### Tests
+
+- New `tests/scenarios/test_rbac.py`: viewer read-only, agent denied owner-admin, owner allowed, registration key cannot destroy, archivist cross-agent curation, archivist ≠ agent-admin, directives require curator.
+
+### Tooling
+
+- `boto3` added to the `dev` dependency group (used by the env-secrets sync script).
+
+## [0.9.0] — 2026-05-16
+
+Backfilled — shipped as the `v0.9.0` GitHub release; the CHANGELOG entry was missed at the time.
+
+### Cross-Artel meshing
+
+- `GET /memory/feed.atom` (Atom 1.0) and `GET /memory/feed.json` (JSON Feed 1.1), with `project` / `tag` / `type` / `limit` filters. Auth via `?agent_id=&api_key=` query params so another Artel's poller can subscribe without custom headers.
+- Subscribe one Artel to another's `/memory/feed.json` via the existing feed subscription system — memory flows across instances with no central coordinator.
+- Feed poller detects and parses JSON Feed (`application/feed+json`) on ingest, alongside Atom/RSS.
+
+### UI
+
+- Mobile + desktop rework: desktop sidebar nav, mobile hamburger drawer, 12 accent themes, consolidated settings modal, collapsible project sections.
+
+### Reliability
+
+- Graceful degradation when the fastembed ONNX model isn't cached: memory reads/writes work without embeddings; semantic search returns empty instead of crashing.
+
 ## [0.8.0] — 2026-05-15
 
 ### Archivist — curator model

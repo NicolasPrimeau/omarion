@@ -61,14 +61,17 @@ input:focus{outline:none;border-color:#d79921}
 button{background:#282828;color:#d79921;border:1px solid #d79921;padding:9px;font:15px Inter,sans-serif;border-radius:3px;cursor:pointer}
 button:hover{background:#3c3836}
 .err{color:#fb4934;font-size:13px}
+.guest{color:#928374;font-size:13px;text-align:center;text-decoration:none}
+.guest:hover{color:#d79921}
 </style>
 </head>
 <body>
 <form method="POST" action="/ui/login">
   <h1>artel</h1>
   {error}
-  <input type="password" name="password" placeholder="password" autofocus>
+  <input type="password" name="password" placeholder="admin password" autofocus>
   <button type="submit">login</button>
+  <a class="guest" href="/ui">continue read-only →</a>
 </form>
 </body>
 </html>
@@ -78,20 +81,17 @@ button:hover{background:#3c3836}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db = get_db(settings.db_path)
-    row = db.execute("SELECT 1 FROM agents WHERE id=?", (settings.ui_agent_id,)).fetchone()
-    if not row:
-        db.execute(
-            "INSERT INTO agents (id, api_key, role) VALUES (?, ?, 'owner')",
-            (settings.ui_agent_id, secrets.token_urlsafe(32)),
-        )
-    db.execute("UPDATE agents SET role='owner' WHERE id=?", (settings.ui_agent_id,))
-    arch_key = next((k for k, v in settings.api_keys().items() if v == settings.archivist_id), None)
-    if arch_key:
-        db.execute(
-            "INSERT OR IGNORE INTO agents (id, api_key, role) VALUES (?, ?, 'owner')",
-            (settings.archivist_id, arch_key),
-        )
-        db.execute("UPDATE agents SET role='owner' WHERE id=?", (settings.archivist_id,))
+    for special_id, special_role in (
+        (settings.ui_agent_id, "owner"),
+        (settings.archivist_agent_id, "archivist"),
+        (settings.viewer_agent_id, "viewer"),
+    ):
+        if not db.execute("SELECT 1 FROM agents WHERE id=?", (special_id,)).fetchone():
+            db.execute(
+                "INSERT INTO agents (id, api_key, role) VALUES (?, ?, ?)",
+                (special_id, secrets.token_urlsafe(32), special_role),
+            )
+        db.execute("UPDATE agents SET role=? WHERE id=?", (special_role, special_id))
     db.commit()
     mdns = MDNSService(settings.port)
     try:
@@ -258,10 +258,13 @@ def _authed(request: Request) -> bool:
     return True
 
 
+_NO_STORE = {"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"}
+
+
 @app.get("/ui/login", response_class=HTMLResponse, include_in_schema=False)
 async def login_page(error: str = ""):
     err = '<p class="err">incorrect password</p>' if error else ""
-    return _LOGIN.replace("{error}", err)
+    return HTMLResponse(_LOGIN.replace("{error}", err), headers=_NO_STORE)
 
 
 @app.post("/ui/login", include_in_schema=False)
@@ -291,22 +294,29 @@ async def logout(request: Request):
             db.execute("DELETE FROM ui_sessions WHERE token=?", (token,))
     r = RedirectResponse("/ui/login", status_code=303)
     r.delete_cookie("session")
+    r.headers["Clear-Site-Data"] = '"cache", "cookies", "storage"'
     return r
 
 
 @app.get("/ui", response_class=HTMLResponse, include_in_schema=False)
 async def ui(request: Request):
-    if not _authed(request):
-        return RedirectResponse("/ui/login")
-    aid = settings.ui_agent_id
-    akey = settings.ui_agent_key()
-    agent_row = get_db().execute("SELECT api_key, role FROM agents WHERE id=?", (aid,)).fetchone()
-    if not akey and agent_row:
-        akey = agent_row["api_key"]
-    agent_role = agent_row["role"] if agent_row else "agent"
-    regkey = settings.registration_key
+    db = get_db()
+    if _authed(request):
+        aid = settings.ui_agent_id
+        akey = settings.ui_agent_key()
+        agent_row = db.execute("SELECT api_key, role FROM agents WHERE id=?", (aid,)).fetchone()
+        if not akey and agent_row:
+            akey = agent_row["api_key"]
+        agent_role = agent_row["role"] if agent_row else "owner"
+        regkey = settings.registration_key
+    else:
+        aid = settings.viewer_agent_id
+        agent_row = db.execute("SELECT api_key, role FROM agents WHERE id=?", (aid,)).fetchone()
+        akey = agent_row["api_key"] if agent_row else ""
+        agent_role = agent_row["role"] if agent_row else "viewer"
+        regkey = ""
     html = _UI.read_text().replace(
         "/*CREDS*/",
         f"window._aid={json.dumps(aid)};window._akey={json.dumps(akey)};window._regkey={json.dumps(regkey)};window._ui_agent_id={json.dumps(aid)};window._agent_role={json.dumps(agent_role)};",
     )
-    return HTMLResponse(html)
+    return HTMLResponse(html, headers=_NO_STORE)

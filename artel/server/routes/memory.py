@@ -8,7 +8,14 @@ from fastapi.responses import JSONResponse, Response
 
 from ...store.db import get_db
 from ...store.embeddings import embed
-from ..auth import _memberships, is_owner, project_filter, require_agent, require_agent_feed
+from ..auth import (
+    ActorDep,
+    ReaderDep,
+    _memberships,
+    can_curate_memory,
+    project_filter,
+    require_agent_feed,
+)
 from ..broadcast import broadcast
 from ..config import settings
 from ..models import EventEntry, MemoryEntry, MemoryPatch, MemoryWrite, new_id
@@ -77,10 +84,10 @@ def _row_to_entry(row: sqlite3.Row) -> MemoryEntry:
 @router.post("", response_model=MemoryEntry, status_code=201, summary="Write a memory entry")
 async def write_memory(
     body: MemoryWrite,
-    agent_id: str = Depends(require_agent),
+    agent_id: str = ActorDep,
 ):
     db = get_db()
-    if body.type == "directive" and not is_owner(agent_id):
+    if body.type == "directive" and not can_curate_memory(agent_id):
         raise HTTPException(status_code=403, detail="directive writes require elevated permission")
     if body.project:
         allowed = _memberships(agent_id)
@@ -145,7 +152,7 @@ async def search_memory(
     type: str | None = Query(default=None),
     agent: str | None = Query(default=None),
     max_distance: float | None = Query(default=None),
-    agent_id: str = Depends(require_agent),
+    agent_id: str = ReaderDep,
 ):
     db = get_db()
     vec = embed(q)
@@ -198,7 +205,7 @@ async def list_memory(
     created_before: str | None = Query(default=None),
     min_version: int | None = Query(default=None),
     limit: int = Query(default=100, le=500),
-    agent_id: str = Depends(require_agent),
+    agent_id: str = ReaderDep,
 ):
     db = get_db()
     clauses = ["deleted_at IS NULL", "(scope != 'agent' OR agent_id = ?)"]
@@ -251,7 +258,7 @@ async def memory_delta(
     agent: str | None = Query(default=None),
     project: str | None = Query(default=None),
     type: str | None = Query(default=None),
-    agent_id: str = Depends(require_agent),
+    agent_id: str = ReaderDep,
 ):
     db = get_db()
     pf_clause, pf_params = project_filter(agent_id)
@@ -369,7 +376,7 @@ async def memory_feed_json(
 @router.get("/{entry_id}", response_model=MemoryEntry, summary="Get a memory entry by ID")
 async def get_memory(
     entry_id: str,
-    agent_id: str = Depends(require_agent),
+    agent_id: str = ReaderDep,
 ):
     db = get_db()
     row = db.execute(
@@ -392,7 +399,7 @@ async def get_memory(
 async def patch_memory(
     entry_id: str,
     body: MemoryPatch,
-    agent_id: str = Depends(require_agent),
+    agent_id: str = ActorDep,
 ):
     db = get_db()
     row = db.execute(
@@ -401,7 +408,7 @@ async def patch_memory(
     if not row:
         raise HTTPException(status_code=404, detail="not found")
 
-    is_entry_owner = row["agent_id"] == agent_id or is_owner(agent_id)
+    is_entry_owner = row["agent_id"] == agent_id or can_curate_memory(agent_id)
     wants_owner_fields = any(
         f is not None
         for f in (body.content, body.tags, body.scope, body.project, body.confidence, body.type)
@@ -457,7 +464,7 @@ async def patch_memory(
 @router.delete("/{entry_id}", status_code=204, summary="Soft-delete a memory entry (owner only)")
 async def delete_memory(
     entry_id: str,
-    agent_id: str = Depends(require_agent),
+    agent_id: str = ActorDep,
 ):
     db = get_db()
     row = db.execute(
@@ -465,7 +472,7 @@ async def delete_memory(
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="not found")
-    if row["agent_id"] != agent_id and not is_owner(agent_id):
+    if row["agent_id"] != agent_id and not can_curate_memory(agent_id):
         raise HTTPException(status_code=403, detail="forbidden")
     with db:
         db.execute(

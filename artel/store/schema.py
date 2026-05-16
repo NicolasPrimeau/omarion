@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS agents (
     project       TEXT,
     created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     last_seen_at  TEXT,
-    role          TEXT NOT NULL DEFAULT 'agent' CHECK (role IN ('owner', 'agent'))
+    role          TEXT NOT NULL DEFAULT 'agent'
 );
 
 CREATE TABLE IF NOT EXISTS memory (

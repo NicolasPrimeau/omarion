@@ -2867,7 +2867,8 @@ async def test_admin_list_agents(scenario):
 
 async def test_admin_delete_nonexistent_agent(scenario):
     """Admin deleting a non-existent agent returns 404."""
-    r = await scenario._admin.delete("/agents/ghost-agent")
+    owner = await scenario.owner_agent()
+    r = await owner._http.delete("/agents/ghost-agent")
     assert r.status_code == 404
 
 

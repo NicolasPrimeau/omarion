@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/artel-session-start.sh",
+            "timeout": 15,
+            "statusMessage": "Loading Artel session context…"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/artel-check-inbox.sh",
+            "timeout": 8,
+            "statusMessage": "Checking Artel inbox…"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,10 +1,10 @@
 import json
 import sqlite3
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, HTTPException, Query
 
 from ...store.db import get_db
-from ..auth import _memberships, is_owner, project_filter, require_agent
+from ..auth import ActorDep, ReaderDep, _memberships, is_owner, project_filter
 from ..models import (
     TaskAction,
     TaskComment,
@@ -61,7 +61,7 @@ def _add_comment(db: sqlite3.Connection, task_id: str, agent_id: str, kind: str,
 
 
 @router.get("/{task_id}", response_model=TaskEntry, summary="Get a task by ID")
-async def get_task(task_id: str, agent_id: str = Depends(require_agent)):
+async def get_task(task_id: str, agent_id: str = ReaderDep):
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
@@ -74,7 +74,7 @@ async def get_task(task_id: str, agent_id: str = Depends(require_agent)):
 
 
 @router.post("", response_model=TaskEntry, status_code=201, summary="Create a task")
-async def create_task(body: TaskCreate, agent_id: str = Depends(require_agent)):
+async def create_task(body: TaskCreate, agent_id: str = ActorDep):
     db = get_db()
     if body.project:
         allowed = _memberships(agent_id)
@@ -107,7 +107,7 @@ async def list_tasks(
     status: str | None = Query(default=None),
     agent: str | None = Query(default=None),
     project: str | None = Query(default=None),
-    agent_id: str = Depends(require_agent),
+    agent_id: str = ReaderDep,
 ):
     db = get_db()
     sql = "SELECT * FROM tasks WHERE 1=1"
@@ -138,7 +138,7 @@ async def list_tasks(
 async def claim_task(
     task_id: str,
     body: TaskAction = Body(default_factory=TaskAction),
-    agent_id: str = Depends(require_agent),
+    agent_id: str = ActorDep,
 ):
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
@@ -170,7 +170,7 @@ async def claim_task(
 async def unclaim_task(
     task_id: str,
     body: TaskAction = Body(default_factory=TaskAction),
-    agent_id: str = Depends(require_agent),
+    agent_id: str = ActorDep,
 ):
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
@@ -200,7 +200,7 @@ async def unclaim_task(
 async def complete_task(
     task_id: str,
     body: TaskAction = Body(default_factory=TaskAction),
-    agent_id: str = Depends(require_agent),
+    agent_id: str = ActorDep,
 ):
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
@@ -225,7 +225,7 @@ async def complete_task(
 @router.patch(
     "/{task_id}", response_model=TaskEntry, summary="Update task title, description, or priority"
 )
-async def update_task(task_id: str, body: TaskUpdate, agent_id: str = Depends(require_agent)):
+async def update_task(task_id: str, body: TaskUpdate, agent_id: str = ActorDep):
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
@@ -274,7 +274,7 @@ async def update_task(task_id: str, body: TaskUpdate, agent_id: str = Depends(re
 async def fail_task(
     task_id: str,
     body: TaskAction = Body(default_factory=TaskAction),
-    agent_id: str = Depends(require_agent),
+    agent_id: str = ActorDep,
 ):
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
@@ -302,9 +302,7 @@ async def fail_task(
     status_code=201,
     summary="Add a free-form comment to a task",
 )
-async def add_comment(
-    task_id: str, body: TaskCommentCreate, agent_id: str = Depends(require_agent)
-):
+async def add_comment(task_id: str, body: TaskCommentCreate, agent_id: str = ActorDep):
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
@@ -329,7 +327,7 @@ async def add_comment(
     response_model=list[TaskComment],
     summary="List comments and status events for a task",
 )
-async def list_comments(task_id: str, agent_id: str = Depends(require_agent)):
+async def list_comments(task_id: str, agent_id: str = ReaderDep):
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
