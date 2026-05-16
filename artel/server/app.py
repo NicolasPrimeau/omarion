@@ -294,6 +294,7 @@ async def logout(request: Request):
             db.execute("DELETE FROM ui_sessions WHERE token=?", (token,))
     r = RedirectResponse("/ui/login", status_code=303)
     r.delete_cookie("session")
+    r.headers["Clear-Site-Data"] = '"cache", "cookies", "storage"'
     return r
 
 
