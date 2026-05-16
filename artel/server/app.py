@@ -258,10 +258,13 @@ def _authed(request: Request) -> bool:
     return True
 
 
+_NO_STORE = {"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"}
+
+
 @app.get("/ui/login", response_class=HTMLResponse, include_in_schema=False)
 async def login_page(error: str = ""):
     err = '<p class="err">incorrect password</p>' if error else ""
-    return _LOGIN.replace("{error}", err)
+    return HTMLResponse(_LOGIN.replace("{error}", err), headers=_NO_STORE)
 
 
 @app.post("/ui/login", include_in_schema=False)
@@ -315,4 +318,4 @@ async def ui(request: Request):
         "/*CREDS*/",
         f"window._aid={json.dumps(aid)};window._akey={json.dumps(akey)};window._regkey={json.dumps(regkey)};window._ui_agent_id={json.dumps(aid)};window._agent_role={json.dumps(agent_role)};",
     )
-    return HTMLResponse(html)
+    return HTMLResponse(html, headers=_NO_STORE)
