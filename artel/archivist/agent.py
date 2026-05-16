@@ -12,6 +12,7 @@ from .synthesis import (
     on_task_failed,
     run_promotion,
     run_synthesis,
+    run_task_triage,
 )
 
 log = logging.getLogger(__name__)
@@ -64,6 +65,7 @@ async def _scheduler(client: ArtelClient) -> None:
             (run_synthesis, "synthesis"),
             (decay_confidence, "decay"),
             (run_promotion, "promotion"),
+            (run_task_triage, "task_triage"),
         ):
             try:
                 await asyncio.wait_for(fn(client), timeout=300.0)

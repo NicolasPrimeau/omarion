@@ -266,27 +266,96 @@ async def on_task_completed(task_id: str, agent_id: str, client: ArtelClient) ->
         return
 
     query = f"{task['title']} {task.get('description') or ''}"
-    related = await client.search_memory(query, limit=5)
-    if not related:
+    related = await client.search_memory(query, limit=8)
+
+    if not is_configured():
+        if not related:
+            return
+        snippet_lines = [
+            f"- [{r['id'][:8]}] {r['content'][:120].replace(chr(10), ' ')}" for r in related[:3]
+        ]
+        content = (
+            f'Task completed: "{task["title"]}" (by {agent_id}).\n'
+            f"Expected outcome: {task.get('expected_outcome') or 'not specified'}\n\n"
+            f"Related knowledge at completion:\n" + "\n".join(snippet_lines)
+        )
+        try:
+            await client.write_memory(
+                content=content,
+                type="memory",
+                tags=["task-completion"],
+                project=task.get("project"),
+            )
+        except Exception as e:
+            log.warning("could not write task completion observation for %s: %s", task_id, e)
         return
 
-    snippet_lines = [
-        f"- [{r['id'][:8]}] {r['content'][:120].replace(chr(10), ' ')}" for r in related[:3]
-    ]
-    content = (
-        f'Task completed: "{task["title"]}" (by {agent_id}).\n'
-        f"Expected outcome: {task.get('expected_outcome') or 'not specified'}\n\n"
-        f"Related knowledge at completion:\n" + "\n".join(snippet_lines)
-    )
-    try:
-        await client.write_memory(
-            content=content,
-            type="memory",
-            tags=["task-completion"],
-            project=task.get("project"),
+    memory_block = ""
+    if related:
+        memory_block = "\n\n".join(
+            f"[{r['id']}] {r['content'][:300].replace(chr(10), ' ')}" for r in related
         )
+
+    try:
+        text = await complete(
+            system='You are the Artel archivist. A task just completed. Extract any generalizable facts that should be written or updated in project memory. Output a JSON object with keys: facts (list of strings, each a standalone memory entry to write), update_ids (list of memory entry IDs to update with new content, format: [{"id": "<id>", "content": "<new content>"}]). Be conservative — only extract facts that apply project-wide and will still be true in a week. If nothing meaningful, output {"facts": [], "update_ids": []}.',
+            user=(
+                f'Task: "{task["title"]}"\n'
+                f"Description: {task.get('description') or 'none'}\n"
+                f"Expected outcome: {task.get('expected_outcome') or 'none'}\n"
+                f"Completed by: {agent_id}\n\n"
+                + (f"Existing related memory:\n{memory_block}\n\n" if memory_block else "")
+                + "What project-wide facts, if any, does this completion establish or update?"
+            ),
+            max_tokens=1024,
+        )
+    except asyncio.CancelledError:
+        raise
     except Exception as e:
-        log.warning("could not write task completion observation for %s: %s", task_id, e)
+        log.warning("task completion LLM call failed for %s: %s", task_id, e)
+        return
+
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        lines = stripped.splitlines()
+        end = len(lines) - 1
+        while end > 0 and not lines[end].strip().startswith("```"):
+            end -= 1
+        stripped = "\n".join(lines[1:end]).strip()
+    try:
+        result = json.loads(stripped)
+    except Exception:
+        log.warning("task completion LLM returned unparseable JSON for %s", task_id)
+        return
+
+    valid_ids = {r["id"] for r in related}
+    for fact in result.get("facts", []):
+        if not isinstance(fact, str) or not fact.strip():
+            continue
+        try:
+            await client.write_memory(
+                content=fact,
+                type="memory",
+                tags=["task-completion", "archivist-extracted"],
+                project=task.get("project"),
+            )
+            log.info("archivist extracted fact from task %s", task_id[:8])
+        except Exception as e:
+            log.warning("could not write extracted fact for task %s: %s", task_id, e)
+
+    for update in result.get("update_ids", []):
+        if not isinstance(update, dict):
+            continue
+        uid = update.get("id", "")
+        new_content = update.get("content", "")
+        if uid not in valid_ids or not new_content.strip():
+            log.warning("task completion update references unknown or empty id: %s", uid)
+            continue
+        try:
+            await client.patch_memory(uid, content=new_content)
+            log.info("archivist updated memory %s from task completion %s", uid[:8], task_id[:8])
+        except Exception as e:
+            log.warning("could not update memory %s from task %s: %s", uid, task_id, e)
 
 
 async def on_task_failed(task_id: str, agent_id: str, client: ArtelClient) -> None:
@@ -462,6 +531,108 @@ async def decay_confidence(client: ArtelClient) -> None:
             await client.patch_memory(entry["id"], confidence=new_conf)
         except Exception as e:
             log.warning("decay failed for %s: %s", entry["id"], e)
+
+
+async def run_task_triage(client: ArtelClient) -> None:
+    try:
+        all_tasks = await client.list_tasks(status="open", limit=50)
+    except Exception as e:
+        log.warning("task triage could not fetch open tasks: %s", e)
+        return
+
+    unclaimed = [t for t in all_tasks if not t.get("assigned_to")]
+    if not unclaimed:
+        return
+
+    for task in unclaimed:
+        try:
+            await _triage_task(task, client)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            log.warning("task triage failed for %s: %s", task["id"], e)
+
+
+async def _triage_task(task: dict, client: ArtelClient) -> None:
+    query = f"{task['title']} {task.get('description') or ''}"
+    related = await client.search_memory(query, limit=8, max_distance=0.5)
+    if not related:
+        return
+
+    memory_block = "\n\n".join(
+        f"[{r['id']}] conf={r.get('confidence', 1.0):.2f} tags={r.get('tags', [])}\n{r['content'][:300].replace(chr(10), ' ')}"
+        for r in related
+    )
+
+    if not is_configured():
+        if related:
+            snippet = "; ".join(r["content"][:80].replace("\n", " ") for r in related[:3])
+            await client.add_task_comment(
+                task["id"],
+                f"[archivist] Related memory entries found:\n{snippet}",
+            )
+        return
+
+    try:
+        text = await complete(
+            system="You are the Artel archivist triaging an open task. Output a JSON object with keys: link_comment (string or null — a comment noting relevant memory entries by ID and how they relate, null if nothing useful), duplicate_of (string or null — task title hint if this looks like a duplicate of known work, null if not), already_done (bool — true only if memory strongly suggests this work is complete). Be conservative: only flag duplicates if very confident, only flag already_done if memory explicitly describes the outcome.",
+            user=(
+                f'Task: "{task["title"]}"\n'
+                f"Description: {task.get('description') or 'none'}\n"
+                f"Expected outcome: {task.get('expected_outcome') or 'none'}\n\n"
+                f"Related memory:\n{memory_block}"
+            ),
+            max_tokens=512,
+        )
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:
+        log.warning("task triage LLM call failed for %s: %s", task["id"], e)
+        return
+
+    stripped = text.strip()
+    if stripped.startswith("```"):
+        lines = stripped.splitlines()
+        end = len(lines) - 1
+        while end > 0 and not lines[end].strip().startswith("```"):
+            end -= 1
+        stripped = "\n".join(lines[1:end]).strip()
+    try:
+        result = json.loads(stripped)
+    except Exception:
+        log.warning("task triage LLM returned unparseable JSON for %s", task["id"])
+        return
+
+    link_comment = result.get("link_comment")
+    duplicate_of = result.get("duplicate_of")
+    already_done = result.get("already_done", False)
+
+    if link_comment and isinstance(link_comment, str) and link_comment.strip():
+        try:
+            await client.add_task_comment(task["id"], f"[archivist] {link_comment.strip()}")
+            log.info("archivist linked memory to task %s", task["id"][:8])
+        except Exception as e:
+            log.warning("could not add link comment to task %s: %s", task["id"], e)
+
+    if duplicate_of and isinstance(duplicate_of, str) and duplicate_of.strip():
+        try:
+            await client.add_task_comment(
+                task["id"],
+                f"[archivist] This task may duplicate existing work: {duplicate_of.strip()}. Review before starting.",
+            )
+            log.info("archivist flagged possible duplicate for task %s", task["id"][:8])
+        except Exception as e:
+            log.warning("could not add duplicate comment to task %s: %s", task["id"], e)
+
+    if already_done:
+        try:
+            await client.add_task_comment(
+                task["id"],
+                "[archivist] Project memory suggests this work may already be complete. Verify before claiming.",
+            )
+            log.info("archivist flagged possible completion for task %s", task["id"][:8])
+        except Exception as e:
+            log.warning("could not add already_done comment to task %s: %s", task["id"], e)
 
 
 async def run_promotion(client: ArtelClient) -> None:
