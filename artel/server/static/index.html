@@ -70,15 +70,16 @@ header{
   backdrop-filter:blur(12px);
   margin-left:var(--sb);
 }
-.logo{display:none}
 .logo{
+  display:none;
   font:600 15px var(--mono);
   color:var(--t1);
   letter-spacing:-.5px;
   flex-shrink:0;
-  display:flex;align-items:center;gap:8px;
+  align-items:center;gap:8px;
 }
 .logo-mark{color:var(--accent);width:22px;height:22px;flex-shrink:0;display:block}
+.h-menu-btn{display:none}
 .h-div{display:none}
 .h-select{
   background:transparent;
@@ -87,7 +88,7 @@ header{
   font:12px var(--mono);
   padding:3px 7px;
   border-radius:var(--r);
-  min-width:0;max-width:160px;
+  min-width:100px;max-width:220px;
   cursor:pointer;
   transition:border-color .15s,color .15s;
   appearance:none;
