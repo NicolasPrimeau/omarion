@@ -849,6 +849,7 @@ pre{
       <button class="drawer-item" onclick="drawerTab('events')">events</button>
       <button class="drawer-item" onclick="drawerTab('agents')">agents</button>
       <button class="drawer-item" onclick="drawerTab('sessions')">sessions</button>
+      <button class="drawer-item" onclick="drawerTab('logs')">logs</button>
     </div>
     <div class="panel-section" id="ps-projects-drawer">
       <span class="panel-section-lbl" onclick="toggleSection('ps-projects-drawer')">projects</span>
@@ -1196,6 +1197,7 @@ function drawerTab(name){
     if(name==='events'&&!_sseAbort)startSSE();
     if(name==='agents')loadAgents();
     if(name==='sessions'){populateSessionAgents();loadSession();}
+    if(name==='logs')loadLogs();
   }
 }
 const _THEMES=[
