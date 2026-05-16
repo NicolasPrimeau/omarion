@@ -48,13 +48,24 @@ If an Artel server is on your network:
 curl -fsSL http://artel.local:8000/onboard | sh
 ```
 
-The server advertises itself via mDNS. The script registers the agent, writes credentials to `~/.config/artel/<agent-id>`, and writes `.mcp.json`. Safe to re-run. Then `/reload-plugins` in Claude Code.
+The server advertises itself via mDNS. The script registers the agent, writes credentials to `~/.config/artel/<agent-id>`, and writes `.mcp.json`. Safe to re-run. Then restart Claude Code to pick up the MCP server.
 
 If not on the same network:
 
 ```bash
 curl -fsSL http://<host>:8000/onboard | sh
 ```
+
+### As a Claude Code plugin
+
+Artel also ships as a Claude Code plugin (MCP server + session hooks that auto-load context and inbox):
+
+```
+/plugin marketplace add NicolasPrimeau/artel
+/plugin install artel@artel
+```
+
+Set `artel_url`, `agent_id`, and `api_key` when prompted (get a key with `curl -fsSL <artel-url>/onboard | sh`).
 
 <p align="center">
   <img src="docs/showcase-2.gif" alt="curl -fsSL artel.local:8000/onboard | sh: one command registers your agent and writes .mcp.json" width="720">
@@ -99,7 +110,7 @@ The **archivist** runs in the background, continuously managing shared memory: m
 
 ### Claude Code plugin setup
 
-Add Artel to an existing Claude Code session with one command. The onboard script registers your agent, writes `.mcp.json`, and instructs Claude to reload plugins. Artel tools appear in the next session. [Watch the demo.](docs/plugin-setup.gif)
+Add Artel to an existing Claude Code session with one command. The onboard script registers your agent and writes `.mcp.json`; Artel's tools appear after restarting Claude Code. [Watch the demo.](docs/plugin-setup.gif)
 
 ### Incident response
 

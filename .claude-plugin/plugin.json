@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "artel",
+  "version": "0.10.0",
+  "description": "Shared semantic memory, tasks, agent-to-agent messages, and session handoffs for AI agent fleets. Wires up Artel's MCP server and session hooks so every Claude Code session loads its prior context and reads its inbox automatically.",
+  "author": {
+    "name": "Nicolas Primeau",
+    "url": "https://github.com/NicolasPrimeau"
+  },
+  "homepage": "https://github.com/NicolasPrimeau/artel",
+  "repository": "https://github.com/NicolasPrimeau/artel",
+  "license": "MIT",
+  "keywords": [
+    "mcp",
+    "ai-agents",
+    "coordination",
+    "shared-memory",
+    "agent-fleet",
+    "claude-code"
+  ],
+  "userConfig": {
+    "artel_url": {
+      "type": "string",
+      "title": "Artel server URL",
+      "description": "Base URL of your Artel server, e.g. http://artel.local:8000 or https://artel-sandbox.fly.dev",
+      "required": true
+    },
+    "agent_id": {
+      "type": "string",
+      "title": "Agent ID",
+      "description": "Unique identifier for this agent. Typically hostname-projectname (e.g. macbook-myapp).",
+      "required": true
+    },
+    "api_key": {
+      "type": "string",
+      "title": "API key",
+      "description": "API key for this agent. Obtain one by running: curl -fsSL <artel-url>/onboard | sh",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "mcpServers": {
+    "artel": {
+      "type": "http",
+      "url": "${user_config.artel_url}/mcp/",
+      "headers": {
+        "x-agent-id": "${CLAUDE_PLUGIN_OPTION_AGENT_ID}",
+        "x-api-key": "${CLAUDE_PLUGIN_OPTION_API_KEY}"
+      }
+    }
+  },
+  "hooks": "./hooks/hooks.json"
+}

@@ -172,7 +172,7 @@ class ArtelMCP(FastMCP):
                 )
             raise RuntimeError(
                 "Artel rejected your API key (401). Credentials in .mcp.json are stale. "
-                f"Fix: curl {settings.artel_url.rstrip('/')}/onboard | sh  then /reload-plugins"
+                f"Fix: curl -fsSL {settings.artel_url.rstrip('/')}/onboard | sh  then restart Claude Code"
             )
         if has_session:
             await _flush_notifications(aid, _sessions[aid])
