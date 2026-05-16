@@ -85,6 +85,13 @@ async def lifespan(app: FastAPI):
             (settings.ui_agent_id, secrets.token_urlsafe(32)),
         )
     db.execute("UPDATE agents SET role='owner' WHERE id=?", (settings.ui_agent_id,))
+    arch_key = next((k for k, v in settings.api_keys().items() if v == settings.archivist_id), None)
+    if arch_key:
+        db.execute(
+            "INSERT OR IGNORE INTO agents (id, api_key, role) VALUES (?, ?, 'owner')",
+            (settings.archivist_id, arch_key),
+        )
+        db.execute("UPDATE agents SET role='owner' WHERE id=?", (settings.archivist_id,))
     db.commit()
     mdns = MDNSService(settings.port)
     try:
