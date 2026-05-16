@@ -826,13 +826,15 @@ pre{
       <button class="drawer-item" onclick="drawerTab('agents')">agents</button>
       <button class="drawer-item" onclick="drawerTab('sessions')">sessions</button>
     </div>
-    <div class="panel-section">
-      <span class="panel-section-lbl">projects</span>
-      <div class="panel-proj-row">
-        <input id="drawer-proj-input" placeholder="join or create…" onkeydown="if(event.key==='Enter')panelJoinProject('drawer-proj-input')">
-        <button class="sm p" onclick="panelJoinProject('drawer-proj-input')">+</button>
+    <div class="panel-section" id="ps-projects-drawer">
+      <span class="panel-section-lbl" onclick="toggleSection('ps-projects-drawer')">projects</span>
+      <div class="panel-section-body">
+        <div class="panel-proj-row">
+          <input id="drawer-proj-input" placeholder="join or create…" onkeydown="if(event.key==='Enter')panelJoinProject('drawer-proj-input')">
+          <button class="sm p" onclick="panelJoinProject('drawer-proj-input')">+</button>
+        </div>
+        <div id="drawer-pjlist"></div>
       </div>
-      <div id="drawer-pjlist"></div>
     </div>
     <div class="panel-section" id="ps-appearance-drawer">
       <span class="panel-section-lbl" onclick="toggleSection('ps-appearance-drawer')">appearance</span>
@@ -860,13 +862,15 @@ pre{
       <button class="nav-btn" onclick="tab('agents',this)">agents</button>
       <button class="nav-btn" onclick="tab('sessions',this)">sessions</button>
     </div>
-    <div class="panel-section">
-      <span class="panel-section-lbl">projects</span>
-      <div class="panel-proj-row">
-        <input id="sidebar-proj-input" placeholder="join or create…" onkeydown="if(event.key==='Enter')panelJoinProject('sidebar-proj-input')">
-        <button class="sm p" onclick="panelJoinProject('sidebar-proj-input')">+</button>
+    <div class="panel-section" id="ps-projects-sidebar">
+      <span class="panel-section-lbl" onclick="toggleSection('ps-projects-sidebar')">projects</span>
+      <div class="panel-section-body">
+        <div class="panel-proj-row">
+          <input id="sidebar-proj-input" placeholder="join or create…" onkeydown="if(event.key==='Enter')panelJoinProject('sidebar-proj-input')">
+          <button class="sm p" onclick="panelJoinProject('sidebar-proj-input')">+</button>
+        </div>
+        <div id="sidebar-pjlist"></div>
       </div>
-      <div id="sidebar-pjlist"></div>
     </div>
     <div class="panel-section" id="ps-appearance-sidebar">
       <span class="panel-section-lbl" onclick="toggleSection('ps-appearance-sidebar')">appearance</span>
@@ -1106,7 +1110,7 @@ function toggleSection(id){
   el.classList.toggle('collapsed');
   try{localStorage.setItem('artel-ps-'+id,el.classList.contains('collapsed')?'1':'0');}catch(e){}
 }
-(function(){['ps-appearance-sidebar','ps-appearance-drawer'].forEach(id=>{
+(function(){['ps-appearance-sidebar','ps-appearance-drawer','ps-projects-sidebar','ps-projects-drawer'].forEach(id=>{
   try{if(localStorage.getItem('artel-ps-'+id)==='1'&&$(id))$(id).classList.add('collapsed');}catch(e){}
 });}());
 function openDrawer(){
@@ -1166,19 +1170,52 @@ async function panelJoinProject(inputId){
   const name=$(inputId).value.trim();if(!name)return;
   await joinProject(name);$(inputId).value='';
 }
-let _swipeStartX=0,_swipeStartY=0;
-document.addEventListener('touchstart',e=>{
-  _swipeStartX=e.touches[0].clientX;
-  _swipeStartY=e.touches[0].clientY;
-},{passive:true});
-document.addEventListener('touchend',e=>{
-  const dx=e.changedTouches[0].clientX-_swipeStartX;
-  const dy=Math.abs(e.changedTouches[0].clientY-_swipeStartY);
-  if(dy>40)return;
-  const open=$('drawer').classList.contains('open');
-  if(!open&&dx>40&&_swipeStartX<80)openDrawer();
-  else if(open&&dx<-40)closeDrawer();
-},{passive:true});
+/* ── Swipe drawer ── */
+(function(){
+  const W=240;
+  let x0=0,y0=0,dragging=false,wasOpen=false;
+  const drawer=$('drawer'),overlay=$('drawer-overlay');
+  function setPos(x){
+    drawer.style.transition='none';
+    overlay.style.transition='none';
+    const clamped=Math.max(0,Math.min(W,x));
+    drawer.style.transform=`translateX(${clamped-W}px)`;
+    overlay.style.opacity=clamped/W*0.6;
+    overlay.style.display='block';
+  }
+  function settle(open){
+    drawer.style.transition='';
+    overlay.style.transition='';
+    if(open){openDrawer();}
+    else{
+      drawer.style.transform='';
+      overlay.style.opacity='';
+      if(!wasOpen)overlay.style.display='none';
+      closeDrawer();
+    }
+  }
+  document.addEventListener('touchstart',e=>{
+    x0=e.touches[0].clientX;y0=e.touches[0].clientY;
+    wasOpen=$('drawer').classList.contains('open');
+    dragging=(wasOpen||x0<80);
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!dragging)return;
+    const dx=e.touches[0].clientX-x0;
+    const dy=Math.abs(e.touches[0].clientY-y0);
+    if(!wasOpen&&dy>dx&&dy>10){dragging=false;return;}
+    const cur=wasOpen?W:0;
+    setPos(cur+dx);
+  },{passive:true});
+  document.addEventListener('touchend',e=>{
+    if(!dragging)return;
+    dragging=false;
+    const dx=e.changedTouches[0].clientX-x0;
+    const cur=wasOpen?W:0;
+    const pos=cur+dx;
+    settle(pos>W*0.4);
+  },{passive:true});
+}());
 
 function onProjectChange(){
   const p=document.querySelector('.panel.on');if(!p)return;
