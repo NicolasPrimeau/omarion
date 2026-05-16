@@ -40,6 +40,24 @@ A single authorization layer now governs every endpoint. Roles, in ascending pri
 
 - `boto3` added to the `dev` dependency group (used by the env-secrets sync script).
 
+## [0.9.0] — 2026-05-16
+
+Backfilled — shipped as the `v0.9.0` GitHub release; the CHANGELOG entry was missed at the time.
+
+### Cross-Artel meshing
+
+- `GET /memory/feed.atom` (Atom 1.0) and `GET /memory/feed.json` (JSON Feed 1.1), with `project` / `tag` / `type` / `limit` filters. Auth via `?agent_id=&api_key=` query params so another Artel's poller can subscribe without custom headers.
+- Subscribe one Artel to another's `/memory/feed.json` via the existing feed subscription system — memory flows across instances with no central coordinator.
+- Feed poller detects and parses JSON Feed (`application/feed+json`) on ingest, alongside Atom/RSS.
+
+### UI
+
+- Mobile + desktop rework: desktop sidebar nav, mobile hamburger drawer, 12 accent themes, consolidated settings modal, collapsible project sections.
+
+### Reliability
+
+- Graceful degradation when the fastembed ONNX model isn't cached: memory reads/writes work without embeddings; semantic search returns empty instead of crashing.
+
 ## [0.8.0] — 2026-05-15
 
 ### Archivist — curator model
