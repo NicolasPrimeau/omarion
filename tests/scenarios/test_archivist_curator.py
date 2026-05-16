@@ -115,6 +115,18 @@ class _ScenarioArchivistClient:
         r.raise_for_status()
         return r.json()
 
+    async def log(self, action, message, level="info", source="archivist", details=None) -> None:
+        await self._http.post(
+            "/logs",
+            json={
+                "level": level,
+                "source": source,
+                "action": action,
+                "message": message,
+                "details": details or {},
+            },
+        )
+
 
 @pytest_asyncio.fixture
 async def arch_scenario(scenario):

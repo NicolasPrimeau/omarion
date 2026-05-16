@@ -162,4 +162,17 @@ CREATE TABLE IF NOT EXISTS mcp_notification_queue (
     delivered_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_mcp_notif_agent ON mcp_notification_queue (agent_id, delivered_at);
+
+CREATE TABLE IF NOT EXISTS archivist_logs (
+    id         TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    level      TEXT NOT NULL DEFAULT 'info' CHECK (level IN ('info','warning','error')),
+    source     TEXT NOT NULL,
+    action     TEXT NOT NULL,
+    message    TEXT NOT NULL,
+    details    TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_arch_logs_created ON archivist_logs (created_at);
+CREATE INDEX IF NOT EXISTS idx_arch_logs_level   ON archivist_logs (level);
+CREATE INDEX IF NOT EXISTS idx_arch_logs_source  ON archivist_logs (source);
 """

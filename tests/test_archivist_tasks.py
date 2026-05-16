@@ -16,6 +16,7 @@ def _make_client(
     client.patch_memory = AsyncMock(return_value={})
     client.list_tasks = AsyncMock(return_value=tasks or [])
     client.add_task_comment = AsyncMock(return_value={"id": "comment-id"})
+    client.log = AsyncMock()
     return client
 
 

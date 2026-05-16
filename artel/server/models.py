@@ -13,6 +13,7 @@ Scope = Literal["agent", "project"]
 TaskStatus = Literal["open", "claimed", "completed", "failed"]
 TaskCommentKind = Literal["comment", "claim", "unclaim", "complete", "fail"]
 Priority = Literal["low", "normal", "high"]
+LogLevel = Literal["info", "warning", "error"]
 
 
 class MemoryWrite(BaseModel):
@@ -202,3 +203,21 @@ class HandoffPost(BaseModel):
 class HandoffResponse(BaseModel):
     last_handoff: dict | None
     memory_delta: list[MemoryEntry]
+
+
+class LogWrite(BaseModel):
+    level: LogLevel = "info"
+    source: str
+    action: str
+    message: str
+    details: dict = {}
+
+
+class LogEntry(BaseModel):
+    id: str
+    created_at: str
+    level: LogLevel
+    source: str
+    action: str
+    message: str
+    details: dict

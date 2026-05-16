@@ -236,6 +236,7 @@ class TestExecuteOperations:
         client.patch_memory = AsyncMock(return_value={})
         client.get_memory = AsyncMock()
         client.create_task = AsyncMock(return_value={"id": "task-id"})
+        client.log = AsyncMock()
         return client
 
     async def test_merge_writes_new_entry_and_deletes_both(self):
@@ -552,6 +553,7 @@ class TestRunSynthesisStructured:
         client.write_memory = AsyncMock(return_value={"id": "new"})
         client.delete_memory = AsyncMock()
         client.create_task = AsyncMock(return_value={"id": "t"})
+        client.log = AsyncMock()
 
         with (
             patch("artel.archivist.synthesis.is_configured", return_value=True),
@@ -577,6 +579,7 @@ class TestRunSynthesisStructured:
         client.write_memory = AsyncMock(return_value={"id": "new"})
         client.delete_memory = AsyncMock()
         client.create_task = AsyncMock(return_value={"id": "t"})
+        client.log = AsyncMock()
 
         with (
             patch("artel.archivist.synthesis.is_configured", return_value=True),
@@ -608,6 +611,7 @@ class TestRunSynthesisStructured:
         client.write_memory = AsyncMock(return_value={"id": "new"})
         client.delete_memory = AsyncMock()
         client.create_task = AsyncMock(return_value={"id": "t"})
+        client.log = AsyncMock()
 
         with (
             patch("artel.archivist.synthesis.is_configured", return_value=True),
@@ -635,6 +639,7 @@ class TestRunSynthesisStructured:
         client.write_memory = AsyncMock(return_value={"id": "new"})
         client.delete_memory = AsyncMock()
         client.create_task = AsyncMock(return_value={"id": "t"})
+        client.log = AsyncMock()
 
         with (
             patch("artel.archivist.synthesis.is_configured", return_value=True),
@@ -660,6 +665,7 @@ class TestRunSynthesisStructured:
         client.write_memory = AsyncMock(return_value={"id": "new"})
         client.delete_memory = AsyncMock()
         client.create_task = AsyncMock(return_value={"id": "t"})
+        client.log = AsyncMock()
 
         with (
             patch("artel.archivist.synthesis.is_configured", return_value=True),

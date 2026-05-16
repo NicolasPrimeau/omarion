@@ -329,6 +329,8 @@ async def on_task_completed(task_id: str, agent_id: str, client: ArtelClient) ->
         return
 
     valid_ids = {r["id"] for r in related}
+    facts_written = 0
+    updates_applied = 0
     for fact in result.get("facts", []):
         if not isinstance(fact, str) or not fact.strip():
             continue
@@ -339,6 +341,7 @@ async def on_task_completed(task_id: str, agent_id: str, client: ArtelClient) ->
                 tags=["task-completion", "archivist-extracted"],
                 project=task.get("project"),
             )
+            facts_written += 1
             log.info("archivist extracted fact from task %s", task_id[:8])
         except Exception as e:
             log.warning("could not write extracted fact for task %s: %s", task_id, e)
@@ -353,9 +356,20 @@ async def on_task_completed(task_id: str, agent_id: str, client: ArtelClient) ->
             continue
         try:
             await client.patch_memory(uid, content=new_content)
+            updates_applied += 1
             log.info("archivist updated memory %s from task completion %s", uid[:8], task_id[:8])
         except Exception as e:
             log.warning("could not update memory %s from task %s: %s", uid, task_id, e)
+
+    await client.log(
+        action="fact_extraction",
+        message=f'task "{task["title"][:60]}" completed: {facts_written} fact(s) written, {updates_applied} memor{"y" if updates_applied == 1 else "ies"} updated',
+        details={
+            "task_id": task_id,
+            "facts_written": facts_written,
+            "updates_applied": updates_applied,
+        },
+    )
 
 
 async def on_task_failed(task_id: str, agent_id: str, client: ArtelClient) -> None:
@@ -509,6 +523,15 @@ async def run_synthesis(client: ArtelClient) -> None:
 
     ops = _parse_operations(text)
     await _execute_operations(ops, client, entries)
+    await client.log(
+        action="synthesis",
+        message=f"synthesis pass complete: {len(ops)} op(s) on {len(entries)} entr{'y' if len(entries) == 1 else 'ies'}",
+        details={
+            "ops": len(ops),
+            "entries": len(entries),
+            "op_types": list({o.get("op") for o in ops}),
+        },
+    )
 
 
 async def decay_confidence(client: ArtelClient) -> None:
@@ -522,6 +545,7 @@ async def decay_confidence(client: ArtelClient) -> None:
         if e["agent_id"] != settings.archivist_id and e.get("type") != "directive"
     ]
 
+    decayed = 0
     for entry in entries:
         current = entry["confidence"]
         if current <= settings.decay_floor:
@@ -529,8 +553,15 @@ async def decay_confidence(client: ArtelClient) -> None:
         new_conf = max(settings.decay_floor, current * settings.decay_rate)
         try:
             await client.patch_memory(entry["id"], confidence=new_conf)
+            decayed += 1
         except Exception as e:
             log.warning("decay failed for %s: %s", entry["id"], e)
+    if decayed:
+        await client.log(
+            action="decay",
+            message=f"decayed confidence on {decayed} entr{'y' if decayed == 1 else 'ies'}",
+            details={"decayed": decayed, "candidates": len(entries)},
+        )
 
 
 async def run_task_triage(client: ArtelClient) -> None:
@@ -544,13 +575,21 @@ async def run_task_triage(client: ArtelClient) -> None:
     if not unclaimed:
         return
 
+    triaged = 0
     for task in unclaimed:
         try:
             await _triage_task(task, client)
+            triaged += 1
         except asyncio.CancelledError:
             raise
         except Exception as e:
             log.warning("task triage failed for %s: %s", task["id"], e)
+    if triaged:
+        await client.log(
+            action="triage",
+            message=f"triaged {triaged} open task{'s' if triaged != 1 else ''}",
+            details={"triaged": triaged, "open_unclaimed": len(unclaimed)},
+        )
 
 
 async def _triage_task(task: dict, client: ArtelClient) -> None:
@@ -644,6 +683,7 @@ async def run_promotion(client: ArtelClient) -> None:
         min_version=settings.promotion_memory_min_version,
         updated_before=cutoff,
     )
+    promoted = 0
     for entry in memory_entries:
         if entry["agent_id"] == settings.archivist_id:
             continue
@@ -651,5 +691,12 @@ async def run_promotion(client: ArtelClient) -> None:
             continue
         try:
             await client.patch_memory(entry["id"], type="doc")
+            promoted += 1
         except Exception as e:
             log.warning("memory promotion failed for %s: %s", entry["id"], e)
+    if promoted:
+        await client.log(
+            action="promotion",
+            message=f"promoted {promoted} memor{'y' if promoted == 1 else 'ies'} to doc",
+            details={"promoted": promoted},
+        )

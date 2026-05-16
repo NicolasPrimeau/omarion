@@ -166,6 +166,29 @@ class ArtelClient:
         )
         return r.json()
 
+    async def log(
+        self,
+        action: str,
+        message: str,
+        level: str = "info",
+        source: str = "archivist",
+        details: dict | None = None,
+    ) -> None:
+        try:
+            await self._request(
+                "POST",
+                "/logs",
+                json={
+                    "level": level,
+                    "source": source,
+                    "action": action,
+                    "message": message,
+                    "details": details or {},
+                },
+            )
+        except Exception as e:
+            log.warning("could not write archivist log: %s", e)
+
     async def stream_events(self, event_type: str | None = None):
         params = {}
         if event_type:

@@ -543,6 +543,29 @@ pre{
 .flash{color:var(--green);font:11px var(--mono);margin-left:4px;opacity:0;transition:opacity .3s}
 .flash.show{opacity:1}
 
+/* ── Log rows ─────────────────────────── */
+.log-row{
+  display:grid;
+  grid-template-columns:90px 64px 72px 120px 1fr;
+  gap:0 10px;
+  align-items:baseline;
+  padding:6px 10px;
+  border-bottom:1px solid var(--s2);
+  font:12px var(--mono);
+}
+.log-row:hover{background:var(--s1)}
+.log-ts{color:var(--t4);white-space:nowrap;font-size:11px}
+.log-level{font-weight:600;font-size:11px;text-transform:uppercase}
+.log-source{color:var(--blue);font-size:11px}
+.log-action{color:var(--accent);font-size:11px}
+.log-msg{color:var(--t2);word-break:break-word}
+.log-details{
+  grid-column:2/-1;
+  color:var(--t4);font-size:11px;
+  background:var(--s1);border-radius:var(--r);
+  padding:3px 6px;margin-top:3px;word-break:break-all;
+}
+
 /* ── Modal ────────────────────────────── */
 .modal-backdrop{
   display:none;position:fixed;inset:0;
@@ -862,6 +885,7 @@ pre{
       <button class="nav-btn" onclick="tab('events',this)">events</button>
       <button class="nav-btn" onclick="tab('agents',this)">agents</button>
       <button class="nav-btn" onclick="tab('sessions',this)">sessions</button>
+      <button class="nav-btn" onclick="tab('logs',this)">logs</button>
     </div>
     <div class="panel-section" id="ps-projects-sidebar">
       <span class="panel-section-lbl" onclick="toggleSection('ps-projects-sidebar')">projects</span>
@@ -1005,6 +1029,36 @@ pre{
   </div>
 </div>
 
+<!-- LOGS -->
+<div id="panel-logs" class="panel">
+  <div class="toolbar">
+    <select id="log-level" onchange="loadLogs()" style="width:120px">
+      <option value="">all levels</option>
+      <option value="info">info</option>
+      <option value="warning">warning</option>
+      <option value="error">error</option>
+    </select>
+    <select id="log-source" onchange="loadLogs()" style="width:120px">
+      <option value="">all sources</option>
+      <option value="archivist">archivist</option>
+      <option value="poller">poller</option>
+    </select>
+    <select id="log-action" onchange="loadLogs()" style="width:140px">
+      <option value="">all actions</option>
+      <option value="synthesis">synthesis</option>
+      <option value="triage">triage</option>
+      <option value="fact_extraction">fact_extraction</option>
+      <option value="decay">decay</option>
+      <option value="promotion">promotion</option>
+      <option value="feed_poll">feed_poll</option>
+    </select>
+    <button onclick="loadLogs()">refresh</button>
+    <div class="spacer"></div>
+    <span class="toolbar-label" id="log-count"></span>
+  </div>
+  <div id="log-list"></div>
+</div>
+
 <!-- TASK EDIT MODAL -->
 <div id="task-modal" class="modal-backdrop">
   <div class="modal" style="max-width:640px;width:90vw">
@@ -1106,6 +1160,7 @@ function tab(name,btn){
   if(name==='events'&&!_sseAbort)startSSE();
   if(name==='agents')loadAgents();
   if(name==='sessions'){populateSessionAgents();loadSession();}
+  if(name==='logs')loadLogs();
 }
 
 function toggleSection(id){
@@ -1762,6 +1817,36 @@ async function saveHandoff(){
     $('hs-summary').value='';$('hs-next').value='';$('hs-inprogress').value='';
     toast('Handoff saved','ok');loadSession();
   }catch(e){toast('Save failed: '+e.message,'err');}
+}
+
+// ── Logs ─────────────────────────────────────────────────────────────
+const _LOG_LEVEL_COLOR={info:'var(--t3)',warning:'var(--orange)',error:'var(--red)'};
+async function loadLogs(){
+  loading('log-list');
+  const level=$('log-level').value;
+  const source=$('log-source').value;
+  const action=$('log-action').value;
+  const params=new URLSearchParams({limit:'200'});
+  if(level)params.set('level',level);
+  if(source)params.set('source',source);
+  if(action)params.set('action',action);
+  try{
+    const rows=await req('GET',`/logs?${params}`);
+    $('log-count').textContent=rows.length+' entr'+(rows.length===1?'y':'ies');
+    if(!rows.length){$('log-list').innerHTML=emptyState('📋','no log entries');return;}
+    $('log-list').innerHTML=rows.map(r=>{
+      const color=_LOG_LEVEL_COLOR[r.level]||'var(--t3)';
+      const det=r.details&&Object.keys(r.details).length?`<div class="log-details">${esc(JSON.stringify(r.details))}</div>`:'';
+      return `<div class="log-row">
+        <span class="log-ts">${relTime(r.created_at)}</span>
+        <span class="log-level" style="color:${color}">${esc(r.level)}</span>
+        <span class="log-source">${esc(r.source)}</span>
+        <span class="log-action">${esc(r.action)}</span>
+        <span class="log-msg">${esc(r.message)}</span>
+        ${det}
+      </div>`;
+    }).join('');
+  }catch(e){$('log-list').innerHTML=`<div class="err-msg">${esc(e.message)}</div>`;}
 }
 
 // ── Connect dropdown ──────────────────────────────────────────────────

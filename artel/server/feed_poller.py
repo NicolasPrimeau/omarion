@@ -115,6 +115,23 @@ async def _poll_feed(feed: dict) -> None:
             resp.raise_for_status()
     except Exception as e:
         log.warning("feed %s (%s) fetch failed: %s", feed["name"], feed["url"], e)
+        lid = new_id()
+        db = get_db()
+        with db:
+            db.execute(
+                "INSERT INTO archivist_logs (id, level, source, action, message, details) VALUES (?,?,?,?,?,?)",
+                (
+                    lid,
+                    "warning",
+                    "poller",
+                    "feed_poll",
+                    f'feed "{feed["name"]}" fetch failed: {e}',
+                    json.dumps({"feed_id": feed_id, "feed_name": feed["name"], "url": feed["url"]}),
+                ),
+            )
+            db.execute(
+                "DELETE FROM archivist_logs WHERE id IN (SELECT id FROM archivist_logs ORDER BY created_at DESC LIMIT -1 OFFSET 10000)"
+            )
         return
 
     content_type = resp.headers.get("content-type", "")
@@ -175,6 +192,29 @@ async def _poll_feed(feed: dict) -> None:
         log.info(
             "feed %s: ingested %d new items into project %s", feed["name"], count, feed["project"]
         )
+        lid = new_id()
+        with db:
+            db.execute(
+                "INSERT INTO archivist_logs (id, level, source, action, message, details) VALUES (?,?,?,?,?,?)",
+                (
+                    lid,
+                    "info",
+                    "poller",
+                    "feed_poll",
+                    f'feed "{feed["name"]}": ingested {count} new item{"s" if count != 1 else ""} into project {feed["project"]}',
+                    json.dumps(
+                        {
+                            "feed_id": feed_id,
+                            "feed_name": feed["name"],
+                            "project": feed["project"],
+                            "count": count,
+                        }
+                    ),
+                ),
+            )
+            db.execute(
+                "DELETE FROM archivist_logs WHERE id IN (SELECT id FROM archivist_logs ORDER BY created_at DESC LIMIT -1 OFFSET 10000)"
+            )
 
 
 async def run_poller() -> None:
