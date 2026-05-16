@@ -11,6 +11,7 @@ wheels/
 
 # Secrets
 .env
+.env.sandbox
 .env.meta.json
 .mcp.json
 

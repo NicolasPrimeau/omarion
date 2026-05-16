@@ -1170,52 +1170,9 @@ async function panelJoinProject(inputId){
   const name=$(inputId).value.trim();if(!name)return;
   await joinProject(name);$(inputId).value='';
 }
-/* ── Swipe drawer ── */
-(function(){
-  const W=240;
-  let x0=0,y0=0,dragging=false,wasOpen=false;
-  const drawer=$('drawer'),overlay=$('drawer-overlay');
-  function setPos(x){
-    drawer.style.transition='none';
-    overlay.style.transition='none';
-    const clamped=Math.max(0,Math.min(W,x));
-    drawer.style.transform=`translateX(${clamped-W}px)`;
-    overlay.style.opacity=clamped/W*0.6;
-    overlay.style.display='block';
-  }
-  function settle(open){
-    drawer.style.transition='';
-    overlay.style.transition='';
-    if(open){openDrawer();}
-    else{
-      drawer.style.transform='';
-      overlay.style.opacity='';
-      if(!wasOpen)overlay.style.display='none';
-      closeDrawer();
-    }
-  }
-  document.addEventListener('touchstart',e=>{
-    x0=e.touches[0].clientX;y0=e.touches[0].clientY;
-    wasOpen=$('drawer').classList.contains('open');
-    dragging=(wasOpen||x0<80);
-  },{passive:true});
-  document.addEventListener('touchmove',e=>{
-    if(!dragging)return;
-    const dx=e.touches[0].clientX-x0;
-    const dy=Math.abs(e.touches[0].clientY-y0);
-    if(!wasOpen&&dy>dx&&dy>10){dragging=false;return;}
-    const cur=wasOpen?W:0;
-    setPos(cur+dx);
-  },{passive:true});
-  document.addEventListener('touchend',e=>{
-    if(!dragging)return;
-    dragging=false;
-    const dx=e.changedTouches[0].clientX-x0;
-    const cur=wasOpen?W:0;
-    const pos=cur+dx;
-    settle(pos>W*0.4);
-  },{passive:true});
-}());
+document.addEventListener('click',e=>{
+  if($('drawer').classList.contains('open')&&!e.target.closest('#drawer')&&!e.target.closest('.h-menu-btn'))closeDrawer();
+});
 
 function onProjectChange(){
   const p=document.querySelector('.panel.on');if(!p)return;

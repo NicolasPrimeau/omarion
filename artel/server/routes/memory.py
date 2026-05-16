@@ -70,10 +70,11 @@ async def write_memory(
                 now,
             ),
         )
-        db.execute(
-            "INSERT INTO memory_vec (id, embedding) VALUES (?, ?)",
-            (entry_id, json.dumps(vec)),
-        )
+        if vec is not None:
+            db.execute(
+                "INSERT INTO memory_vec (id, embedding) VALUES (?, ?)",
+                (entry_id, json.dumps(vec)),
+            )
         db.execute(
             "INSERT INTO events (id, type, agent_id, payload) VALUES (?,?,?,?)",
             (event_id, "memory.written", agent_id, json.dumps({"memory_id": entry_id})),
@@ -107,6 +108,9 @@ async def search_memory(
     db = get_db()
     vec = embed(q)
     allowed = _memberships(agent_id)
+
+    if vec is None:
+        return []
 
     # Over-fetch when project/membership filtering will reduce results
     has_filter = bool(project) or (allowed is not None)
@@ -305,7 +309,7 @@ async def patch_memory(
             f"version={row['version'] + 1}",
         ]
         with db:
-            if body.content is not None:
+            if body.content is not None and vec is not None:
                 db.execute("DELETE FROM memory_vec WHERE id=?", (entry_id,))
                 db.execute(
                     "INSERT INTO memory_vec (id, embedding) VALUES (?,?)",
