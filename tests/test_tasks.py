@@ -277,3 +277,47 @@ async def test_task_lifecycle(client):
     await client.post(f"/tasks/{tid}/complete", headers=HEADERS)
     r_list3 = await client.get("/tasks", params={"status": "completed"}, headers=HEADERS)
     assert any(t["id"] == tid for t in r_list3.json())
+
+
+async def test_update_task_by_non_creator_non_assignee_forbidden(client):
+    r = await client.post("/tasks", json={"title": "guarded task"}, headers=HEADERS)
+    tid = r.json()["id"]
+
+    r2 = await client.patch(f"/tasks/{tid}", json={"title": "hijacked"}, headers=HEADERS2)
+    assert r2.status_code == 403
+
+
+async def test_update_task_by_assignee_allowed(client):
+    r = await client.post("/tasks", json={"title": "claimable update"}, headers=HEADERS)
+    tid = r.json()["id"]
+    await client.post(f"/tasks/{tid}/claim", headers=HEADERS2)
+
+    r2 = await client.patch(
+        f"/tasks/{tid}", json={"description": "progress noted"}, headers=HEADERS2
+    )
+    assert r2.status_code == 200
+    assert r2.json()["description"] == "progress noted"
+
+
+async def test_claim_task_project_membership_required(client):
+    await client.post("/projects/restricted/join", headers=HEADERS)
+    r = await client.post(
+        "/tasks", json={"title": "restricted task", "project": "restricted"}, headers=HEADERS
+    )
+    tid = r.json()["id"]
+
+    r2 = await client.post(f"/tasks/{tid}/claim", headers=HEADERS2)
+    assert r2.status_code == 403
+
+
+async def test_claim_task_project_member_can_claim(client):
+    await client.post("/projects/shared/join", headers=HEADERS)
+    await client.post("/projects/shared/join", headers=HEADERS2)
+    r = await client.post(
+        "/tasks", json={"title": "shared task", "project": "shared"}, headers=HEADERS
+    )
+    tid = r.json()["id"]
+
+    r2 = await client.post(f"/tasks/{tid}/claim", headers=HEADERS2)
+    assert r2.status_code == 200
+    assert r2.json()["assigned_to"] == "otheragent"

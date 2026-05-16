@@ -403,7 +403,8 @@ async def patch_memory(
 
     is_entry_owner = row["agent_id"] == agent_id or is_owner(agent_id)
     wants_owner_fields = any(
-        f is not None for f in (body.content, body.tags, body.scope, body.project)
+        f is not None
+        for f in (body.content, body.tags, body.scope, body.project, body.confidence, body.type)
     )
     if not is_entry_owner and wants_owner_fields:
         raise HTTPException(status_code=403, detail="forbidden")

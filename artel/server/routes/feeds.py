@@ -4,7 +4,7 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException
 
 from ...store.db import get_db
-from ..auth import _memberships, require_agent
+from ..auth import _memberships, is_owner, require_agent
 from ..models import FeedCreate, FeedEntry, new_id
 
 router = APIRouter(prefix="/feeds", tags=["feeds"])
@@ -75,10 +75,8 @@ async def unsubscribe(feed_id: str, agent_id: str = Depends(require_agent)):
     row = db.execute("SELECT agent_id FROM feed_subscriptions WHERE id=?", (feed_id,)).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="feed not found")
-    if row["agent_id"] != agent_id:
-        allowed = _memberships(agent_id)
-        if allowed is not None:
-            raise HTTPException(status_code=403, detail="not your subscription")
+    if row["agent_id"] != agent_id and not is_owner(agent_id):
+        raise HTTPException(status_code=403, detail="not your subscription")
     with db:
         db.execute("DELETE FROM feed_items_seen WHERE feed_id=?", (feed_id,))
         db.execute("DELETE FROM feed_subscriptions WHERE id=?", (feed_id,))

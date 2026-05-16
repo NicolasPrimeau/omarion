@@ -141,8 +141,13 @@ async def claim_task(
     agent_id: str = Depends(require_agent),
 ):
     db = get_db()
-    if not db.execute("SELECT id FROM tasks WHERE id=?", (task_id,)).fetchone():
+    row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
+    if not row:
         raise HTTPException(status_code=404, detail="not found")
+    if row["project"]:
+        allowed = _memberships(agent_id)
+        if allowed is not None and row["project"] not in allowed:
+            raise HTTPException(status_code=403, detail="not a member of this project")
     with db:
         cursor = db.execute(
             """UPDATE tasks SET status='claimed', assigned_to=?,
@@ -227,6 +232,11 @@ async def update_task(task_id: str, body: TaskUpdate, agent_id: str = Depends(re
         raise HTTPException(status_code=404, detail="not found")
     if row["status"] in ("completed", "failed"):
         raise HTTPException(status_code=409, detail="task is terminal and cannot be modified")
+    is_task_actor = (
+        row["created_by"] == agent_id or row["assigned_to"] == agent_id or is_owner(agent_id)
+    )
+    if not is_task_actor:
+        raise HTTPException(status_code=403, detail="forbidden")
     set_parts: list[str] = []
     params: list = []
     if body.description is not None:

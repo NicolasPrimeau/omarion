@@ -92,6 +92,13 @@ async def test_feed_unsubscribe_wrong_owner(client):
     assert r2.status_code == 403
 
 
+async def test_feed_unsubscribe_other_agent_no_membership_forbidden(client):
+    r = await _subscribe(client)
+    feed_id = r.json()["id"]
+    r2 = await client.delete(f"/feeds/{feed_id}", headers=HEADERS2)
+    assert r2.status_code == 403
+
+
 # ── Poller ────────────────────────────────────────────────────────────────────
 
 

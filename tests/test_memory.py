@@ -39,22 +39,20 @@ async def test_patch_content(client, mem_payload):
     assert r2.json()["version"] == 2
 
 
-async def test_patch_confidence_by_other_agent_allowed(client, mem_payload):
+async def test_patch_confidence_by_other_agent_forbidden(client, mem_payload):
     r = await client.post("/memory", json=mem_payload, headers=HEADERS)
     eid = r.json()["id"]
 
     r2 = await client.patch(f"/memory/{eid}", json={"confidence": 0.5}, headers=HEADERS2)
-    assert r2.status_code == 200
-    assert r2.json()["confidence"] == 0.5
+    assert r2.status_code == 403
 
 
-async def test_patch_type_by_other_agent_allowed(client, mem_payload):
+async def test_patch_type_by_other_agent_forbidden(client, mem_payload):
     r = await client.post("/memory", json=mem_payload, headers=HEADERS)
     eid = r.json()["id"]
 
     r2 = await client.patch(f"/memory/{eid}", json={"type": "doc"}, headers=HEADERS2)
-    assert r2.status_code == 200
-    assert r2.json()["type"] == "doc"
+    assert r2.status_code == 403
 
 
 async def test_patch_content_by_other_agent_forbidden(client, mem_payload):
