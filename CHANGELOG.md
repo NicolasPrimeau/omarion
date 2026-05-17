@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.13.0] — 2026-05-17
+
+### Mesh tokens
+
+Peer linking no longer requires sharing agent credentials. Owners generate purpose-built read-only mesh tokens; peers link with just a URL and a token.
+
+- New `mesh_tokens` table and CRUD endpoints: `POST /mesh/tokens`, `GET /mesh/tokens`, `PATCH /mesh/tokens/{id}`, `DELETE /mesh/tokens/{id}` — all owner-gated.
+- Tokens are optionally project-scoped: a scoped token restricts the remote feed to a single project; an unscoped token exposes all projects.
+- Feed endpoints (`/memory/feed.json`, `/memory/feed.atom`) accept `?mesh_token=` as a standalone auth path — no agent session required.
+- `POST /mesh/peers` now takes `{peer_url, peer_token, project}` — the peer agent id and api key fields are gone.
+- The peer list (`GET /mesh/peers`) never exposes the token; it returns only the URL, project, and sync status.
+- Mesh UI tab redesigned: left panel shows your local token (copy token / copy URL buttons); right panel manages linked peers.
+
+### Archivist — mesh conflict prevention
+
+Archivists in a mesh no longer step on each other's work. Each instance now filters synthesis, decay, and promotion to entries it originally wrote.
+
+- Synthesis (`run_synthesis`), confidence decay (`decay_confidence`), and doc promotion (`run_promotion`) all skip entries whose `origin` field belongs to a different instance.
+- Entries with no `origin` (written before 0.12.0) are treated as local — backwards-compatible.
+- The archivist's `GET /memory/delta` response now includes the `origin` field so the filter is applied correctly.
+
+### Tests
+
+- 8 new tests in `tests/test_mesh.py`: token CRUD, revoked-token rejection at the feed, scoped/unscoped feed visibility, Atom feed auth, and non-owner guards on all five token endpoints.
+- 4 scenario tests in `tests/scenarios/test_mesh_archivist.py`: synthesis excludes peer entries, synthesis still acts on local entries, decay skips peer entries, promotion skips peer entries.
+- End-to-end convergence test in `tests/test_mesh_scenario.py`: two in-process Artel instances exchange a real `feed.json`, verifying origin preservation, idempotent re-polling, and loop-free multi-hop behaviour.
+
 ## [0.12.0] — 2026-05-16
 
 ### Cross-instance mesh
