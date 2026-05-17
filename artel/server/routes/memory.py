@@ -10,11 +10,12 @@ from ...store.db import AmbiguousId, get_db, instance_id, resolve_id
 from ...store.embeddings import embed
 from ..auth import (
     ActorDep,
+    FeedAuth,
     ReaderDep,
     _memberships,
     can_curate_memory,
+    feed_auth_dep,
     project_filter,
-    require_agent_feed,
 )
 from ..broadcast import broadcast
 from ..config import settings
@@ -36,12 +37,21 @@ def _fetch_feed_rows(
     type_: str | None,
     limit: int,
     include_deleted: bool = False,
+    mesh_project: str | None = None,
 ):
     clauses = ["(scope != 'agent' OR agent_id = ?)"]
     if not include_deleted:
         clauses.append("deleted_at IS NULL")
     params: list = [agent_id]
-    if project:
+
+    if mesh_project is not None:
+        effective_project = mesh_project if mesh_project else project
+        if effective_project:
+            if mesh_project and project and project != mesh_project:
+                return []
+            clauses.append("project = ?")
+            params.append(effective_project)
+    elif project:
         from ..auth import _memberships as _m
 
         allowed = _m(agent_id)
@@ -54,6 +64,7 @@ def _fetch_feed_rows(
         if pf_clause:
             clauses.append(pf_clause)
             params.extend(pf_params)
+
     if tag:
         clauses.append("EXISTS (SELECT 1 FROM json_each(tags) WHERE value = ?)")
         params.append(tag)
@@ -311,10 +322,12 @@ async def memory_feed_atom(
     tag: str | None = Query(default=None),
     type: str | None = Query(default=None),
     limit: int = Query(default=50, le=200),
-    agent_id: str = Depends(require_agent_feed),
+    auth: FeedAuth = Depends(feed_auth_dep),
 ):
     db = get_db()
-    rows = _fetch_feed_rows(db, agent_id, project, tag, type, limit)
+    rows = _fetch_feed_rows(
+        db, auth.agent_id, project, tag, type, limit, mesh_project=auth.mesh_project
+    )
     base = settings.public_url or f"http://localhost:{settings.port}"
     feed_url = f"{base}/memory/feed.atom"
     if project:
@@ -357,10 +370,19 @@ async def memory_feed_json(
     type: str | None = Query(default=None),
     limit: int = Query(default=50, le=200),
     include_deleted: bool = Query(default=False),
-    agent_id: str = Depends(require_agent_feed),
+    auth: FeedAuth = Depends(feed_auth_dep),
 ):
     db = get_db()
-    rows = _fetch_feed_rows(db, agent_id, project, tag, type, limit, include_deleted)
+    rows = _fetch_feed_rows(
+        db,
+        auth.agent_id,
+        project,
+        tag,
+        type,
+        limit,
+        include_deleted,
+        mesh_project=auth.mesh_project,
+    )
     base = settings.public_url or f"http://localhost:{settings.port}"
     iid = instance_id()
 

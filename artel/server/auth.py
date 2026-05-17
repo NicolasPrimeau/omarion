@@ -1,10 +1,16 @@
 from datetime import UTC, datetime
+from typing import NamedTuple
 
 from fastapi import Depends, Header, HTTPException, Query, Request
 
 from ..store.db import get_db
 from .config import settings
 from .presence import update_seen
+
+
+class FeedAuth(NamedTuple):
+    agent_id: str
+    mesh_project: str | None
 
 
 def _verify_agent(agent_id: str, api_key: str) -> bool:
@@ -135,6 +141,46 @@ async def require_agent_feed(
         raise HTTPException(status_code=401, detail="invalid credentials")
     update_seen(aid, datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"))
     return aid
+
+
+async def feed_auth_dep(
+    request: Request,
+    mesh_token: str = Query(default="", alias="mesh_token"),
+    agent_id_q: str = Query(default="", alias="agent_id"),
+    api_key_q: str = Query(default="", alias="api_key"),
+    x_agent_id: str = Header(default=""),
+    x_api_key: str = Header(default=""),
+) -> FeedAuth:
+    if mesh_token:
+        db = get_db()
+        row = db.execute(
+            "SELECT id, project FROM mesh_tokens WHERE token=?", (mesh_token,)
+        ).fetchone()
+        if not row:
+            raise HTTPException(status_code=401, detail="invalid mesh token")
+        return FeedAuth(agent_id=f"__mesh__{row['id']}", mesh_project=row["project"] or "")
+    auth = request.headers.get("authorization", "")
+    if auth.startswith("Bearer "):
+        try:
+            from .jwt_utils import verify_token
+
+            aid, key = verify_token(auth[7:])
+            if not _verify_agent(aid, key):
+                raise HTTPException(status_code=401, detail="invalid credentials")
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=401, detail="invalid credentials")
+        update_seen(aid, datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"))
+        return FeedAuth(agent_id=aid, mesh_project=None)
+    aid = x_agent_id or agent_id_q
+    key = x_api_key or api_key_q
+    if not aid or not key:
+        raise HTTPException(status_code=401, detail="invalid credentials")
+    if not _verify_agent(aid, key):
+        raise HTTPException(status_code=401, detail="invalid credentials")
+    update_seen(aid, datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.000Z"))
+    return FeedAuth(agent_id=aid, mesh_project=None)
 
 
 AgentDep = Depends(require_agent)

@@ -193,17 +193,35 @@ class FeedEntry(BaseModel):
     created_at: str
 
 
+class MeshTokenCreate(BaseModel):
+    label: str | None = None
+    project: str | None = None
+
+
+class MeshTokenUpdate(BaseModel):
+    label: str | None = None
+    project: str | None = None
+
+
+class MeshToken(BaseModel):
+    id: str
+    token: str
+    label: str | None
+    project: str | None
+    created_by: str
+    created_at: str
+
+
 class PeerLinkCreate(BaseModel):
     peer_url: str
-    project: str
-    peer_agent_id: str
-    peer_api_key: str
+    peer_token: str
+    project: str | None = None
 
 
 class PeerLink(BaseModel):
     id: str
     peer_url: str
-    project: str
+    project: str | None
     feed_id: str
     created_by: str
     created_at: str

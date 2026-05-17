@@ -136,7 +136,7 @@ CREATE INDEX IF NOT EXISTS idx_ui_sessions_last_seen ON ui_sessions (last_seen_a
 CREATE TABLE IF NOT EXISTS feed_subscriptions (
     id           TEXT PRIMARY KEY,
     agent_id     TEXT NOT NULL,
-    project      TEXT NOT NULL,
+    project      TEXT,
     url          TEXT NOT NULL,
     name         TEXT NOT NULL,
     tags         TEXT NOT NULL DEFAULT '[]',
@@ -150,10 +150,19 @@ CREATE INDEX IF NOT EXISTS idx_feed_subs_agent ON feed_subscriptions (agent_id);
 CREATE TABLE IF NOT EXISTS peer_links (
     id          TEXT PRIMARY KEY,
     peer_url    TEXT NOT NULL,
-    project     TEXT NOT NULL,
+    project     TEXT,
     feed_id     TEXT NOT NULL,
     created_by  TEXT NOT NULL,
     created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS mesh_tokens (
+    id         TEXT PRIMARY KEY,
+    token      TEXT NOT NULL UNIQUE,
+    label      TEXT,
+    project    TEXT,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 CREATE INDEX IF NOT EXISTS idx_feed_subs_fetch ON feed_subscriptions (last_fetched_at);
 
