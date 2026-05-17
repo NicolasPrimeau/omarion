@@ -128,6 +128,10 @@ Same agent, two machines. Stop on one machine after writing a `session_handoff`.
 
 A human or planner agent creates tasks with titles, descriptions, and expected outcomes. Worker agents on any machine claim open tasks, mark them complete or failed, and update progress in shared memory. The UI shows the live queue, who is on what, and where each task stands. [Watch the demo.](docs/project_management.gif)
 
+### Cross-instance mesh network
+
+Two Artel instances on the same LAN discover each other automatically via mDNS. One click links them — both sides exchange tokens and subscribe to each other's feed. Memory written on one instance replicates to the other with origin preserved, so each instance's archivist only synthesizes what it originally wrote. [Watch the demo.](docs/mesh_network.gif)
+
 ---
 
 ## Dashboard
