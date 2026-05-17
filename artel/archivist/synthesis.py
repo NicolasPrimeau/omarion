@@ -4,6 +4,7 @@ import logging
 import math
 from datetime import UTC, datetime, timedelta
 
+from ..store.db import instance_id
 from .client import ArtelClient
 from .config import settings
 from .llm import complete, is_configured
@@ -433,11 +434,14 @@ async def run_synthesis(client: ArtelClient) -> None:
         except Exception as e:
             log.warning("directive conflict check failed: %s", e)
 
+    local_id = instance_id()
     entries = await client.get_delta(_utc_ago(24))
     entries = [
         e
         for e in entries
-        if e["agent_id"] != settings.archivist_id and e.get("type") != "directive"
+        if e["agent_id"] != settings.archivist_id
+        and e.get("type") != "directive"
+        and (e.get("origin") is None or e.get("origin") == local_id)
     ]
 
     if len(entries) < 2:
@@ -538,11 +542,14 @@ async def decay_confidence(client: ArtelClient) -> None:
     cutoff = (datetime.now(UTC) - timedelta(days=settings.decay_window_days)).strftime(
         "%Y-%m-%dT%H:%M:%S.000Z"
     )
+    local_id = instance_id()
     entries = await client.list_entries(updated_before=cutoff)
     entries = [
         e
         for e in entries
-        if e["agent_id"] != settings.archivist_id and e.get("type") != "directive"
+        if e["agent_id"] != settings.archivist_id
+        and e.get("type") != "directive"
+        and (e.get("origin") is None or e.get("origin") == local_id)
     ]
 
     decayed = 0
@@ -683,11 +690,14 @@ async def run_promotion(client: ArtelClient) -> None:
         min_version=settings.promotion_memory_min_version,
         updated_before=cutoff,
     )
+    local_id = instance_id()
     promoted = 0
     for entry in memory_entries:
         if entry["agent_id"] == settings.archivist_id:
             continue
         if entry.get("type") == "directive":
+            continue
+        if entry.get("origin") is not None and entry.get("origin") != local_id:
             continue
         try:
             await client.patch_memory(entry["id"], type="doc")
