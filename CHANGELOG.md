@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.12.0] — 2026-05-16
+
+> Versions `0.10.1` (archivist task intelligence) and `0.11.0` (archivist audit log + Logs tab) were tagged from separate work and are not detailed here; this entry covers everything since `0.10.0` plus the mesh.
+
+### Cross-instance mesh
+
+Two Artel instances can mesh a project: each subscribes to the other's `/memory/feed.json` and memory replicates between them.
+
+- Replication is a CRDT — anti-entropy keyed by each entry's immutable id, idempotent on ingest. It provably converges and cannot feed back on itself: re-receiving a known id is a no-op, an entry tagged with the receiver's own origin is skipped, edits settle last-writer-wins on `version`, deletes propagate as tombstones. Multi-hop safe, no central coordinator.
+- New: stable per-instance id, `memory.origin` provenance, an `_artel` extension on the JSON Feed (`include_deleted` for tombstones). Non-Artel RSS/Atom feeds are unchanged. JSON Feed is the sync substrate; Atom stays external-only.
+- **Mesh** UI tab + `/mesh` endpoints: owner links a peer (URL / project / peer credentials), lists peers with sync status, and detaches to stop syncing. Owner-gated; the peer API key is never returned. mDNS auto-discovery and a mutual handshake are future work — v1 is explicit owner linking, which is the consent.
+
+### Archivist
+
+- Fixed an unbounded duplicate-accumulator: `check_and_merge` excluded archivist-authored and parented entries as merge candidates, so a merged canonical entry could never absorb the next duplicate — each recurrence minted a new sibling. Now folds duplicates into the existing canonical and strips workflow tags from merged output.
+
+### API
+
+- Short-id prefix resolution: task and memory id routes accept an unambiguous ≥4-char prefix (exact match wins; ambiguous → `400`; unknown → `404`), so the truncated ids shown in listings are usable directly.
+
+### Docs
+
+- Repositioned to "a self-hosted, self-organizing mesh for AI agent fleets"; added an auth middleware reference and a mesh-convergence section.
+
 ## [0.10.0] — 2026-05-16
 
 ### RBAC — role-based access control
