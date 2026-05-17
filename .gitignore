@@ -27,3 +27,6 @@ scripts/sync_env_secrets.py
 
 # Asciinema recordings (intermediate artifact; only the rendered .gif is shipped)
 *.cast
+
+# Screenshots (Playwright QA artifacts, not shipped)
+*.png

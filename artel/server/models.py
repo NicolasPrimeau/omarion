@@ -50,6 +50,7 @@ class MemoryEntry(BaseModel):
     updated_at: str
     version: int
     expires_at: str | None = None
+    origin: str | None = None
 
 
 class TaskCreate(BaseModel):

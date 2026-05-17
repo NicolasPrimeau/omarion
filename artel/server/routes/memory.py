@@ -96,6 +96,7 @@ def _row_to_entry(row: sqlite3.Row) -> MemoryEntry:
         updated_at=row["updated_at"],
         version=row["version"],
         expires_at=row["expires_at"] if "expires_at" in keys else None,
+        origin=row["origin"] if "origin" in keys else None,
     )
 
 
