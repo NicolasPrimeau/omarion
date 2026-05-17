@@ -25,7 +25,8 @@ CREATE TABLE IF NOT EXISTS memory (
     updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
     version     INTEGER NOT NULL DEFAULT 1,
     deleted_at  TEXT,
-    expires_at  TEXT
+    expires_at  TEXT,
+    origin      TEXT
 );
 
 CREATE TABLE IF NOT EXISTS tasks (

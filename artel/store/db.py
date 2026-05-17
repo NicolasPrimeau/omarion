@@ -1,3 +1,4 @@
+import secrets
 import sqlite3
 
 import sqlite_vec
@@ -21,6 +22,42 @@ def get_db(path: str = "artel.db") -> sqlite3.Connection:
     return _conn
 
 
+def instance_id() -> str:
+    db = get_db()
+    row = db.execute("SELECT value FROM kv WHERE key='instance_id'").fetchone()
+    if row:
+        return row["value"]
+    iid = "artel-" + secrets.token_hex(8)
+    with db:
+        db.execute("INSERT OR IGNORE INTO kv (key, value) VALUES ('instance_id', ?)", (iid,))
+    return db.execute("SELECT value FROM kv WHERE key='instance_id'").fetchone()["value"]
+
+
+class AmbiguousId(Exception):
+    pass
+
+
+_RESOLVABLE_TABLES = {"tasks", "memory", "task_comments", "messages", "agents"}
+_MIN_PREFIX_LEN = 4
+
+
+def resolve_id(table: str, ident: str) -> str | None:
+    if table not in _RESOLVABLE_TABLES:
+        raise ValueError(f"id resolution not allowed for table {table}")
+    db = get_db()
+    if db.execute(f"SELECT 1 FROM {table} WHERE id=?", (ident,)).fetchone():
+        return ident
+    if len(ident) < _MIN_PREFIX_LEN:
+        return None
+    pattern = ident.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+    rows = db.execute(
+        f"SELECT id FROM {table} WHERE id LIKE ? ESCAPE '\\' LIMIT 2", (pattern,)
+    ).fetchall()
+    if len(rows) > 1:
+        raise AmbiguousId(ident)
+    return rows[0]["id"] if rows else None
+
+
 def _migrate(conn: sqlite3.Connection) -> None:
     agent_cols = {r[1] for r in conn.execute("PRAGMA table_info(agents)").fetchall()}
     if "project" not in agent_cols:
@@ -36,6 +73,9 @@ def _migrate(conn: sqlite3.Connection) -> None:
     mem_cols = {r[1] for r in conn.execute("PRAGMA table_info(memory)").fetchall()}
     if "expires_at" not in mem_cols:
         conn.execute("ALTER TABLE memory ADD COLUMN expires_at TEXT")
+        conn.commit()
+    if "origin" not in mem_cols:
+        conn.execute("ALTER TABLE memory ADD COLUMN origin TEXT")
         conn.commit()
     if "role" not in agent_cols:
         conn.execute(

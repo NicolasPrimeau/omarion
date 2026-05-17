@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 import feedparser
 import httpx
 
-from ..store.db import get_db
+from ..store.db import get_db, instance_id
 from ..store.embeddings import embed
 from .broadcast import broadcast
 from .models import EventEntry, new_id
@@ -107,6 +107,79 @@ def _parse_json_feed(resp_text: str, feed_name: str) -> list[tuple[str, str]]:
     return results
 
 
+def _replicate_entry(db, feed: dict, meta: dict, content: str, tags: list, self_id: str) -> bool:
+    gid = meta.get("memory_id")
+    origin = meta.get("origin")
+    if not gid or not origin or origin == self_id:
+        return False
+    incoming_ver = int(meta.get("version") or 1)
+    incoming_upd = meta.get("updated_at") or _utcnow()
+    incoming_del = meta.get("deleted_at")
+    etype = meta.get("type") or "memory"
+    agent_id = meta.get("agent_id") or feed["agent_id"]
+    conf = meta.get("confidence")
+    conf = 1.0 if conf is None else float(conf)
+    parents = json.dumps(meta.get("parents") or [])
+    tags_json = json.dumps(tags or [])
+    created_at = meta.get("created_at") or incoming_upd
+
+    row = db.execute("SELECT version, updated_at FROM memory WHERE id=?", (gid,)).fetchone()
+
+    if row is None:
+        if incoming_del:
+            return False
+        vec = embed(content)
+        with db:
+            db.execute(
+                """INSERT INTO memory (id, type, agent_id, project, scope, content,
+                   confidence, parents, tags, created_at, updated_at, version, origin)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                    gid,
+                    etype,
+                    agent_id,
+                    feed["project"],
+                    "project",
+                    content,
+                    conf,
+                    parents,
+                    tags_json,
+                    created_at,
+                    incoming_upd,
+                    incoming_ver,
+                    origin,
+                ),
+            )
+            db.execute(
+                "INSERT INTO memory_vec (id, embedding) VALUES (?, ?)", (gid, json.dumps(vec))
+            )
+        return True
+
+    local_ver = int(row["version"])
+    local_upd = row["updated_at"] or ""
+    newer = incoming_ver > local_ver or (incoming_ver == local_ver and incoming_upd > local_upd)
+    if not newer:
+        return False
+    with db:
+        if incoming_del:
+            db.execute(
+                "UPDATE memory SET deleted_at=?, version=?, updated_at=? WHERE id=?",
+                (incoming_del, incoming_ver, incoming_upd, gid),
+            )
+        else:
+            db.execute(
+                """UPDATE memory SET type=?, content=?, confidence=?, parents=?, tags=?,
+                   updated_at=?, version=?, deleted_at=NULL WHERE id=?""",
+                (etype, content, conf, parents, tags_json, incoming_upd, incoming_ver, gid),
+            )
+            db.execute("DELETE FROM memory_vec WHERE id=?", (gid,))
+            db.execute(
+                "INSERT INTO memory_vec (id, embedding) VALUES (?, ?)",
+                (gid, json.dumps(embed(content))),
+            )
+    return True
+
+
 async def _poll_feed(feed: dict) -> None:
     feed_id = feed["id"]
     try:
@@ -152,15 +225,36 @@ async def _poll_feed(feed: dict) -> None:
     new_guids = []
 
     if is_json_feed:
-        entries = _parse_json_feed(resp.text, feed["name"])
-        for guid, content in entries:
-            if count >= feed["max_per_poll"]:
-                break
-            if not guid or guid in seen:
-                continue
-            _write_memory(feed["agent_id"], feed["project"], content, tags)
-            new_guids.append(guid)
-            count += 1
+        try:
+            data = json.loads(resp.text)
+            json_items = data["items"] if isinstance(data.get("items"), list) else []
+        except Exception:
+            json_items = []
+        is_artel_peer = any(
+            isinstance(it.get("_artel"), dict)
+            and it["_artel"].get("memory_id")
+            and it["_artel"].get("origin")
+            for it in json_items
+        )
+        if is_artel_peer:
+            self_id = instance_id()
+            for it in json_items:
+                if count >= feed["max_per_poll"]:
+                    break
+                meta = it.get("_artel") or {}
+                if _replicate_entry(
+                    db, feed, meta, it.get("content_text", ""), it.get("tags", []), self_id
+                ):
+                    count += 1
+        else:
+            for guid, content in _parse_json_feed(resp.text, feed["name"]):
+                if count >= feed["max_per_poll"]:
+                    break
+                if not guid or guid in seen:
+                    continue
+                _write_memory(feed["agent_id"], feed["project"], content, tags)
+                new_guids.append(guid)
+                count += 1
     else:
         parsed = feedparser.parse(resp.text)
         for entry in parsed.entries:

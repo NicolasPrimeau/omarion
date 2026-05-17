@@ -396,3 +396,23 @@ async def test_soft_delete_not_in_list(client, mem_payload):
 
     r2 = await client.get("/memory", headers=HEADERS)
     assert not any(e["id"] == eid for e in r2.json())
+
+
+async def test_get_memory_by_id_prefix(client):
+    from tests.conftest import HEADERS
+
+    r = await client.post(
+        "/memory", json={"content": "prefix-resolvable memory entry"}, headers=HEADERS
+    )
+    eid = r.json()["id"]
+
+    r2 = await client.get(f"/memory/{eid[:8]}", headers=HEADERS)
+    assert r2.status_code == 200
+    assert r2.json()["id"] == eid
+
+
+async def test_get_memory_unknown_prefix_404(client):
+    from tests.conftest import HEADERS
+
+    r = await client.get("/memory/nosuchid", headers=HEADERS)
+    assert r.status_code == 404

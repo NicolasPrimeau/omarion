@@ -321,3 +321,53 @@ async def test_claim_task_project_member_can_claim(client):
     r2 = await client.post(f"/tasks/{tid}/claim", headers=HEADERS2)
     assert r2.status_code == 200
     assert r2.json()["assigned_to"] == "otheragent"
+
+
+async def test_get_task_by_id_prefix(client):
+    r = await client.post("/tasks", json={"title": "prefix lookup"}, headers=HEADERS)
+    tid = r.json()["id"]
+
+    r2 = await client.get(f"/tasks/{tid[:8]}", headers=HEADERS)
+    assert r2.status_code == 200
+    assert r2.json()["id"] == tid
+
+
+async def test_claim_task_by_id_prefix(client):
+    r = await client.post("/tasks", json={"title": "prefix claim"}, headers=HEADERS)
+    tid = r.json()["id"]
+
+    r2 = await client.post(f"/tasks/{tid[:10]}/claim", headers=HEADERS2)
+    assert r2.status_code == 200
+    assert r2.json()["id"] == tid
+    assert r2.json()["status"] == "claimed"
+
+
+async def test_get_task_unknown_prefix_404(client):
+    r = await client.get("/tasks/deadbeef", headers=HEADERS)
+    assert r.status_code == 404
+
+
+async def test_get_task_ambiguous_prefix_400(client):
+    from artel.store.db import get_db
+
+    db = get_db()
+    with db:
+        db.execute(
+            "INSERT INTO tasks (id, title, status, created_by) VALUES (?,?,?,?)",
+            ("abcd1111-aaaa", "t1", "open", TEST_AGENT),
+        )
+        db.execute(
+            "INSERT INTO tasks (id, title, status, created_by) VALUES (?,?,?,?)",
+            ("abcd2222-bbbb", "t2", "open", TEST_AGENT),
+        )
+
+    r = await client.get("/tasks/abcd", headers=HEADERS)
+    assert r.status_code == 400
+
+
+async def test_short_prefix_not_resolved(client):
+    r = await client.post("/tasks", json={"title": "tiny"}, headers=HEADERS)
+    tid = r.json()["id"]
+
+    r2 = await client.get(f"/tasks/{tid[:3]}", headers=HEADERS)
+    assert r2.status_code == 404

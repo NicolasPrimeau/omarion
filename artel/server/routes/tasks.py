@@ -3,7 +3,7 @@ import sqlite3
 
 from fastapi import APIRouter, Body, HTTPException, Query
 
-from ...store.db import get_db
+from ...store.db import AmbiguousId, get_db, resolve_id
 from ..auth import ActorDep, ReaderDep, _memberships, is_owner, project_filter
 from ..models import (
     TaskAction,
@@ -16,6 +16,16 @@ from ..models import (
 )
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
+
+
+def _resolve_task(task_id: str) -> str:
+    try:
+        resolved = resolve_id("tasks", task_id)
+    except AmbiguousId:
+        raise HTTPException(status_code=400, detail="ambiguous task id prefix")
+    if resolved is None:
+        raise HTTPException(status_code=404, detail="not found")
+    return resolved
 
 
 def _row_to_task(row: sqlite3.Row) -> TaskEntry:
@@ -62,6 +72,7 @@ def _add_comment(db: sqlite3.Connection, task_id: str, agent_id: str, kind: str,
 
 @router.get("/{task_id}", response_model=TaskEntry, summary="Get a task by ID")
 async def get_task(task_id: str, agent_id: str = ReaderDep):
+    task_id = _resolve_task(task_id)
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
@@ -140,6 +151,7 @@ async def claim_task(
     body: TaskAction = Body(default_factory=TaskAction),
     agent_id: str = ActorDep,
 ):
+    task_id = _resolve_task(task_id)
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
@@ -172,6 +184,7 @@ async def unclaim_task(
     body: TaskAction = Body(default_factory=TaskAction),
     agent_id: str = ActorDep,
 ):
+    task_id = _resolve_task(task_id)
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
@@ -202,6 +215,7 @@ async def complete_task(
     body: TaskAction = Body(default_factory=TaskAction),
     agent_id: str = ActorDep,
 ):
+    task_id = _resolve_task(task_id)
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
@@ -226,6 +240,7 @@ async def complete_task(
     "/{task_id}", response_model=TaskEntry, summary="Update task title, description, or priority"
 )
 async def update_task(task_id: str, body: TaskUpdate, agent_id: str = ActorDep):
+    task_id = _resolve_task(task_id)
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
@@ -276,6 +291,7 @@ async def fail_task(
     body: TaskAction = Body(default_factory=TaskAction),
     agent_id: str = ActorDep,
 ):
+    task_id = _resolve_task(task_id)
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
@@ -303,6 +319,7 @@ async def fail_task(
     summary="Add a free-form comment to a task",
 )
 async def add_comment(task_id: str, body: TaskCommentCreate, agent_id: str = ActorDep):
+    task_id = _resolve_task(task_id)
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:
@@ -328,6 +345,7 @@ async def add_comment(task_id: str, body: TaskCommentCreate, agent_id: str = Act
     summary="List comments and status events for a task",
 )
 async def list_comments(task_id: str, agent_id: str = ReaderDep):
+    task_id = _resolve_task(task_id)
     db = get_db()
     row = db.execute("SELECT * FROM tasks WHERE id=?", (task_id,)).fetchone()
     if not row:

@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, Response
 
-from ...store.db import get_db
+from ...store.db import AmbiguousId, get_db, instance_id, resolve_id
 from ...store.embeddings import embed
 from ..auth import (
     ActorDep,
@@ -29,9 +29,17 @@ def _a(tag: str) -> str:
 
 
 def _fetch_feed_rows(
-    db, agent_id: str, project: str | None, tag: str | None, type_: str | None, limit: int
+    db,
+    agent_id: str,
+    project: str | None,
+    tag: str | None,
+    type_: str | None,
+    limit: int,
+    include_deleted: bool = False,
 ):
-    clauses = ["deleted_at IS NULL", "(scope != 'agent' OR agent_id = ?)"]
+    clauses = ["(scope != 'agent' OR agent_id = ?)"]
+    if not include_deleted:
+        clauses.append("deleted_at IS NULL")
     params: list = [agent_id]
     if project:
         from ..auth import _memberships as _m
@@ -60,6 +68,16 @@ def _fetch_feed_rows(
 
 
 router = APIRouter(prefix="/memory", tags=["memory"])
+
+
+def _resolve_entry(entry_id: str) -> str:
+    try:
+        resolved = resolve_id("memory", entry_id)
+    except AmbiguousId:
+        raise HTTPException(status_code=400, detail="ambiguous memory id prefix")
+    if resolved is None:
+        raise HTTPException(status_code=404, detail="not found")
+    return resolved
 
 
 def _row_to_entry(row: sqlite3.Row) -> MemoryEntry:
@@ -337,11 +355,13 @@ async def memory_feed_json(
     tag: str | None = Query(default=None),
     type: str | None = Query(default=None),
     limit: int = Query(default=50, le=200),
+    include_deleted: bool = Query(default=False),
     agent_id: str = Depends(require_agent_feed),
 ):
     db = get_db()
-    rows = _fetch_feed_rows(db, agent_id, project, tag, type, limit)
+    rows = _fetch_feed_rows(db, agent_id, project, tag, type, limit, include_deleted)
     base = settings.public_url or f"http://localhost:{settings.port}"
+    iid = instance_id()
 
     items = [
         {
@@ -358,6 +378,13 @@ async def memory_feed_json(
                 "confidence": row["confidence"],
                 "project": row["project"],
                 "scope": row["scope"],
+                "agent_id": row["agent_id"],
+                "version": row["version"],
+                "created_at": row["created_at"],
+                "updated_at": row["updated_at"],
+                "deleted_at": row["deleted_at"],
+                "parents": json.loads(row["parents"]),
+                "origin": row["origin"] or iid,
             },
         }
         for row in rows
@@ -378,6 +405,7 @@ async def get_memory(
     entry_id: str,
     agent_id: str = ReaderDep,
 ):
+    entry_id = _resolve_entry(entry_id)
     db = get_db()
     row = db.execute(
         "SELECT * FROM memory WHERE id=? AND deleted_at IS NULL", (entry_id,)
@@ -401,6 +429,7 @@ async def patch_memory(
     body: MemoryPatch,
     agent_id: str = ActorDep,
 ):
+    entry_id = _resolve_entry(entry_id)
     db = get_db()
     row = db.execute(
         "SELECT * FROM memory WHERE id=? AND deleted_at IS NULL", (entry_id,)
@@ -466,6 +495,7 @@ async def delete_memory(
     entry_id: str,
     agent_id: str = ActorDep,
 ):
+    entry_id = _resolve_entry(entry_id)
     db = get_db()
     row = db.execute(
         "SELECT * FROM memory WHERE id=? AND deleted_at IS NULL", (entry_id,)
