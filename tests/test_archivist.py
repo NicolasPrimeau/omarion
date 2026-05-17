@@ -116,6 +116,53 @@ class TestPassiveMode:
             artel_client.write_memory.assert_not_called()
 
 
+class TestCheckAndMergeDedup:
+    async def test_folds_duplicate_into_existing_canonical_and_strips_workflow_tags(self):
+        client = MagicMock()
+        client.get_memory = AsyncMock(
+            return_value={
+                "id": "feed-new",
+                "agent_id": "feed-bot",
+                "content": "Claude Code week 19 release notes",
+                "tags": ["release-notes", "feed-item", "unprocessed"],
+                "type": "memory",
+                "project": "artel",
+                "parents": [],
+            }
+        )
+        client.search_memory = AsyncMock(
+            return_value=[
+                {
+                    "id": "canonical",
+                    "agent_id": "archivist",
+                    "content": "Claude Code week 19 release notes (canonical)",
+                    "tags": ["release-notes", "feed-item", "unprocessed"],
+                    "type": "memory",
+                    "project": "artel",
+                    "parents": ["old-a", "old-b"],
+                }
+            ]
+        )
+        client.write_memory = AsyncMock(return_value={"id": "merged"})
+        client.delete_memory = AsyncMock()
+        client.send_message = AsyncMock()
+
+        with (
+            patch("artel.archivist.conflict.is_configured", return_value=True),
+            patch("artel.archivist.conflict._merge", new=AsyncMock(return_value="merged body")),
+            patch("artel.archivist.conflict.settings") as s,
+        ):
+            s.archivist_id = "archivist"
+            await conflict.check_and_merge("feed-new", client)
+
+        client.write_memory.assert_awaited_once()
+        kwargs = client.write_memory.await_args.kwargs
+        assert set(kwargs["tags"]) == {"release-notes"}
+        assert sorted(kwargs["parents"]) == ["canonical", "feed-new"]
+        client.delete_memory.assert_any_await("feed-new")
+        client.delete_memory.assert_any_await("canonical")
+
+
 class TestParseOperations:
     def test_valid_json_array(self):
         text = '[{"op": "prune", "entry": "abc123"}]'

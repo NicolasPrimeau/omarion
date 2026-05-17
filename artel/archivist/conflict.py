@@ -8,6 +8,8 @@ log = logging.getLogger(__name__)
 
 _MAX_DISTANCE = 1.0 - settings.conflict_threshold
 
+_WORKFLOW_TAGS = {"unprocessed", "feed-item"}
+
 
 async def check_and_merge(entry_id: str, client: ArtelClient) -> None:
     if not is_configured():
@@ -23,21 +25,14 @@ async def check_and_merge(entry_id: str, client: ArtelClient) -> None:
 
     similar = await client.search_memory(entry["content"], limit=6, max_distance=_MAX_DISTANCE)
 
-    conflicts = [
-        s
-        for s in similar
-        if s["id"] != entry_id
-        and s["agent_id"] != entry["agent_id"]
-        and s["agent_id"] != settings.archivist_id
-        and not s["parents"]
-    ]
+    conflicts = [s for s in similar if s["id"] != entry_id]
 
     if not conflicts:
         return
 
     other = conflicts[0]
     merged_content = await _merge(entry, other)
-    merged_tags = list(set(entry["tags"] + other["tags"]))
+    merged_tags = list((set(entry["tags"]) | set(other["tags"])) - _WORKFLOW_TAGS)
     merged_project = entry["project"] if entry["project"] == other["project"] else None
 
     new_entry = await client.write_memory(
