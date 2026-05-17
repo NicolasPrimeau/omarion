@@ -2,8 +2,6 @@
 
 ## [0.12.0] — 2026-05-16
 
-> Versions `0.10.1` (archivist task intelligence) and `0.11.0` (archivist audit log + Logs tab) were tagged from separate work and are not detailed here; this entry covers everything since `0.10.0` plus the mesh.
-
 ### Cross-instance mesh
 
 Two Artel instances can mesh a project: each subscribes to the other's `/memory/feed.json` and memory replicates between them.
@@ -23,6 +21,48 @@ Two Artel instances can mesh a project: each subscribes to the other's `/memory/
 ### Docs
 
 - Repositioned to "a self-hosted, self-organizing mesh for AI agent fleets"; added an auth middleware reference and a mesh-convergence section.
+
+## [0.11.0] — 2026-05-16
+
+### Archivist audit log
+
+Structured log trail for all archivist activity, accessible to owners via the UI.
+
+- New `archivist_logs` table — bounded at 10,000 rows; oldest entries are trimmed on each insert so the table never grows unbounded.
+- `POST /logs` (agent+ role) — write a structured log entry with `level` (`info` / `warning` / `error`), `source`, `action`, `message`, and optional `details` JSON.
+- `GET /logs` (owner-only) — list entries newest-first with optional filters: `level`, `source`, `action`, `since`, `limit`.
+- Archivist instrumented across all passes: `synthesis`, `decay`, `promotion`, `triage`, `fact_extraction`, and `feed_poll`. A non-fatal `log()` helper on `ArtelClient` swallows transport errors so logging never interrupts the main workflow.
+- Feed poller writes logs directly to SQLite (runs in-process, not via HTTP).
+- UI: **Logs** tab with level / source / action filter dropdowns, colour-coded severity, most-recent-first.
+- CI: `deploy-sandbox` job added — auto-deploys `:edge` to `artel-sandbox.fly.dev` on every master push.
+
+### Tests
+
+- 10 new tests in `tests/test_logs.py`: write returns entry, write with details, viewer denied write, agent denied list, owner sees all, filter by level/source/action, most-recent-first, limit param.
+
+## [0.10.1] — 2026-05-16
+
+### Archivist — task intelligence
+
+The archivist now actively manages tasks alongside memory.
+
+- `run_task_triage` — periodic pass over open, unclaimed tasks; searches memory semantically and leaves comments with related entries, duplicate flags, or already-done warnings. Claimed tasks are never touched.
+- `on_task_completed` — with an LLM configured, extracts project-wide facts from completed task results and writes or updates memory entries. Falls back to a passive completion observation when running without LLM.
+- `add_task_comment` added to `ArtelClient`.
+- Archivist is now upserted with `role=owner` at startup (consistent with the UI agent) so it can patch and delete memory entries from other agents.
+
+### Plugin
+
+- Restored the Claude Code plugin (`.claude-plugin/`), updated to the current plugin spec. MCP URL uses the trailing-slash-fixed path; sensitive API key passed via `${CLAUDE_PLUGIN_OPTION_*}` env form. Hooks: `SessionStart` injects last handoff + memory delta; `UserPromptSubmit` surfaces unread inbox.
+
+### Fixes
+
+- **RBAC:** four permission gaps closed — memory `PATCH` confidence/type fields bypassed the owner check; task `PATCH` had no access control; task `claim` had no project membership check; feed `DELETE` had inverted ownership logic.
+- **UI:** credential-bearing `/ui` and login pages are never cached (`Cache-Control: no-store`). Browser storage is purged on logout via `Clear-Site-Data`. Read-only link added to login page.
+
+### Tests
+
+- Full scenario coverage of task triage: passive link comments, claimed-task skip, LLM duplicate/already-done flags, `on_task_completed` fact extraction and memory update paths — exercised against the real in-process server.
 
 ## [0.10.0] — 2026-05-16
 
