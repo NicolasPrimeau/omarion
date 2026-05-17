@@ -3,15 +3,15 @@
 [![CI](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml/badge.svg)](https://github.com/NicolasPrimeau/artel/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.md)
 
-**The infrastructure for AI teams.**
+**A self-hosted, self-organizing mesh for AI agent fleets.**
 
 One agent is a tool. A team of agents is an organization, and organizations need infrastructure: shared memory, a task system, a way to message each other, a way to hand off mid-flight. Most teams skip building it and accept that every agent starts cold and every handoff routes through a human. Some build it inside one framework, brittle and incompatible with the next.
 
 Artel is one self-hosted server that supplies that infrastructure to any fleet of agents on your network. Semantic memory the whole fleet reads and writes. Tasks any agent can create and claim. Direct agent-to-agent messages. Session handoffs that resume any agent exactly where another left off, across machines, across frameworks, across providers.
 
-Artel instances can be meshed together. Subscribe one Artel's `/memory/feed.json?project=...` into another using the feed subscription system — memory flows across instances with no central coordinator.
+Artel is a **mesh, not a hub.** Every instance publishes its own memory as Atom and JSON Feed and can subscribe to any other feed — including another Artel. Mesh a project between two instances and their memory replicates as a CRDT: keyed by an immutable id, idempotent on ingest, so it provably converges and cannot feed back on itself — multi-hop, with no central coordinator ([why](#why-the-mesh-converges), test-backed). The same mechanism pulls external feeds (e.g. Claude Code release notes) straight into memory, so the fleet stays current on its own.
 
-Memory doesn't stay clean on its own. Artel ships an **archivist**: an autonomous agent that runs in the background, merges conflicting entries, synthesizes cross-agent findings into shared docs, decays stale knowledge, and promotes stable observations up the confidence ladder. Agents write what they know; the archivist turns it into something the whole fleet can trust.
+Memory doesn't stay clean on its own. Artel ships an **archivist** that makes the shared memory self-organizing: it runs in the background, merges near-duplicate entries across agents, synthesizes cross-agent findings into shared docs, decays stale knowledge, and promotes stable observations up the confidence ladder. Agents write what they know; the archivist keeps it coherent — closer to garbage collection than a wiki.
 
 Any agent that speaks HTTP participates: Claude Code, AutoGen, raw API scripts, anything.
 
@@ -191,6 +191,16 @@ results = agent.get("/memory/search", params={"q": "orders latency root cause"})
 Entries carry **confidence scores** (0.0–1.0) that decay over time if not reinforced. Every write records **provenance**: which agent, when, and from which parent entries. The archivist promotes stable entries from scratch to memory to doc, and synthesizes cross-agent findings that neither agent could see alone.
 
 Session continuity is memory-backed. Call `POST /sessions/handoff` before you stop and `GET /sessions/handoff/:id` when you resume. You get your last summary plus every memory entry written since you were last active.
+
+### Why the mesh converges
+
+When two Artels mesh a project (each subscribes to the other's memory feed), replication is anti-entropy with a CRDT, so it provably converges and cannot feed back on itself:
+
+- **Stable identity.** A propagated entry keeps its origin UUID forever — it is never re-minted on ingest. Ingestion is an idempotent upsert keyed by that id.
+- **No loops.** Re-receiving an id you already hold is a no-op, and an entry tagged with your own instance's origin is skipped. `A → B → A` terminates; `A → B → C` propagates. The link topology can contain cycles safely.
+- **Convergence.** Per project, memory is a grow-only set keyed by immutable id; concurrent edits settle by last-writer-wins on `version`; deletes propagate as tombstones. Given connectivity, every meshed instance converges to the same set — no central coordinator.
+
+These properties are pinned by tests (`tests/test_feeds.py`: idempotent re-ingest, self-origin loop short-circuit, multi-hop, LWW, tombstone convergence). Project scope is the boundary — only `scope="project"` entries cross; agent-private memory never leaves.
 
 ---
 
