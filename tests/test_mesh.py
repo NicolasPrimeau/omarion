@@ -90,11 +90,71 @@ async def test_feed_json_rejects_bad_token(client):
 
 
 async def test_scoped_token_restricts_project(client):
-
     tok = (await _create_token(client, project="proj-a")).json()
     r = await client.get(f"/memory/feed.json?mesh_token={tok['token']}&project=proj-b")
     assert r.status_code == 200
     assert r.json()["items"] == []
+
+
+async def test_scoped_token_returns_entries_for_own_project(client):
+    await client.post("/projects/proj-a/join", headers=HEADERS)
+    r = await client.post(
+        "/memory",
+        json={"content": "proj-a fact", "project": "proj-a", "scope": "project"},
+        headers=HEADERS,
+    )
+    assert r.status_code == 201
+    tok = (await _create_token(client, project="proj-a")).json()
+    r = await client.get(f"/memory/feed.json?mesh_token={tok['token']}")
+    assert r.status_code == 200
+    ids = [i["_artel"]["memory_id"] for i in r.json()["items"]]
+    assert len(ids) == 1
+
+
+async def test_unscoped_token_sees_all_projects(client):
+    for proj in ("alpha", "beta"):
+        await client.post(f"/projects/{proj}/join", headers=HEADERS)
+        r = await client.post(
+            "/memory",
+            json={"content": f"fact in {proj}", "project": proj, "scope": "project"},
+            headers=HEADERS,
+        )
+        assert r.status_code == 201
+    tok = (await _create_token(client)).json()
+    r = await client.get(f"/memory/feed.json?mesh_token={tok['token']}")
+    assert r.status_code == 200
+    assert len(r.json()["items"]) == 2
+
+
+async def test_revoked_token_rejected_by_feed(client):
+    tok = (await _create_token(client)).json()
+    await client.delete(f"/mesh/tokens/{tok['id']}", headers=HEADERS)
+    r = await client.get(f"/memory/feed.json?mesh_token={tok['token']}")
+    assert r.status_code == 401
+
+
+async def test_feed_atom_accepts_mesh_token(client):
+    tok = (await _create_token(client)).json()
+    r = await client.get(f"/memory/feed.atom?mesh_token={tok['token']}")
+    assert r.status_code == 200
+    assert "xml" in r.headers["content-type"]
+
+
+async def test_token_list_requires_owner(client):
+    r = await client.get("/mesh/tokens", headers=HEADERS2)
+    assert r.status_code == 403
+
+
+async def test_token_patch_requires_owner(client):
+    tok = (await _create_token(client, label="x")).json()
+    r = await client.patch(f"/mesh/tokens/{tok['id']}", json={"label": "y"}, headers=HEADERS2)
+    assert r.status_code == 403
+
+
+async def test_token_delete_requires_owner(client):
+    tok = (await _create_token(client)).json()
+    r = await client.delete(f"/mesh/tokens/{tok['id']}", headers=HEADERS2)
+    assert r.status_code == 403
 
 
 # ── Peer links ────────────────────────────────────────────────────────────────
