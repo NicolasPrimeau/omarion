@@ -16,7 +16,7 @@ from fastapi.responses import (
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from ..mcp.server import mcp as mcp_server
-from ..store.db import get_db
+from ..store.db import get_db, instance_id
 from .config import settings
 from .feed_poller import run_poller
 from .jwt_utils import verify_token
@@ -95,11 +95,13 @@ async def lifespan(app: FastAPI):
             )
         db.execute("UPDATE agents SET role=? WHERE id=?", (special_role, special_id))
     db.commit()
-    mdns = MDNSService(settings.port)
-    try:
-        await mdns.start()
-    except Exception:
-        pass
+    iid = instance_id()
+    mdns = MDNSService(settings.port, instance_id=iid, public_url=settings.public_url)
+    if settings.mdns_enabled:
+        try:
+            await mdns.start()
+        except Exception:
+            pass
     poller = asyncio.create_task(run_poller())
     async with _mcp_asgi.router.lifespan_context(_mcp_asgi):
         yield

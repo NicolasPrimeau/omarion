@@ -1081,6 +1081,11 @@ pre{
     <!-- right: link a peer (outbound) -->
     <div style="flex:1;min-width:260px">
       <div style="margin-bottom:6px"><strong style="font-size:13px">linked peers</strong></div>
+
+      <!-- discovered on LAN -->
+      <div id="mesh-discovered-section" style="margin-bottom:12px"></div>
+
+      <!-- manual link -->
       <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
         <input id="mesh-url" placeholder="peer Artel URL (https://host:8000)" style="width:100%;box-sizing:border-box">
         <input id="mesh-token" placeholder="peer's mesh token" style="width:100%;box-sizing:border-box">
@@ -1889,9 +1894,27 @@ async function loadLogs(){
 async function loadMesh(){
   loading('mesh-list');
   loading('mesh-token-section');
+  loading('mesh-discovered-section');
   try{
-    const [tokens,peers]=await Promise.all([req('GET','/mesh/tokens'),req('GET','/mesh/peers')]);
+    const [tokens,peers,discovered]=await Promise.all([
+      req('GET','/mesh/tokens'),
+      req('GET','/mesh/peers'),
+      req('GET','/mesh/discovered').catch(()=>[]),
+    ]);
     const base=window.location.origin;
+    if(discovered.length){
+      $('mesh-discovered-section').innerHTML=`
+        <div style="font-size:11px;color:var(--t3);margin-bottom:6px;display:flex;align-items:center;gap:6px">
+          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4caf50"></span>
+          discovered on LAN
+        </div>`+
+        discovered.map(p=>`<div class="log-row" style="margin-bottom:4px">
+          <span class="log-msg" style="flex:1">${esc(p.url)}</span>
+          <button class="sm p" onclick="linkDiscovered('${esc(p.instance_id)}')">link</button>
+        </div>`).join('');
+    } else {
+      $('mesh-discovered-section').innerHTML='';
+    }
     if(!tokens.length){
       $('mesh-token-section').innerHTML=`<div style="margin-bottom:8px;color:var(--t3);font-size:12px">No token yet.</div>
         <button class="p sm" onclick="createMeshToken()">generate token</button>`;
@@ -1958,6 +1981,16 @@ async function addPeer(){
     await req('POST','/mesh/peers',{peer_url,peer_token,project});
     $('mesh-url').value=$('mesh-token').value=$('mesh-proj').value='';
     toast('peer linked','info');
+    loadMesh();
+  }catch(e){toast(e.message,'error');}
+}
+
+async function linkDiscovered(instanceId){
+  const project=prompt('Project scope (leave blank for all projects):','');
+  if(project===null)return;
+  try{
+    await req('POST','/mesh/link-discovered',{instance_id:instanceId,project:project||null});
+    toast('peer linked via handshake','info');
     loadMesh();
   }catch(e){toast(e.message,'error');}
 }

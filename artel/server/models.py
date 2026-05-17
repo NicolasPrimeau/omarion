@@ -257,3 +257,23 @@ class LogEntry(BaseModel):
     action: str
     message: str
     details: dict
+
+
+class DiscoveredPeer(BaseModel):
+    instance_id: str
+    url: str
+
+
+class HandshakeRequest(BaseModel):
+    initiator_url: str
+    initiator_token: str
+    project: str | None = None
+
+
+class HandshakeResponse(BaseModel):
+    token: str
+
+
+class LinkDiscoveredRequest(BaseModel):
+    instance_id: str
+    project: str | None = None
