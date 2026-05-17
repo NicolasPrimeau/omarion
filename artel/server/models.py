@@ -192,6 +192,23 @@ class FeedEntry(BaseModel):
     created_at: str
 
 
+class PeerLinkCreate(BaseModel):
+    peer_url: str
+    project: str
+    peer_agent_id: str
+    peer_api_key: str
+
+
+class PeerLink(BaseModel):
+    id: str
+    peer_url: str
+    project: str
+    feed_id: str
+    created_by: str
+    created_at: str
+    last_fetched_at: str | None = None
+
+
 class HandoffPost(BaseModel):
     host: str = ""
     summary: str

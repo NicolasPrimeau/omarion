@@ -26,6 +26,7 @@ from .routes.events import router as events_router
 from .routes.feeds import router as feeds_router
 from .routes.logs import router as logs_router
 from .routes.memory import router as memory_router
+from .routes.mesh import router as mesh_router
 from .routes.messages import router as messages_router
 from .routes.oauth import router as oauth_router
 from .routes.onboard import router as onboard_router
@@ -202,6 +203,7 @@ app.include_router(participants_router)
 app.include_router(projects_router)
 app.include_router(feeds_router)
 app.include_router(logs_router)
+app.include_router(mesh_router)
 
 
 @app.get("/.well-known/oauth-protected-resource", include_in_schema=False)

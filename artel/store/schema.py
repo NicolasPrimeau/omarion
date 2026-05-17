@@ -146,6 +146,15 @@ CREATE TABLE IF NOT EXISTS feed_subscriptions (
     created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 CREATE INDEX IF NOT EXISTS idx_feed_subs_agent ON feed_subscriptions (agent_id);
+
+CREATE TABLE IF NOT EXISTS peer_links (
+    id          TEXT PRIMARY KEY,
+    peer_url    TEXT NOT NULL,
+    project     TEXT NOT NULL,
+    feed_id     TEXT NOT NULL,
+    created_by  TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
 CREATE INDEX IF NOT EXISTS idx_feed_subs_fetch ON feed_subscriptions (last_fetched_at);
 
 CREATE TABLE IF NOT EXISTS feed_items_seen (

@@ -850,6 +850,7 @@ pre{
       <button class="drawer-item" onclick="drawerTab('agents')">agents</button>
       <button class="drawer-item" onclick="drawerTab('sessions')">sessions</button>
       <button class="drawer-item" onclick="drawerTab('logs')">logs</button>
+      <button class="drawer-item" onclick="drawerTab('mesh')">mesh</button>
     </div>
     <div class="panel-section" id="ps-projects-drawer">
       <span class="panel-section-lbl" onclick="toggleSection('ps-projects-drawer')">projects</span>
@@ -887,6 +888,7 @@ pre{
       <button class="nav-btn" onclick="tab('agents',this)">agents</button>
       <button class="nav-btn" onclick="tab('sessions',this)">sessions</button>
       <button class="nav-btn" onclick="tab('logs',this)">logs</button>
+      <button class="nav-btn" onclick="tab('mesh',this)">mesh</button>
     </div>
     <div class="panel-section" id="ps-projects-sidebar">
       <span class="panel-section-lbl" onclick="toggleSection('ps-projects-sidebar')">projects</span>
@@ -1060,6 +1062,24 @@ pre{
   <div id="log-list"></div>
 </div>
 
+<div id="panel-mesh" class="panel">
+  <div class="toolbar">
+    <input id="mesh-url" placeholder="peer Artel URL (https://host:8000)" style="width:240px">
+    <input id="mesh-proj" placeholder="project" style="width:120px">
+    <input id="mesh-aid" placeholder="peer agent id" style="width:130px">
+    <input id="mesh-key" placeholder="peer api key" type="password" style="width:130px">
+    <button class="p" onclick="addPeer()">link</button>
+    <button onclick="loadMesh()">refresh</button>
+    <div class="spacer"></div>
+    <span class="toolbar-label" id="mesh-count"></span>
+  </div>
+  <div class="hint" style="margin:0 0 8px;color:var(--t3);font-size:12px">
+    Linking meshes this project's memory with the peer (owner only). Replication is
+    a CRDT — convergent, multi-hop, loop-free. Detach to stop syncing.
+  </div>
+  <div id="mesh-list"></div>
+</div>
+
 <!-- TASK EDIT MODAL -->
 <div id="task-modal" class="modal-backdrop">
   <div class="modal" style="max-width:640px;width:90vw">
@@ -1162,6 +1182,7 @@ function tab(name,btn){
   if(name==='agents')loadAgents();
   if(name==='sessions'){populateSessionAgents();loadSession();}
   if(name==='logs')loadLogs();
+  if(name==='mesh')loadMesh();
 }
 
 function toggleSection(id){
@@ -1198,6 +1219,7 @@ function drawerTab(name){
     if(name==='agents')loadAgents();
     if(name==='sessions'){populateSessionAgents();loadSession();}
     if(name==='logs')loadLogs();
+    if(name==='mesh')loadMesh();
   }
 }
 const _THEMES=[
@@ -1849,6 +1871,44 @@ async function loadLogs(){
       </div>`;
     }).join('');
   }catch(e){$('log-list').innerHTML=`<div class="err-msg">${esc(e.message)}</div>`;}
+}
+
+async function loadMesh(){
+  loading('mesh-list');
+  try{
+    const rows=await req('GET','/mesh/peers');
+    $('mesh-count').textContent=rows.length+' peer'+(rows.length===1?'':'s');
+    if(!rows.length){$('mesh-list').innerHTML=emptyState('🕸','no meshed peers');return;}
+    $('mesh-list').innerHTML=rows.map(r=>`<div class="log-row">
+      <span class="log-source">${esc(r.project)}</span>
+      <span class="log-msg">${esc(r.peer_url)}</span>
+      <span class="log-ts">${r.last_fetched_at?'synced '+relTime(r.last_fetched_at):'never synced'}</span>
+      <button class="sm" onclick="detachPeer('${esc(r.id)}')">detach</button>
+    </div>`).join('');
+  }catch(e){$('mesh-list').innerHTML=`<div class="err-msg">${esc(e.message)}</div>`;}
+}
+
+async function addPeer(){
+  const peer_url=$('mesh-url').value.trim();
+  const project=$('mesh-proj').value.trim();
+  const peer_agent_id=$('mesh-aid').value.trim();
+  const peer_api_key=$('mesh-key').value.trim();
+  if(!peer_url||!project||!peer_agent_id||!peer_api_key){toast('all fields required','error');return;}
+  try{
+    await req('POST','/mesh/peers',{peer_url,project,peer_agent_id,peer_api_key});
+    $('mesh-url').value=$('mesh-proj').value=$('mesh-aid').value=$('mesh-key').value='';
+    toast('peer linked','info');
+    loadMesh();
+  }catch(e){toast(e.message,'error');}
+}
+
+async function detachPeer(id){
+  if(!confirm('Detach this peer? Memory will stop syncing.'))return;
+  try{
+    await req('DELETE','/mesh/peers/'+id);
+    toast('peer detached','info');
+    loadMesh();
+  }catch(e){toast(e.message,'error');}
 }
 
 // ── Connect dropdown ──────────────────────────────────────────────────
